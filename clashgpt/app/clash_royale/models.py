@@ -11,6 +11,17 @@ class Rarity(str, Enum):
     CHAMPION = "CHAMPION"
 
 
+class LocationObject(BaseModel):
+    id: int
+    name: str
+    is_country: bool
+    country_code: str | None
+
+
+class Locations(BaseModel):
+    locations: list[LocationObject]
+
+
 class ClanObject(BaseModel):
     tag: str
     clan_name: str
@@ -26,7 +37,7 @@ class ArenaObject(BaseModel):
 class CardObject(BaseModel):
     id: str
     name: str
-    elixir_cost: int
+    elixir_cost: int = 0
     icon_urls: dict[str, str]
     rarity: Rarity
 
