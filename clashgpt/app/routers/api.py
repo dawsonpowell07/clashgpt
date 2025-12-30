@@ -17,7 +17,6 @@ from app.models.models import (
     FreeToPlayLevel,
     Locations,
     Rarity,
-    SkillTier,
 )
 from app.services.database import get_database_service
 
@@ -68,7 +67,6 @@ async def list_endpoints():
                         "exclude": "Optional - Comma-separated card IDs that must not be in deck",
                         "archetype": "Optional - Filter by archetype",
                         "ftp_tier": "Optional - Filter by FTP tier (FRIENDLY, MODERATE, PAYTOWIN)",
-                        "skill": "Optional - Filter by skill tier (LOW, MEDIUM, HIGH)",
                         "limit": "Optional - Maximum results (1-200, default: 50)"
                     },
                     "example": "/api/decks/search?include=26000000,26000001&archetype=CYCLE&ftp_tier=FRIENDLY"
@@ -84,9 +82,8 @@ async def list_endpoints():
         },
         "enums": {
             "Rarity": ["COMMON", "RARE", "EPIC", "LEGENDARY", "CHAMPION"],
-            "DeckArchetype": ["CYCLE", "BEATDOWN", "BRIDGESPAM", "MIDLADDERMENACE", "BAIT", "CHIP", "SIEGE"],
-            "FreeToPlayLevel": ["FRIENDLY", "MODERATE", "PAYTOWIN"],
-            "SkillTier": ["LOW", "MEDIUM", "HIGH"]
+            "DeckArchetype": ["CYCLE", "BEATDOWN", "BRIDGESPAM", "MIDLADDERMENACE", "BAIT", "CHIP", "SIEGE", "CONTROL"],
+            "FreeToPlayLevel": ["FRIENDLY", "MODERATE", "PAYTOWIN"]
         },
         "documentation": "/docs"
     }
@@ -96,7 +93,7 @@ async def list_endpoints():
 
 @router.get("/cards", response_model=CardList)
 async def get_cards(
-    rarity: Rarity | None = Query(None, description="Filter by card rarity")
+    rarity: Annotated[Rarity | None, Query(description="Filter by card rarity")] = None
 ):
     """
     Get all cards, optionally filtered by rarity.
@@ -144,8 +141,7 @@ async def get_card_by_id(card_id: str):
 @router.get("/decks/top", response_model=list[Deck])
 async def get_top_decks(
     limit: Annotated[int, Query(ge=1, le=200)] = 10,
-    archetype: DeckArchetype | None = Query(
-        None, description="Filter by deck archetype")
+    archetype: Annotated[DeckArchetype | None, Query(description="Filter by deck archetype")] = None
 ):
     """
     Get top decks ordered by most recently seen.
@@ -163,15 +159,10 @@ async def get_top_decks(
 
 @router.get("/decks/search", response_model=list[Deck])
 async def search_decks(
-    include: Annotated[str | None, Query(
-        description="Comma-separated card IDs that must be in deck")] = None,
-    exclude: Annotated[str | None, Query(
-        description="Comma-separated card IDs that must not be in deck")] = None,
-    archetype: DeckArchetype | None = Query(
-        None, description="Filter by deck archetype"),
-    ftp_tier: FreeToPlayLevel | None = Query(
-        None, description="Filter by free-to-play tier"),
-    skill: SkillTier | None = Query(None, description="Filter by skill tier"),
+    include: Annotated[str | None, Query(description="Comma-separated card IDs that must be in deck")] = None,
+    exclude: Annotated[str | None, Query(description="Comma-separated card IDs that must not be in deck")] = None,
+    archetype: Annotated[DeckArchetype | None, Query(description="Filter by deck archetype")] = None,
+    ftp_tier: Annotated[FreeToPlayLevel | None, Query(description="Filter by free-to-play tier")] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50
 ):
     """
@@ -182,7 +173,6 @@ async def search_decks(
         exclude: Comma-separated list of card IDs that must not be in the deck
         archetype: Optional archetype filter (CYCLE, BEATDOWN, BRIDGESPAM, etc.)
         ftp_tier: Optional FTP tier filter (FRIENDLY, MODERATE, PAYTOWIN)
-        skill: Optional skill tier filter (LOW, MEDIUM, HIGH)
         limit: Maximum number of results (1-200, default: 50)
 
     Returns:
@@ -191,7 +181,7 @@ async def search_decks(
     Examples:
         - /decks/search?include=26000000,26000001&archetype=CYCLE
         - /decks/search?exclude=26000010&ftp_tier=FRIENDLY&limit=10
-        - /decks/search?archetype=BEATDOWN&skill=HIGH
+        - /decks/search?archetype=BEATDOWN
     """
     db = get_database_service()
 
@@ -212,7 +202,6 @@ async def search_decks(
         exclude_card_ids=exclude_card_ids,
         archetype=archetype,
         ftp_tier=ftp_tier,
-        skill=skill,
         limit=limit
     )
 

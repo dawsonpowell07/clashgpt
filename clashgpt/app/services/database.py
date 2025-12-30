@@ -21,7 +21,6 @@ from app.models.models import (
     Location,
     Locations,
     Rarity,
-    SkillTier,
 )
 
 load_dotenv()
@@ -176,7 +175,7 @@ class DatabaseService:
         async with self.async_session() as session:
             if archetype:
                 stmt = text("""
-                    SELECT id, deck_hash, cards, avg_elixir, archetype, ftp_tier, skill_level
+                    SELECT id, deck_hash, cards, avg_elixir, archetype, ftp_tier
                     FROM decks
                     WHERE archetype = :archetype
                     ORDER BY last_seen_at DESC
@@ -185,7 +184,7 @@ class DatabaseService:
                 result = await session.execute(stmt, {"archetype": archetype.value, "limit": limit})
             else:
                 stmt = text("""
-                    SELECT id, deck_hash, cards, avg_elixir, archetype, ftp_tier, skill_level
+                    SELECT id, deck_hash, cards, avg_elixir, archetype, ftp_tier
                     FROM decks
                     ORDER BY last_seen_at DESC
                     LIMIT :limit
@@ -203,8 +202,7 @@ class DatabaseService:
                     archetype=DeckArchetype(
                         row[4]) if row[4] else DeckArchetype.BEATDOWN,
                     ftp_tier=FreeToPlayLevel(
-                        row[5]) if row[5] else FreeToPlayLevel.MODERATE,
-                    skill=SkillTier(row[6]) if row[6] else SkillTier.MEDIUM
+                        row[5]) if row[5] else FreeToPlayLevel.MODERATE
                 )
                 decks.append(deck)
 
@@ -216,7 +214,6 @@ class DatabaseService:
         exclude_card_ids: list[str] | None = None,
         archetype: DeckArchetype | None = None,
         ftp_tier: FreeToPlayLevel | None = None,
-        skill: SkillTier | None = None,
         limit: int = 50
     ) -> list[Deck]:
         """
@@ -227,7 +224,6 @@ class DatabaseService:
             exclude_card_ids: List of card IDs that must not be in the deck
             archetype: Optional archetype filter
             ftp_tier: Optional free-to-play tier filter
-            skill: Optional skill tier filter
             limit: Maximum number of results (default: 50)
 
         Returns:
@@ -236,7 +232,7 @@ class DatabaseService:
         async with self.async_session() as session:
             # Build dynamic query
             query = """
-                SELECT id, deck_hash, cards, avg_elixir, archetype, ftp_tier, skill_level
+                SELECT id, deck_hash, cards, avg_elixir, archetype, ftp_tier
                 FROM decks
                 WHERE 1=1
             """
@@ -266,11 +262,6 @@ class DatabaseService:
                 query += " AND ftp_tier = :ftp_tier"
                 params["ftp_tier"] = ftp_tier.value
 
-            # Filter by skill tier
-            if skill:
-                query += " AND skill_level = :skill_level"
-                params["skill_level"] = skill.value
-
             # Order by most recently seen and apply limit
             query += " ORDER BY last_seen_at DESC LIMIT :limit"
             params["limit"] = limit
@@ -288,8 +279,7 @@ class DatabaseService:
                     archetype=DeckArchetype(
                         row[4]) if row[4] else DeckArchetype.BEATDOWN,
                     ftp_tier=FreeToPlayLevel(
-                        row[5]) if row[5] else FreeToPlayLevel.MODERATE,
-                    skill=SkillTier(row[6]) if row[6] else SkillTier.MEDIUM
+                        row[5]) if row[5] else FreeToPlayLevel.MODERATE
                 )
                 decks.append(deck)
 

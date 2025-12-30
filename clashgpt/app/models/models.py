@@ -17,20 +17,14 @@ class DeckArchetype(str, Enum):
     BRIDGESPAM = "BRIDGESPAM"
     MIDLADDERMENACE = "MIDLADDERMENACE"
     BAIT = "BAIT"
-    CHIP = "CHIP"
     SIEGE = "SIEGE"
+    CONTROL = "CONTROL"
 
 
 class FreeToPlayLevel(str, Enum):
     FRIENDLY = "FRIENDLY"
     MODERATE = "MODERATE"
     PAYTOWIN = "PAYTOWIN"
-
-
-class SkillTier(str, Enum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
 
 
 class CardVariant(str, Enum):
@@ -81,7 +75,6 @@ class Deck(BaseModel):
     avg_elixir: float
     archetype: DeckArchetype
     ftp_tier: FreeToPlayLevel
-    skill: SkillTier
 
 
 class Battle(BaseModel):
