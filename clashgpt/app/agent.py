@@ -24,7 +24,7 @@ from google.genai import types
 import os
 import google.auth
 
-from .clash_royale.clash_royale import ClashRoyaleService
+from app.services.clash_royale import ClashRoyaleService
 
 _, project_id = google.auth.default()
 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
@@ -63,6 +63,34 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
         return battle_log.model_dump()
 
 
+async def get_top_players(location_id: int = 57000249, limit: int = 10) -> dict:
+    """
+    Get the top Path of Legend players for a specific location.
+
+    Args:
+        location_id: The location ID to get rankings for. Defaults to 57000249 (United States).
+            Common location IDs:
+            - 57000249: United States
+            - 57000007: Brazil
+            - 57000038: China
+            - 57000070: France
+            - 57000074: Germany
+            - 57000094: India
+            - 57000095: Indonesia
+            - 57000097: Iran
+            - 57000151: Russia
+            - 57000088: Hong Kong
+            - 57000227: United Kingdom
+        limit: Number of top players to return (default: 10, max: 50).
+
+    Returns:
+        Dictionary containing the leaderboard with top players including their tags, names, ELO ratings, and clan information.
+    """
+    async with ClashRoyaleService() as service:
+        leaderboard = await service.get_player_rankings(location_id, limit=limit)
+        return leaderboard.model_dump()
+
+
 root_agent = Agent(
     name="root_agent",
     model=Gemini(
@@ -70,7 +98,7 @@ root_agent = Agent(
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction="You are a helpful AI assistant designed to provide accurate and useful information about Clash Royale players. ONLY CALL ANY TOOL ONCE. A SINGLE TIME",
-    tools=[get_player_info, get_player_battle_log],
+    tools=[get_player_info, get_player_battle_log, get_top_players],
 )
 
 app = App(root_agent=root_agent, name="app")

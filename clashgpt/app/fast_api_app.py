@@ -22,6 +22,7 @@ from google.cloud import logging as google_cloud_logging
 
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
+from app.routers.api import router as api_router
 
 setup_telemetry()
 _, project_id = google.auth.default()
@@ -67,6 +68,9 @@ app: FastAPI = get_fast_api_app(
 )
 app.title = "clashgpt"
 app.description = "API for interacting with the Agent clashgpt"
+
+# Include API router
+app.include_router(api_router)
 
 
 @app.post("/feedback")
