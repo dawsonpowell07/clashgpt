@@ -12,76 +12,102 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
+import time
+from contextlib import asynccontextmanager
 from urllib.parse import quote
 
 import google.auth
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from google.adk.cli.fast_api import get_fast_api_app
 from google.cloud import logging as google_cloud_logging
 
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
 from app.routers.api import router as api_router
+from app.services.database import get_database_service
+from app.services.mongo_db import get_mongodb
+from app.settings import settings
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 setup_telemetry()
 _, project_id = google.auth.default()
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
+app_logger = logging.getLogger(__name__)
 allow_origins = (
     os.getenv("ALLOW_ORIGINS", "").split(
         ",") if os.getenv("ALLOW_ORIGINS") else None
 )
 is_cloud_run = os.getenv("K_SERVICE") is not None
-dev_mode = os.environ.get("DEV_MODE", "false").lower() == "true"
-# Artifact bucket for ADK (created by Terraform, passed via env var)
-logs_bucket_name = os.environ.get("LOGS_BUCKET_NAME")
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 session_service_uri = None
 
 # DEV_MODE: Use all local database (no password required)
-if dev_mode:
-    db_user = os.environ.get("LOCAL_DB_USER", "postgres")
-    db_name = os.environ.get("LOCAL_DB_NAME", "postgres")
-    db_host = os.environ.get("LOCAL_DB_HOST", "localhost")
-    db_port = os.environ.get("LOCAL_DB_PORT", "5432")
-
+if settings.dev_mode:
     session_service_uri = (
-        f"postgresql+asyncpg://{db_user}@{db_host}:{db_port}/{db_name}"
+        f"postgresql+asyncpg://{settings.local_db_user}@{settings.local_db_host}:{settings.local_db_port}/{settings.local_db_name}"
     )
 else:
     # Cloud SQL session configuration
-    db_user = os.environ.get("PROD_DB_USER", "postgres")
-    db_name = os.environ.get("PROD_DB_NAME", "postgres")
-    db_pass = os.environ.get("PROD_DB_PASSWORD")
-    db_host = os.environ.get("PROD_DB_HOST", "localhost")
-    db_port = os.environ.get("PROD_DB_PORT", "5432")
-    instance_connection_name = os.environ.get("CONNECTION_NAME")
-
-    if db_pass:
-        encoded_user = quote(db_user, safe="")
-        encoded_pass = quote(db_pass, safe="")
+    if settings.prod_db_password:
+        encoded_user = quote(settings.prod_db_user, safe="")
+        encoded_pass = quote(settings.prod_db_password, safe="")
 
         # If on Cloud Run AND we have a connection name, use Unix Socket
-        if is_cloud_run and instance_connection_name:
-            encoded_instance = instance_connection_name.replace(":", "%3A")
+        if is_cloud_run and settings.connection_name:
             session_service_uri = (
                 f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
-                f"/{db_name}"
+                f"/{settings.prod_db_name}"
                 # asyncpg often prefers the raw string or the dir
-                f"?host=/cloudsql/{instance_connection_name}"
+                f"?host=/cloudsql/{settings.connection_name}"
             )
         else:
             # Local development: Use TCP via Proxy on 127.0.0.1
             # This block will execute on your Mac
             session_service_uri = (
                 f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
-                f"{db_host}:{db_port}/{db_name}"
+                f"{settings.prod_db_host}:{settings.prod_db_port}/{settings.prod_db_name}"
             )
 
-artifact_service_uri = f"gs://{logs_bucket_name}" if logs_bucket_name else None
+artifact_service_uri = f"gs://{settings.logs_bucket_name}" if settings.logs_bucket_name else None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Manage application lifespan events.
+
+    Initializes database connections on startup and closes them on shutdown.
+    """
+    # Startup: Initialize database connections
+    db_service = get_database_service()
+    mongo_service = get_mongodb()
+    logger.log_struct({
+        "event": "database_services_initialized",
+        "postgres": True,
+        "mongodb": True
+    }, severity="INFO")
+
+    yield
+
+    # Shutdown: Close database connections
+    await db_service.close()
+    await mongo_service.close()
+    logger.log_struct({
+        "event": "database_services_closed",
+        "postgres": True,
+        "mongodb": True
+    }, severity="INFO")
+
 
 app: FastAPI = get_fast_api_app(
     agents_dir=AGENT_DIR,
@@ -94,8 +120,33 @@ app: FastAPI = get_fast_api_app(
 app.title = "clashgpt"
 app.description = "API for interacting with the Agent clashgpt"
 
+# Override lifespan to manage MongoDB connections
+app.router.lifespan_context = lifespan
+
 # Include API router
 app.include_router(api_router)
+
+
+# API request/response logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log incoming API requests and responses."""
+    start_time = time.time()
+
+    # Log request
+    app_logger.info(f"API request: {request.method} {request.url.path}")
+
+    # Process request
+    response = await call_next(request)
+
+    # Log response
+    duration = time.time() - start_time
+    app_logger.info(
+        f"API response: {request.method} {request.url.path} | "
+        f"status={response.status_code} | duration={duration:.3f}s"
+    )
+
+    return response
 
 
 @app.post("/feedback")

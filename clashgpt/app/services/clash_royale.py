@@ -8,7 +8,7 @@ This service handles authentication, request formatting, and response parsing
 to make it easier for agents to retrieve player, clan, card, and ranking information.
 """
 
-import os
+import logging
 from typing import Any
 from urllib.parse import quote
 
@@ -26,6 +26,9 @@ from app.models.models import (
     Player,
     Rarity,
 )
+from app.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 class ClashRoyaleAPIError(Exception):
@@ -68,10 +71,9 @@ class ClashRoyaleService:
         Initialize the Clash Royale service.
 
         Args:
-            api_token: Clash Royale API token. If not provided, will look for
-                      CLASH_ROYALE_API_TOKEN environment variable.
+            api_token: Clash Royale API token. If not provided, will use settings.
         """
-        self.api_token = api_token or os.getenv("CLASH_ROYALE_API_TOKEN")
+        self.api_token = api_token or settings.clash_royale_api_token
         if not self.api_token:
             raise ClashRoyaleAuthError(
                 "API token required. Provide via parameter or CLASH_ROYALE_API_TOKEN env var."
@@ -126,11 +128,13 @@ class ClashRoyaleService:
                 "Service not initialized. Use async context manager.")
 
         url = f"{self.BASE_URL}{endpoint}"
+        logger.info(f"Clash Royale API: GET {endpoint}")
 
         try:
             response = await self.client.get(url, params=params)
 
             if response.status_code == 200:
+                logger.info(f"Clash Royale API: {endpoint} | status=200")
                 return response.json()
             elif response.status_code == 401:
                 raise ClashRoyaleAuthError("Invalid API token")

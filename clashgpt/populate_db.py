@@ -13,35 +13,31 @@ Usage:
 
 import asyncio
 import json
-import os
 import sys
 
-from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.services.clash_royale import ClashRoyaleService
+from app.settings import settings
 
 
 def get_database_url() -> str:
     """
-    Build the database URL from environment variables.
+    Build the database URL from settings.
 
     Returns:
         Database connection URL
     """
-    db_user = os.environ.get("DB_USER", "postgres")
-    db_name = os.environ.get("DB_NAME", "postgres")
-    db_pass = os.environ.get("DB_PASS")
-
-    # Local PostgreSQL connection
-    db_host = os.environ.get("DB_HOST", "localhost")
-    db_port = os.environ.get("DB_PORT", "5432")
-
-    if db_pass:
-        return f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+    if settings.dev_mode:
+        # Local database
+        return f"postgresql+psycopg2://{settings.local_db_user}@{settings.local_db_host}:{settings.local_db_port}/{settings.local_db_name}"
     else:
-        return f"postgresql+psycopg2://{db_user}@{db_host}:{db_port}/{db_name}"
+        # Production database
+        if settings.prod_db_password:
+            return f"postgresql+psycopg2://{settings.prod_db_user}:{settings.prod_db_password}@{settings.prod_db_host}:{settings.prod_db_port}/{settings.prod_db_name}"
+        else:
+            return f"postgresql+psycopg2://{settings.prod_db_user}@{settings.prod_db_host}:{settings.prod_db_port}/{settings.prod_db_name}"
 
 
 async def fetch_api_data():
@@ -116,9 +112,6 @@ def populate_database(cards: list[dict]):
 
 async def main():
     """Main entry point for the populate script."""
-    # Load environment variables from .env file
-    load_dotenv()
-
     try:
         # Fetch data from API
         cards = await fetch_api_data()

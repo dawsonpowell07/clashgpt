@@ -4,11 +4,11 @@ Database Service
 Async service for interacting with the PostgreSQL database.
 Provides read-only access to cards, decks, and locations.
 """
-from urllib.parse import quote
+import logging
 import os
 from typing import Any
+from urllib.parse import quote
 
-from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -22,9 +22,9 @@ from app.models.models import (
     Locations,
     Rarity,
 )
+from app.settings import settings
 
-load_dotenv()
-
+logger = logging.getLogger(__name__)
 is_cloud_run = os.getenv("K_SERVICE") is not None
 
 
@@ -46,6 +46,7 @@ class DatabaseService:
         if database_url is None:
             database_url = self._build_database_url()
 
+        logger.info(f"Initializing database service | mode={'dev' if settings.dev_mode else 'prod'}")
         self.engine = create_async_engine(database_url, echo=False)
         self.async_session = async_sessionmaker(
             self.engine, expire_on_commit=False
@@ -53,56 +54,41 @@ class DatabaseService:
 
     def _build_database_url(self) -> str:
         """
-        Build database URL from environment variables.
+        Build database URL from settings.
 
-        Uses DEV_MODE and USE_LOCAL_DB flags to determine which database to connect to:
+        Uses DEV_MODE flag to determine which database to connect to:
         - DEV_MODE=true: Always use local PostgreSQL (overrides all other settings)
 
         Returns:
             Async database connection URL
         """
-        dev_mode = os.environ.get("DEV_MODE", "false").lower() == "true"
-
-        if dev_mode:
+        if settings.dev_mode:
             # Local database configuration
-            db_user = os.environ.get("LOCAL_DB_USER", "postgres")
-            db_name = os.environ.get("LOCAL_DB_NAME", "postgres")
-            db_host = os.environ.get("LOCAL_DB_HOST", "localhost")
-            db_port = os.environ.get("LOCAL_DB_PORT", "5432")
-
             # Local DB typically doesn't need password
-            return f"postgresql+asyncpg://{db_user}@{db_host}:{db_port}/{db_name}"
+            return f"postgresql+asyncpg://{settings.local_db_user}@{settings.local_db_host}:{settings.local_db_port}/{settings.local_db_name}"
         else:
             # Production database configuration (Google Cloud SQL)
-            db_user = os.environ.get("PROD_DB_USER", "postgres")
-            db_name = os.environ.get("PROD_DB_NAME", "postgres")
-            db_pass = os.environ.get("PROD_DB_PASSWORD", "")
-
-            encoded_user = quote(db_user, safe="")
-            encoded_pass = quote(db_pass, safe="")
+            encoded_user = quote(settings.prod_db_user, safe="")
+            encoded_pass = quote(settings.prod_db_password or "", safe="")
 
             # For Google Cloud SQL, check if using Cloud SQL Proxy
             # If proxy is running, it listens on localhost:5432
             # Otherwise, you'll need to use the Cloud SQL Python Connector
-            connection_name = os.environ.get("CONNECTION_NAME", "")
-
-            if is_cloud_run and connection_name:
-                encoded_instance = connection_name.replace(":", "%3A")
+            if is_cloud_run and settings.connection_name:
+                encoded_instance = settings.connection_name.replace(":", "%3A")
                 return (
                     f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
-                    f"/{db_name}"
+                    f"/{settings.prod_db_name}"
                     # asyncpg often prefers the raw string or the dir
                     f"?host=/cloudsql/{encoded_instance}"
                 )
             else:
                 # Direct connection (requires public IP or VPC)
-                db_host = os.environ.get("PROD_DB_HOST", "localhost")
-                db_port = os.environ.get("PROD_DB_PORT", "5432")
-
-                return f"postgresql+asyncpg://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+                return f"postgresql+asyncpg://{settings.prod_db_user}:{settings.prod_db_password}@{settings.prod_db_host}:{settings.prod_db_port}/{settings.prod_db_name}"
 
     async def close(self):
         """Close database connections."""
+        logger.info("Closing database connections")
         await self.engine.dispose()
 
     # ===== CARDS ENDPOINTS =====
@@ -114,6 +100,7 @@ class DatabaseService:
         Returns:
             CardList containing all cards
         """
+        logger.info("DB query: get_all_cards")
         async with self.async_session() as session:
             stmt = text(
                 "SELECT id, name, elixir_cost, rarity, icon_urls FROM cards ORDER BY name")
@@ -131,6 +118,7 @@ class DatabaseService:
                 )
                 cards.append(card)
 
+            logger.info(f"DB result: get_all_cards returned {len(cards)} cards")
             return CardList(cards=cards)
 
     async def get_card_by_id(self, card_id: str) -> Card | None:
@@ -143,6 +131,7 @@ class DatabaseService:
         Returns:
             Card object or None if not found
         """
+        logger.info(f"DB query: get_card_by_id | card_id={card_id}")
         async with self.async_session() as session:
             stmt = text(
                 "SELECT id, name, elixir_cost, rarity, icon_urls FROM cards WHERE id = :card_id")
@@ -169,6 +158,7 @@ class DatabaseService:
         Returns:
             CardList containing cards of the specified rarity
         """
+        logger.info(f"DB query: get_cards_by_rarity | rarity={rarity.value}")
         async with self.async_session() as session:
             stmt = text(
                 "SELECT id, name, elixir_cost, rarity, icon_urls FROM cards WHERE rarity = :rarity ORDER BY name"
@@ -206,6 +196,7 @@ class DatabaseService:
         Returns:
             List of Deck objects ordered by last_seen_at (most recent first)
         """
+        logger.info(f"DB query: get_top_decks | limit={limit}, archetype={archetype.value if archetype else None}")
         async with self.async_session() as session:
             if archetype:
                 stmt = text("""
@@ -240,6 +231,7 @@ class DatabaseService:
                 )
                 decks.append(deck)
 
+            logger.info(f"DB result: get_top_decks returned {len(decks)} decks")
             return decks
 
     async def search_decks(
@@ -263,6 +255,12 @@ class DatabaseService:
         Returns:
             List of Deck objects matching the filters
         """
+        logger.info(
+            f"DB query: search_decks | "
+            f"include_cards={include_card_ids}, exclude_cards={exclude_card_ids}, "
+            f"archetype={archetype.value if archetype else None}, "
+            f"ftp_tier={ftp_tier.value if ftp_tier else None}, limit={limit}"
+        )
         async with self.async_session() as session:
             # Build dynamic query
             query = """
@@ -317,6 +315,7 @@ class DatabaseService:
                 )
                 decks.append(deck)
 
+            logger.info(f"DB result: search_decks returned {len(decks)} decks")
             return decks
 
     # ===== LOCATIONS ENDPOINTS =====
@@ -328,6 +327,7 @@ class DatabaseService:
         Returns:
             Locations object containing all locations
         """
+        logger.info("DB query: get_all_locations")
         async with self.async_session() as session:
             stmt = text(
                 "SELECT id, name, is_country, country_code FROM locations ORDER BY name")
@@ -344,6 +344,7 @@ class DatabaseService:
                 )
                 locations.append(location)
 
+            logger.info(f"DB result: get_all_locations returned {len(locations)} locations")
             return Locations(locations=locations)
 
 

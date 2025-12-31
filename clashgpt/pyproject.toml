@@ -17,6 +17,7 @@ dependencies = [
     "sqlalchemy>=2.0.45",
     "greenlet>=3.3.0",
     "ag-ui-adk>=0.4.0",
+    "pymongo>=4.15.5",
 ]
 requires-python = ">=3.13,<3.14"
 

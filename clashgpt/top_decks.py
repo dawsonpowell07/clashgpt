@@ -15,17 +15,16 @@ Usage:
 import asyncio
 import hashlib
 import json
-import os
 from collections import defaultdict
 from datetime import datetime
 from typing import Any
 
-from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from app.services.clash_royale import ClashRoyaleService
 from app.models.models import CardVariant, DeckArchetype, FreeToPlayLevel, Rarity
+from app.services.clash_royale import ClashRoyaleService
+from app.settings import settings
 
 # Countries to scan for top players
 COUNTRIES = [
@@ -44,21 +43,20 @@ BATTLE_LOG_LIMIT = 25  # Number of recent battles to analyze per player
 
 def get_database_url() -> str:
     """
-    Build the database URL from environment variables.
+    Build the database URL from settings.
 
     Returns:
         Database connection URL
     """
-    db_user = os.environ.get("DB_USER", "postgres")
-    db_name = os.environ.get("DB_NAME", "postgres")
-    db_pass = os.environ.get("DB_PASS")
-    db_host = os.environ.get("DB_HOST", "localhost")
-    db_port = os.environ.get("DB_PORT", "5432")
-
-    if db_pass:
-        return f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+    if settings.dev_mode:
+        # Local database
+        return f"postgresql+psycopg2://{settings.local_db_user}@{settings.local_db_host}:{settings.local_db_port}/{settings.local_db_name}"
     else:
-        return f"postgresql+psycopg2://{db_user}@{db_host}:{db_port}/{db_name}"
+        # Production database
+        if settings.prod_db_password:
+            return f"postgresql+psycopg2://{settings.prod_db_user}:{settings.prod_db_password}@{settings.prod_db_host}:{settings.prod_db_port}/{settings.prod_db_name}"
+        else:
+            return f"postgresql+psycopg2://{settings.prod_db_user}@{settings.prod_db_host}:{settings.prod_db_port}/{settings.prod_db_name}"
 
 
 def determine_card_variant(card_data: dict[str, Any]) -> CardVariant:
@@ -678,8 +676,6 @@ def upload_decks_to_database(decks_data: dict[str, list[dict[str, str]]]):
 
 async def main():
     """Main entry point for the deck collection script."""
-    load_dotenv()
-
     try:
         # Collect decks from top players
         decks_data = await collect_all_decks()
