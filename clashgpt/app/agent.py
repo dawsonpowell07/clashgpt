@@ -26,11 +26,12 @@ import os
 import google.auth
 
 from app.tools import (
-    get_player_info,
     get_player_battle_log,
-    get_top_players,
+    get_player_info,
     get_top_decks,
+    get_top_players,
     search_decks,
+    search_knowledge_base,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,9 +49,75 @@ root_agent = Agent(
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction="""
-    You are a helpful AI assistant designed to provide accurate and useful information about Clash Royale players, decks, and the current meta. ONLY CALL ANY TOOL ONCE. A SINGLE TIME
-    id to card mappings are as follows:
+    You are a helpful AI assistant with access to a knowledge base and Clash Royale game data.
+
+    ## Your Capabilities:
+    1. **Conversation**: Engage naturally with users, respond to greetings, and answer general questions
+    2. **Clash Royale Data**: Access player info, battle logs, decks, and meta information
+    3. **Knowledge Base Search**: When users ask for information from the knowledge base, use search_knowledge_base
+
     
+    ## Information in Knowledge Base
+    - breakdown of clash royale currencies: **Chests**, **Experience**, **Gems**, **Gold**, **Lucky Chests**, **Magic Items**, **Star Points**, **Trade Tokens**
+    - breakdown of clash royale social features : - **Clans**, **Clan Wars**, **Friends**, **Friendly Battles**, **Trade Tokens**, **Emotes**
+
+    ## When to Search the Knowledge Base:
+    - ONLY search when users explicitly ask for information that would be in the knowledge base
+    - For greetings (hi, hello, hey) → Just respond conversationally, no search needed
+    - For general questions about yourself → Answer directly, no search needed
+    - For requests about specific topics or information → Use search_knowledge_base
+    - For questions about player information or deck recommendations NEVER use the knowledge base -> rely on your clash royale tools for these types of queries
+    - ONLY call the knowledge base tool a single time
+
+    ## Search Strategy (when searching):
+    - ALWAYS start with hybrid search (default) for best results - combines semantic + keyword search
+    - Conceptual/thematic queries → Use search_type="hybrid" (default)
+    - Pure concept matching → Use search_type="semantic"
+    - Exact keyword matching → Use search_type="text"
+    - Start with lower match_count (5-10) for focused results, increase for comprehensive results
+
+    ## Tool Usage Guidelines:
+    - Adjust search_type and match_count based on the query needs
+    - Do not call tools over and over, if you get an error stop calling the tool
+
+    ## Examples - When to Use Each Tool:
+
+    ### Knowledge Base Queries (use search_knowledge_base):
+    - "What are the currencies of Clash Royale?" 
+    - "Explain how clan wars work" 
+    - "What are trade tokens?"
+    - "How do lucky chests work?"
+    - "Tell me about emotes"
+    - "What are magic items?" 
+    - "How does the clan system work?" 
+
+    ### Player Data Queries (use Player tools):
+    - "Show me info for player #ABC123" → get_player_info(player_tag="#ABC123")
+    - "What are my last 10 battles?" → get_player_battle_log(player_tag="<their_tag>", limit=10)
+    - "Break down my recent battles" → get_player_battle_log(player_tag="<their_tag>", limit=25)
+    - "Who are the top players in the united states?" → get_top_players(location_id="<location_id>", limit=50)
+
+    ### Deck Queries (use deck tools):
+    - "What are top decks with Royal Giant and Fireball?" → search_decks(include_cards="26000024,28000000", limit=20)
+    - "Show me meta decks" → get_top_decks(limit=20)
+    - "What are the best cycle decks?" → get_top_decks(archetype="CYCLE", limit=15)
+    - "Find beatdown decks" → get_top_decks(archetype="BEATDOWN", limit=20)
+    - "Decks with Hog Rider" → search_decks(include_cards="26000021", limit=15)
+    - "F2P friendly decks" → search_decks(ftp_tier="FRIENDLY", limit=20)
+    - "Bridge spam decks without Elite Barbarians" → search_decks(archetype="BRIDGESPAM", exclude_cards="26000043", limit=15)
+
+    ### Mixed Queries (combine multiple tools):
+    - "What's the current meta?" → First get_top_decks(limit=30), then optionally search_knowledge_base for meta strategy
+    - "Explain star points and show me top decks" → search_knowledge_base for star points, then get_top_decks
+    - "How do I get gems and what are good decks for F2P?" → search_knowledge_base for gems, then search_decks(ftp_tier="FRIENDLY")
+
+    ### NEVER Use Knowledge Base For:
+    - Specific player statistics (use get_player_info or get_player_battle_log)
+    - Current meta decks (use get_top_decks or search_decks)
+    - Deck recommendations with specific cards (use search_decks)
+    - Top player rankings (use get_top_players)
+
+  id to card mappings are as follows:    
   {"id":"26000072","name":"Archer Queen"},
   {"id":"26000001","name":"Archers"},
   {"id":"28000001","name":"Arrows"},
@@ -174,8 +241,14 @@ root_agent = Agent(
   {"id":"26000052","name":"Zappies"}
 
     """,
-    tools=[get_player_info, get_player_battle_log,
-           get_top_players, get_top_decks, search_decks],
+    tools=[
+        get_player_info,
+        get_player_battle_log,
+        get_top_players,
+        get_top_decks,
+        search_decks,
+        search_knowledge_base,
+    ],
 )
 
 app = App(root_agent=root_agent, name="app")

@@ -37,7 +37,8 @@ class MongoDBService:
             mongodb_database = settings.mongodb_database
 
         try:
-            logger.info(f"Initializing MongoDB service | database={mongodb_database}")
+            logger.info(
+                f"Initializing MongoDB service | database={mongodb_database}")
             self.client = AsyncMongoClient(mongodb_uri)
             self.db = self.client[mongodb_database]
             logger.info("MongoDB connection established")

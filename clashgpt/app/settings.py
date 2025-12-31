@@ -39,6 +39,20 @@ class Settings(BaseSettings):
     # MongoDB
     mongodb_uri: str = ""
     mongodb_database: str = ""
+    mongodb_collection_documents: str = "documents"
+    mongodb_collection_chunks: str = "chunks"
+    mongodb_vector_index: str = "vector_index"
+    mongodb_text_index: str = "text_index"
+
+    # Embedding Configuration
+    embedding_api_key: str = ""
+    embedding_model: str = "text-embedding-3-small"
+    embedding_base_url: str = "https://api.openai.com/v1"
+    embedding_dimension: int = 1536
+
+    # RAG Search Configuration
+    default_match_count: int = 10
+    max_match_count: int = 50
 
 
 # Create a global settings instance

@@ -1,15 +1,14 @@
 """
 Agent tools for Clash Royale information.
 """
+
+from app.tools.deck_tools import get_top_decks, search_decks
 from app.tools.player_tools import (
-    get_player_info,
     get_player_battle_log,
+    get_player_info,
     get_top_players,
 )
-from app.tools.deck_tools import (
-    get_top_decks,
-    search_decks,
-)
+from app.tools.rag_tool import search_knowledge_base
 
 __all__ = [
     "get_player_info",
@@ -17,4 +16,5 @@ __all__ = [
     "get_top_players",
     "get_top_decks",
     "search_decks",
+    "search_knowledge_base",
 ]
