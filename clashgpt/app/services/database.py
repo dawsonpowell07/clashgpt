@@ -55,16 +55,15 @@ class DatabaseService:
         """
         Build database URL from environment variables.
 
-        Uses USE_LOCAL_DB flag to determine which database to connect to:
-        - USE_LOCAL_DB=1: Connect to local PostgreSQL
-        - USE_LOCAL_DB=0: Connect to production Google Cloud SQL
+        Uses DEV_MODE and USE_LOCAL_DB flags to determine which database to connect to:
+        - DEV_MODE=true: Always use local PostgreSQL (overrides all other settings)
 
         Returns:
             Async database connection URL
         """
-        use_local_db = os.environ.get("USE_LOCAL_DB", "1") == "1"
+        dev_mode = os.environ.get("DEV_MODE", "false").lower() == "true"
 
-        if use_local_db:
+        if dev_mode:
             # Local database configuration
             db_user = os.environ.get("LOCAL_DB_USER", "postgres")
             db_name = os.environ.get("LOCAL_DB_NAME", "postgres")

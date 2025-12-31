@@ -33,39 +33,53 @@ allow_origins = (
         ",") if os.getenv("ALLOW_ORIGINS") else None
 )
 is_cloud_run = os.getenv("K_SERVICE") is not None
+dev_mode = os.environ.get("DEV_MODE", "false").lower() == "true"
 # Artifact bucket for ADK (created by Terraform, passed via env var)
 logs_bucket_name = os.environ.get("LOGS_BUCKET_NAME")
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Cloud SQL session configuration
-db_user = os.environ.get("PROD_DB_USER", "postgres")
-db_name = os.environ.get("PROD_DB_NAME", "postgres")
-db_pass = os.environ.get("PROD_DB_PASSWORD")
-db_host = os.environ.get("PROD_DB_HOST", "localhost")
-db_port = os.environ.get("PROD_DB_PORT", "5432")
-instance_connection_name = os.environ.get("CONNECTION_NAME")
 
 session_service_uri = None
-if db_pass:
-    encoded_user = quote(db_user, safe="")
-    encoded_pass = quote(db_pass, safe="")
 
-    # If on Cloud Run AND we have a connection name, use Unix Socket
-    if is_cloud_run and instance_connection_name:
-        encoded_instance = instance_connection_name.replace(":", "%3A")
-        session_service_uri = (
-            f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
-            f"/{db_name}"
-            # asyncpg often prefers the raw string or the dir
-            f"?host=/cloudsql/{instance_connection_name}"
-        )
-    else:
-        # Local development: Use TCP via Proxy on 127.0.0.1
-        # This block will execute on your Mac
-        session_service_uri = (
-            f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
-            f"{db_host}:{db_port}/{db_name}"
-        )
+# DEV_MODE: Use all local database (no password required)
+if dev_mode:
+    db_user = os.environ.get("LOCAL_DB_USER", "postgres")
+    db_name = os.environ.get("LOCAL_DB_NAME", "postgres")
+    db_host = os.environ.get("LOCAL_DB_HOST", "localhost")
+    db_port = os.environ.get("LOCAL_DB_PORT", "5432")
+
+    session_service_uri = (
+        f"postgresql+asyncpg://{db_user}@{db_host}:{db_port}/{db_name}"
+    )
+else:
+    # Cloud SQL session configuration
+    db_user = os.environ.get("PROD_DB_USER", "postgres")
+    db_name = os.environ.get("PROD_DB_NAME", "postgres")
+    db_pass = os.environ.get("PROD_DB_PASSWORD")
+    db_host = os.environ.get("PROD_DB_HOST", "localhost")
+    db_port = os.environ.get("PROD_DB_PORT", "5432")
+    instance_connection_name = os.environ.get("CONNECTION_NAME")
+
+    if db_pass:
+        encoded_user = quote(db_user, safe="")
+        encoded_pass = quote(db_pass, safe="")
+
+        # If on Cloud Run AND we have a connection name, use Unix Socket
+        if is_cloud_run and instance_connection_name:
+            encoded_instance = instance_connection_name.replace(":", "%3A")
+            session_service_uri = (
+                f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
+                f"/{db_name}"
+                # asyncpg often prefers the raw string or the dir
+                f"?host=/cloudsql/{instance_connection_name}"
+            )
+        else:
+            # Local development: Use TCP via Proxy on 127.0.0.1
+            # This block will execute on your Mac
+            session_service_uri = (
+                f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
+                f"{db_host}:{db_port}/{db_name}"
+            )
 
 artifact_service_uri = f"gs://{logs_bucket_name}" if logs_bucket_name else None
 
