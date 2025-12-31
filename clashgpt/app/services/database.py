@@ -4,7 +4,7 @@ Database Service
 Async service for interacting with the PostgreSQL database.
 Provides read-only access to cards, decks, and locations.
 """
-
+from urllib.parse import quote
 import os
 from typing import Any
 
@@ -24,6 +24,8 @@ from app.models.models import (
 )
 
 load_dotenv()
+
+is_cloud_run = os.getenv("K_SERVICE") is not None
 
 
 class DatabaseService:
@@ -77,18 +79,22 @@ class DatabaseService:
             db_name = os.environ.get("PROD_DB_NAME", "postgres")
             db_pass = os.environ.get("PROD_DB_PASSWORD", "")
 
+            encoded_user = quote(db_user, safe="")
+            encoded_pass = quote(db_pass, safe="")
+
             # For Google Cloud SQL, check if using Cloud SQL Proxy
             # If proxy is running, it listens on localhost:5432
             # Otherwise, you'll need to use the Cloud SQL Python Connector
             connection_name = os.environ.get("CONNECTION_NAME", "")
 
-            if connection_name:
-                # Using Cloud SQL Proxy on localhost
-                # The proxy handles the secure connection to Cloud SQL
-                db_host = os.environ.get("PROD_DB_HOST", "localhost")
-                db_port = os.environ.get("PROD_DB_PORT", "5432")
-
-                return f"postgresql+asyncpg://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+            if is_cloud_run and connection_name:
+                encoded_instance = connection_name.replace(":", "%3A")
+                return (
+                    f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
+                    f"/{db_name}"
+                    # asyncpg often prefers the raw string or the dir
+                    f"?host=/cloudsql/{encoded_instance}"
+                )
             else:
                 # Direct connection (requires public IP or VPC)
                 db_host = os.environ.get("PROD_DB_HOST", "localhost")
