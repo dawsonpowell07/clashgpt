@@ -53,19 +53,48 @@ class DatabaseService:
         """
         Build database URL from environment variables.
 
+        Uses USE_LOCAL_DB flag to determine which database to connect to:
+        - USE_LOCAL_DB=1: Connect to local PostgreSQL
+        - USE_LOCAL_DB=0: Connect to production Google Cloud SQL
+
         Returns:
             Async database connection URL
         """
-        db_user = os.environ.get("DB_USER", "postgres")
-        db_name = os.environ.get("DB_NAME", "postgres")
-        db_pass = os.environ.get("DB_PASS", "")
-        db_host = os.environ.get("DB_HOST", "localhost")
-        db_port = os.environ.get("DB_PORT", "5432")
+        use_local_db = os.environ.get("USE_LOCAL_DB", "1") == "1"
 
-        if db_pass:
-            return f"postgresql+asyncpg://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
-        else:
+        if use_local_db:
+            # Local database configuration
+            db_user = os.environ.get("LOCAL_DB_USER", "postgres")
+            db_name = os.environ.get("LOCAL_DB_NAME", "postgres")
+            db_host = os.environ.get("LOCAL_DB_HOST", "localhost")
+            db_port = os.environ.get("LOCAL_DB_PORT", "5432")
+
+            # Local DB typically doesn't need password
             return f"postgresql+asyncpg://{db_user}@{db_host}:{db_port}/{db_name}"
+        else:
+            # Production database configuration (Google Cloud SQL)
+            db_user = os.environ.get("PROD_DB_USER", "postgres")
+            db_name = os.environ.get("PROD_DB_NAME", "postgres")
+            db_pass = os.environ.get("PROD_DB_PASSWORD", "")
+
+            # For Google Cloud SQL, check if using Cloud SQL Proxy
+            # If proxy is running, it listens on localhost:5432
+            # Otherwise, you'll need to use the Cloud SQL Python Connector
+            connection_name = os.environ.get("CONNECTION_NAME", "")
+
+            if connection_name:
+                # Using Cloud SQL Proxy on localhost
+                # The proxy handles the secure connection to Cloud SQL
+                db_host = os.environ.get("PROD_DB_HOST", "localhost")
+                db_port = os.environ.get("PROD_DB_PORT", "5432")
+
+                return f"postgresql+asyncpg://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+            else:
+                # Direct connection (requires public IP or VPC)
+                db_host = os.environ.get("PROD_DB_HOST", "localhost")
+                db_port = os.environ.get("PROD_DB_PORT", "5432")
+
+                return f"postgresql+asyncpg://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
 
     async def close(self):
         """Close database connections."""

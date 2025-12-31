@@ -32,38 +32,49 @@ allow_origins = (
     os.getenv("ALLOW_ORIGINS", "").split(
         ",") if os.getenv("ALLOW_ORIGINS") else None
 )
-
+is_cloud_run = os.getenv("K_SERVICE") is not None
 # Artifact bucket for ADK (created by Terraform, passed via env var)
 logs_bucket_name = os.environ.get("LOGS_BUCKET_NAME")
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Cloud SQL session configuration
-db_user = os.environ.get("DB_USER", "postgres")
-db_name = os.environ.get("DB_NAME", "postgres")
-db_pass = os.environ.get("DB_PASS")
-instance_connection_name = os.environ.get("INSTANCE_CONNECTION_NAME")
+db_user = os.environ.get("PROD_DB_USER", "postgres")
+db_name = os.environ.get("PROD_DB_NAME", "postgres")
+db_pass = os.environ.get("PROD_DB_PASSWORD")
+db_host = os.environ.get("PROD_DB_HOST", "localhost")
+db_port = os.environ.get("PROD_DB_PORT", "5432")
+instance_connection_name = os.environ.get("CONNECTION_NAME")
 
 session_service_uri = None
-if instance_connection_name and db_pass:
-    # Use Unix socket for Cloud SQL
-    # URL-encode username and password to handle special characters (e.g., '[', '?', '#', '$')
-    # These characters can cause URL parsing errors, especially '[' which triggers IPv6 validation
+if db_pass:
     encoded_user = quote(db_user, safe="")
     encoded_pass = quote(db_pass, safe="")
-    # URL-encode the connection name to prevent colons from being misinterpreted
-    encoded_instance = instance_connection_name.replace(":", "%3A")
 
-    session_service_uri = (
-        f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
-        f"/{db_name}"
-        f"?host=/cloudsql/{encoded_instance}"
-    )
+    # If on Cloud Run AND we have a connection name, use Unix Socket
+    if is_cloud_run and instance_connection_name:
+        encoded_instance = instance_connection_name.replace(":", "%3A")
+        session_service_uri = (
+            f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
+            f"/{db_name}"
+            # asyncpg often prefers the raw string or the dir
+            f"?host=/cloudsql/{instance_connection_name}"
+        )
+    else:
+        # Local development: Use TCP via Proxy on 127.0.0.1
+        # This block will execute on your Mac
+        session_service_uri = (
+            f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
+            f"{db_host}:{db_port}/{db_name}"
+        )
+
+artifact_service_uri = f"gs://{logs_bucket_name}" if logs_bucket_name else None
 
 app: FastAPI = get_fast_api_app(
     agents_dir=AGENT_DIR,
     web=True,
     allow_origins=allow_origins,
     session_service_uri=session_service_uri,
+    artifact_service_uri=artifact_service_uri,
     otel_to_cloud=True,
 )
 app.title = "clashgpt"

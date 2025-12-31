@@ -15,8 +15,11 @@
 
 import datetime
 from zoneinfo import ZoneInfo
+from typing import Optional
 
 from google.adk.agents import Agent
+from google.adk.agents.callback_context import CallbackContext
+
 from google.adk.apps.app import App
 from google.adk.models import Gemini
 from google.genai import types
@@ -93,7 +96,7 @@ async def get_top_players(location_id: int = 57000249, limit: int = 10) -> dict:
         return leaderboard.model_dump()
 
 
-async def get_top_decks(limit: int = 10, archetype: str | None = None) -> dict:
+async def get_top_decks(limit: int = 10, archetype: Optional[str] = None) -> dict:
     """
     Get the top meta decks currently being used by elite Path of Legend players.
 
@@ -152,10 +155,10 @@ async def get_top_decks(limit: int = 10, archetype: str | None = None) -> dict:
 
 
 async def search_decks(
-    include_cards: str | None = None,
-    exclude_cards: str | None = None,
-    archetype: str | None = None,
-    ftp_tier: str | None = None,
+    include_cards: Optional[str] = None,
+    exclude_cards: Optional[str] = None,
+    archetype: Optional[str] = None,
+    ftp_tier: Optional[str] = None,
     limit: int = 10
 ) -> dict:
     """
@@ -273,7 +276,6 @@ root_agent = Agent(
     You are a helpful AI assistant designed to provide accurate and useful information about Clash Royale players, decks, and the current meta. ONLY CALL ANY TOOL ONCE. A SINGLE TIME
     id to card mappings are as follows:
     
-    [
   {"id":"26000072","name":"Archer Queen"},
   {"id":"26000001","name":"Archers"},
   {"id":"28000001","name":"Arrows"},
@@ -395,7 +397,6 @@ root_agent = Agent(
   {"id":"27000008","name":"X-Bow"},
   {"id":"28000008","name":"Zap"},
   {"id":"26000052","name":"Zappies"}
-]
 
     """,
     tools=[get_player_info, get_player_battle_log,
