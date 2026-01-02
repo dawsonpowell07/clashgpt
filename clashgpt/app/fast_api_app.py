@@ -20,8 +20,11 @@ from urllib.parse import quote
 
 import google.auth
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from google.adk.cli.fast_api import get_fast_api_app
+from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.cloud import logging as google_cloud_logging
+from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
@@ -29,7 +32,7 @@ from app.routers.api import router as api_router
 from app.services.database import get_database_service
 from app.services.mongo_db import get_mongodb
 from app.settings import settings
-
+from app.agent import root_agent
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -120,6 +123,20 @@ app: FastAPI = get_fast_api_app(
 app.title = "clashgpt"
 app.description = "API for interacting with the Agent clashgpt"
 
+# Add CORS middleware for local development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+    ] if settings.dev_mode else (allow_origins or ["*"]),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Override lifespan to manage MongoDB connections
 app.router.lifespan_context = lifespan
 
@@ -168,3 +185,17 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+adk_agent = ADKAgent(
+    adk_agent=root_agent,
+    app_name="clash_gpt",
+    user_id_extractor=lambda input: input.state.get(
+        "headers", {}).get("user_id", "anonymous"),
+    session_timeout_seconds=3600,
+    use_in_memory_services=True,
+    session_service=DatabaseSessionService(db_url=session_service_uri)
+)
+
+add_adk_fastapi_endpoint(app, adk_agent, path="/agent", extract_headers=["x-user-id"]
+                         )
