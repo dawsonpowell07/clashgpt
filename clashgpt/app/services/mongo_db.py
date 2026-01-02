@@ -42,7 +42,7 @@ class MongoDBService:
             self.client = AsyncMongoClient(mongodb_uri)
             self.db = self.client[mongodb_database]
             logger.info("MongoDB connection established")
-        except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+        except (ConnectionFailure, ServerSelectionTimeoutError):
             logger.exception("MongoDB connection failed")
             raise
 

@@ -4,7 +4,6 @@ Embedding Service
 Async service for generating embeddings for RAG search.
 """
 import logging
-from typing import List
 
 import openai
 
@@ -45,7 +44,7 @@ class EmbeddingService:
         self.client = openai.AsyncOpenAI(api_key=api_key, base_url=base_url)
         self.model = model
 
-    async def generate_embedding(self, text: str) -> List[float]:
+    async def generate_embedding(self, text: str) -> list[float]:
         """
         Generate embedding for a single text.
 

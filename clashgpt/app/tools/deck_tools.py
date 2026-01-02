@@ -2,7 +2,6 @@
 Deck-related tools for the Clash Royale agent.
 """
 import logging
-from typing import Optional
 
 from app.models.models import DeckArchetype, FreeToPlayLevel
 from app.services.database import get_database_service
@@ -10,7 +9,7 @@ from app.services.database import get_database_service
 logger = logging.getLogger(__name__)
 
 
-async def get_top_decks(limit: int = 10, archetype: Optional[str] = None) -> dict:
+async def get_top_decks(limit: int = 10, archetype: str | None = None) -> dict:
     """
     Get the top meta decks currently being used by elite Path of Legend players.
 
@@ -70,10 +69,10 @@ async def get_top_decks(limit: int = 10, archetype: Optional[str] = None) -> dic
 
 
 async def search_decks(
-    include_cards: Optional[str] = None,
-    exclude_cards: Optional[str] = None,
-    archetype: Optional[str] = None,
-    ftp_tier: Optional[str] = None,
+    include_cards: str | None = None,
+    exclude_cards: str | None = None,
+    archetype: str | None = None,
+    ftp_tier: str | None = None,
     limit: int = 10
 ) -> dict:
     """

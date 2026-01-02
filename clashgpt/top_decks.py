@@ -13,16 +13,13 @@ Usage:
 """
 
 import asyncio
-import hashlib
 import json
-from collections import defaultdict
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from app.models.models import CardVariant, DeckArchetype, FreeToPlayLevel, Rarity
+from app.models.models import CardVariant, DeckArchetype, FreeToPlayLevel
 from app.services.clash_royale import ClashRoyaleService
 from app.settings import settings
 
@@ -527,7 +524,7 @@ def preview_decks(decks_data: dict[str, list[dict[str, str]]], count: int = 5):
     for i, (deck_hash, cards) in enumerate(list(decks_data.items())[:count], 1):
         print(f"Deck #{i}")
         print(f"  Hash: {deck_hash}")
-        print(f"  Cards:")
+        print("  Cards:")
         for card in cards:
             variant_suffix = f" ({card['variant']})" if card['variant'] != 'normal' else ""
             print(f"    - {card['name']}{variant_suffix}")

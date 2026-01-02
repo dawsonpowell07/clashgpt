@@ -32,7 +32,7 @@ def print_result(result: SearchResult, index: int) -> None:
     print(f"   Chunk ID: {result.chunk_id}")
 
     # Print content with indentation
-    print(f"\n   Content:")
+    print("\n   Content:")
     content_lines = result.content.split('\n')
     for line in content_lines:
         print(f"   {line}")
@@ -136,7 +136,7 @@ async def interactive_mode() -> None:
                 continue
 
             if user_input.lower() == "/settings":
-                print(f"\nCurrent Settings:")
+                print("\nCurrent Settings:")
                 print(f"  Search Type: {search_type}")
                 print(f"  Result Count: {match_count}")
                 continue
@@ -160,7 +160,7 @@ async def interactive_mode() -> None:
 
                 # Summary statistics
                 avg_score = sum(r.similarity for r in results) / len(results)
-                print(f"\nSummary:")
+                print("\nSummary:")
                 print(f"  Results: {len(results)}")
                 print(f"  Average Score: {avg_score:.4f}")
                 print(f"  Top Score: {results[0].similarity:.4f}")
