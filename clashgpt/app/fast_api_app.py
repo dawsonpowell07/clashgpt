@@ -19,20 +19,21 @@ from contextlib import asynccontextmanager
 from urllib.parse import quote
 
 import google.auth
+from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from google.adk.cli.fast_api import get_fast_api_app
+from google.adk.artifacts.gcs_artifact_service import GcsArtifactService
 from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.cloud import logging as google_cloud_logging
-from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 
+from app.agent import root_agent
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
 from app.routers.api import router as api_router
 from app.services.database import get_database_service
 from app.services.mongo_db import get_mongodb
 from app.settings import settings
-from app.agent import root_agent
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -112,14 +113,15 @@ async def lifespan(app: FastAPI):
     }, severity="INFO")
 
 
-app: FastAPI = get_fast_api_app(
-    agents_dir=AGENT_DIR,
-    web=True,
-    allow_origins=allow_origins,
-    session_service_uri=session_service_uri,
-    artifact_service_uri=artifact_service_uri,
-    otel_to_cloud=True,
-)
+# app: FastAPI = get_fast_api_app(
+#     agents_dir=AGENT_DIR,
+#     web=True,
+#     allow_origins=allow_origins,
+#     session_service_uri=session_service_uri,
+#     artifact_service_uri=artifact_service_uri,
+#     otel_to_cloud=True,
+# )
+app = FastAPI()
 app.title = "clashgpt"
 app.description = "API for interacting with the Agent clashgpt"
 
@@ -191,10 +193,11 @@ adk_agent = ADKAgent(
     adk_agent=root_agent,
     app_name="clash_gpt",
     user_id_extractor=lambda input: input.state.get(
-        "headers", {}).get("user_id", "anonymous"),
+        "headers", {}).get("user_id", "user"),
     session_timeout_seconds=3600,
     use_in_memory_services=True,
-    session_service=DatabaseSessionService(db_url=session_service_uri)
+    session_service=DatabaseSessionService(db_url=session_service_uri),
+    artifact_service=GcsArtifactService(artifact_service_uri),
 )
 
 add_adk_fastapi_endpoint(app, adk_agent, path="/agent", extract_headers=["x-user-id"]
