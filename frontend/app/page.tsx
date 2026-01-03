@@ -1,173 +1,135 @@
-import {
-  Crown,
-  Swords,
-  Sparkles,
-  MessageCircle,
-  TrendingUp,
-  Zap,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+"use client";
+
 import Link from "next/link";
+import { MessageSquare, Users, Trophy, BookOpen } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white text-black">
       {/* Hero Section */}
-      <section className="relative overflow-hidden border-b-4 border-(--clash-blue) bg-white px-6 py-20 md:py-32">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center">
-            {/* Crown icon */}
-            <div className="mb-8 flex justify-center animate-fade-in">
-              <div className="inline-flex items-center justify-center rounded-lg border-4 border-(--clash-blue) bg-white p-4">
-                <Crown
-                  className="h-12 w-12 text-(--clash-blue)"
-                  strokeWidth={2.5}
-                />
-              </div>
-            </div>
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 md:px-12 overflow-hidden">
+        {/* Subtle background texture */}
+        <div className="absolute inset-0 opacity-[0.015] pointer-events-none">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          }} />
+        </div>
 
-            {/* Main heading */}
-            <h1 className="mb-6 font-(family-name:--font-heading) text-5xl font-black text-(--clash-blue-dark) md:text-7xl lg:text-8xl animate-fade-in-up [animation-delay:100ms]">
-              ClashGPT
-            </h1>
-
-            {/* Subheading */}
-            <p className="mx-auto mb-8 max-w-2xl text-xl font-medium text-(--clash-blue-dark) md:text-2xl animate-fade-in-up [animation-delay:200ms]">
-              Your AI-powered Clash Royale companion. Ask questions, explore the
-              meta, and dominate the arena.
+        {/* Main Content */}
+        <div className="relative z-10 max-w-7xl w-full text-center space-y-12 animate-fade-in">
+          {/* Eyebrow */}
+          <div className="inline-block">
+            <p className="text-sm md:text-base tracking-[0.3em] uppercase text-neutral-500 font-medium">
+              The Definitive AI Assistant
             </p>
-
-            {/* CTA Button */}
-            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center animate-fade-in-up [animation-delay:300ms]">
-              <Link href="/chat">
-                <Button
-                  size="lg"
-                  className="h-14 border-4 border-(--clash-blue-dark) bg-(--clash-red) px-8 text-lg font-bold text-white transition-all hover:bg-[#E62E5C] hover:shadow-xl hover:-translate-y-1"
-                >
-                  <MessageCircle className="mr-2 h-5 w-5" />
-                  Start Chatting
-                </Button>
-              </Link>
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-14 border-4 border-(--clash-blue) bg-white px-8 text-lg font-bold text-(--clash-blue) transition-all hover:bg-(--clash-blue) hover:text-white hover:shadow-xl hover:-translate-y-1"
-              >
-                <Sparkles className="mr-2 h-5 w-5" />
-                See Examples
-              </Button>
-            </div>
           </div>
+
+          {/* Massive Headline */}
+          <h1 className="font-[family-name:var(--font-heading)] font-bold leading-[0.9] tracking-tight">
+            <span className="block text-[12vw] md:text-[10vw] lg:text-[9rem] xl:text-[11rem] 2xl:text-[13rem]">
+              ClashGPT
+            </span>
+            <span className="block text-[6vw] md:text-[5vw] lg:text-[4rem] xl:text-[5rem] 2xl:text-[6rem] mt-4 text-neutral-700">
+              Master Clash Royale
+            </span>
+          </h1>
+
+          {/* Description */}
+          <p className="text-lg md:text-xl lg:text-2xl text-neutral-600 max-w-3xl mx-auto leading-relaxed px-4">
+            Expert insights on decks, players, clans, and game mechanics.
+            <br className="hidden md:block" />
+            All powered by AI.
+          </p>
+
+          {/* CTA */}
+          <div className="pt-8">
+            <Link
+              href="/chat"
+              className="group inline-flex items-center gap-3 bg-black text-white px-10 py-5 text-lg md:text-xl font-medium transition-all duration-300 hover:bg-neutral-800 hover:gap-4 hover:shadow-2xl active:scale-95"
+            >
+              Start Chatting
+              <MessageSquare className="w-5 h-5 transition-transform group-hover:rotate-12" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 animate-bounce">
+          <div className="w-px h-16 bg-gradient-to-b from-transparent via-neutral-300 to-transparent" />
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="border-b-4 border-(--clash-blue) bg-[#F5F7FA] px-6 py-20">
-        <div className="container mx-auto max-w-6xl">
-          {/* Section title */}
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 font-(family-name:--font-heading) text-4xl font-black text-(--clash-blue-dark) md:text-5xl">
-              Battle-Ready Features
+      <section className="relative py-32 md:py-40 px-6 md:px-12 bg-neutral-50">
+        <div className="max-w-7xl mx-auto">
+          {/* Section Header */}
+          <div className="text-center mb-24 space-y-6">
+            <h2 className="font-[family-name:var(--font-heading)] font-bold text-5xl md:text-6xl lg:text-7xl xl:text-8xl tracking-tight">
+              Built for Champions
             </h2>
-            <p className="mx-auto max-w-2xl text-lg text-(--clash-blue-dark)">
-              Everything you need to level up your Clash Royale game
+            <p className="text-lg md:text-xl text-neutral-600 max-w-2xl mx-auto">
+              Everything you need to dominate the arena
             </p>
           </div>
 
-          {/* Feature cards */}
-          <div className="grid gap-8 md:grid-cols-3">
-            {/* Feature 1 */}
-            <div className="group royal-card royal-card-hover p-8 animate-fade-in-up [animation-delay:400ms]">
-              <div className="mb-6 inline-flex items-center justify-center rounded-lg border-4 border-(--clash-blue) bg-white p-4">
-                <MessageCircle
-                  className="h-8 w-8 text-(--clash-blue)"
-                  strokeWidth={2.5}
-                />
-              </div>
-              <h3 className="mb-4 font-(family-name:--font-heading) text-2xl font-bold text-(--clash-blue-dark)">
-                Ask Anything
-              </h3>
-              <p className="text-(--clash-blue-dark)">
-                Chat naturally about cards, strategies, and game mechanics. Get
-                instant answers powered by AI.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="group royal-card royal-card-hover p-8 animate-fade-in-up [animation-delay:500ms]">
-              <div className="mb-6 inline-flex items-center justify-center rounded-lg border-4 border-(--clash-blue) bg-white p-4">
-                <TrendingUp
-                  className="h-8 w-8 text-(--clash-blue)"
-                  strokeWidth={2.5}
-                />
-              </div>
-              <h3 className="mb-4 font-(family-name:--font-heading) text-2xl font-bold text-(--clash-blue-dark)">
-                Meta Analysis
-              </h3>
-              <p className="text-(--clash-blue-dark)">
-                Stay ahead with real-time meta insights. Discover what&apos;s
-                working in the current season.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="group royal-card royal-card-hover p-8 animate-fade-in-up [animation-delay:600ms]">
-              <div className="mb-6 inline-flex items-center justify-center rounded-lg border-4 border-(--clash-blue) bg-white p-4">
-                <Swords
-                  className="h-8 w-8 text-(--clash-blue)"
-                  strokeWidth={2.5}
-                />
-              </div>
-              <h3 className="mb-4 font-(family-name:--font-heading) text-2xl font-bold text-(--clash-blue-dark)">
-                Deck Recommendations
-              </h3>
-              <p className="text-(--clash-blue-dark)">
-                Get personalized deck suggestions based on your playstyle and
-                trophy range.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Chat Preview Section */}
-      <section className="border-b-4 border-(--clash-blue) bg-white px-6 py-20">
-        <div className="container mx-auto max-w-5xl">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 font-(family-name:--font-heading) text-4xl font-black text-(--clash-blue-dark) md:text-5xl">
-              Just Start Chatting
-            </h2>
-            <p className="mx-auto max-w-2xl text-lg text-(--clash-blue-dark)">
-              No complicated menus. No premium subscriptions. Just ask your
-              questions.
-            </p>
-          </div>
-
-          {/* Example chat bubbles */}
-          <div className="space-y-6">
-            {/* User message */}
-            <div className="flex justify-end animate-fade-in-up [animation-delay:700ms]">
-              <div className="max-w-md rounded-lg border-4 border-(--clash-blue) bg-white p-4 shadow-md">
-                <p className="font-medium text-(--clash-blue-dark)">
-                  What&apos;s a good counter to Hog Rider?
+          {/* Feature Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 lg:gap-16">
+            {/* Feature 1 - Deck Recommendations */}
+            <div className="group bg-white p-10 md:p-12 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 border border-neutral-200">
+              <div className="space-y-6">
+                <div className="w-14 h-14 bg-black flex items-center justify-center transition-transform duration-500 group-hover:rotate-12">
+                  <Trophy className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="font-[family-name:var(--font-heading)] font-bold text-3xl md:text-4xl tracking-tight">
+                  Deck Recommendations
+                </h3>
+                <p className="text-lg text-neutral-600 leading-relaxed">
+                  Discover winning decks tailored to your playstyle. Get meta-aware suggestions backed by real tournament data.
                 </p>
               </div>
             </div>
 
-            {/* AI response */}
-            <div className="flex justify-start animate-fade-in-up [animation-delay:800ms]">
-              <div className="max-w-md rounded-lg border-4 border-(--clash-red) bg-white p-4 shadow-md">
-                <div className="mb-2 flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-(--clash-red)" />
-                  <span className="text-sm font-bold text-(--clash-red)">
-                    ClashGPT
-                  </span>
+            {/* Feature 2 - Player Analysis */}
+            <div className="group bg-white p-10 md:p-12 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 border border-neutral-200">
+              <div className="space-y-6">
+                <div className="w-14 h-14 bg-black flex items-center justify-center transition-transform duration-500 group-hover:rotate-12">
+                  <MessageSquare className="w-7 h-7 text-white" />
                 </div>
-                <p className="text-(--clash-blue-dark)">
-                  Great question! Buildings like Cannon and Tesla are excellent
-                  counters. For troops, Mini P.E.K.K.A. or a swarm like skeleton
-                  army work well. Want me to show you some meta decks using
-                  these counters?
+                <h3 className="font-[family-name:var(--font-heading)] font-bold text-3xl md:text-4xl tracking-tight">
+                  Player Insights
+                </h3>
+                <p className="text-lg text-neutral-600 leading-relaxed">
+                  Deep dive into player statistics, battle history, and performance trends. Understand strengths and weaknesses.
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 3 - Clan Information */}
+            <div className="group bg-white p-10 md:p-12 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 border border-neutral-200">
+              <div className="space-y-6">
+                <div className="w-14 h-14 bg-black flex items-center justify-center transition-transform duration-500 group-hover:rotate-12">
+                  <Users className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="font-[family-name:var(--font-heading)] font-bold text-3xl md:text-4xl tracking-tight">
+                  Clan Intelligence
+                </h3>
+                <p className="text-lg text-neutral-600 leading-relaxed">
+                  Analyze clan performance, member contributions, and war statistics. Find the perfect clan or optimize yours.
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 4 - Game Knowledge */}
+            <div className="group bg-white p-10 md:p-12 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 border border-neutral-200">
+              <div className="space-y-6">
+                <div className="w-14 h-14 bg-black flex items-center justify-center transition-transform duration-500 group-hover:rotate-12">
+                  <BookOpen className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="font-[family-name:var(--font-heading)] font-bold text-3xl md:text-4xl tracking-tight">
+                  Game Mastery
+                </h3>
+                <p className="text-lg text-neutral-600 leading-relaxed">
+                  Learn mechanics, strategies, and card interactions. Ask anything about the game and get expert answers.
                 </p>
               </div>
             </div>
@@ -176,39 +138,33 @@ export default function Home() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="bg-(--clash-blue) px-6 py-20">
-        <div className="container mx-auto max-w-4xl text-center">
-          <div className="mb-8 flex justify-center">
-            <div className="inline-flex items-center justify-center rounded-lg border-4 border-white bg-(--clash-blue) p-4">
-              <Crown className="h-12 w-12 text-white" strokeWidth={2.5} />
-            </div>
-          </div>
-
-          <h2 className="mb-6 font-(family-name:--font-heading) text-4xl font-black text-white md:text-5xl">
-            Ready to Dominate?
+      <section className="relative py-32 md:py-40 px-6 md:px-12 bg-black text-white">
+        <div className="max-w-5xl mx-auto text-center space-y-12">
+          <h2 className="font-[family-name:var(--font-heading)] font-bold text-5xl md:text-6xl lg:text-7xl xl:text-8xl tracking-tight leading-[1.1]">
+            Ready to Elevate
+            <br />
+            Your Game?
           </h2>
-
-          <p className="mb-10 text-xl text-white">
-            Join thousands of players using ClashGPT to improve their game
+          <p className="text-xl md:text-2xl text-neutral-400 max-w-2xl mx-auto">
+            Join the future of Clash Royale strategy
           </p>
-
-          <Link href="/chat">
-            <Button
-              size="lg"
-              className="h-16 border-4 border-white bg-(--clash-red) px-10 text-xl font-bold text-white transition-all hover:bg-white hover:text-(--clash-red) hover:shadow-2xl hover:scale-105"
+          <div className="pt-8">
+            <Link
+              href="/chat"
+              className="group inline-flex items-center gap-3 bg-white text-black px-10 py-5 text-lg md:text-xl font-medium transition-all duration-300 hover:bg-neutral-100 hover:gap-4 hover:shadow-2xl active:scale-95"
             >
-              <Sparkles className="mr-2 h-6 w-6" />
-              Start Your First Battle
-            </Button>
-          </Link>
+              Start Your Journey
+              <MessageSquare className="w-5 h-5 transition-transform group-hover:rotate-12" />
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t-4 border-(--clash-blue) bg-white px-6 py-8">
-        <div className="container mx-auto max-w-6xl text-center">
-          <p className="text-sm text-(--clash-blue-dark)">
-            ClashGPT is a fan-made tool and is not affiliated with Supercell.
+      <footer className="bg-neutral-900 text-neutral-400 py-12 px-6 md:px-12">
+        <div className="max-w-7xl mx-auto text-center">
+          <p className="text-sm tracking-wide">
+            © 2026 ClashGPT. The definitive Clash Royale AI assistant.
           </p>
         </div>
       </footer>

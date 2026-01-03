@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Cinzel_Decorative, DM_Sans } from "next/font/google";
+import { Syne, DM_Sans } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
 
-const cinzelDecorative = Cinzel_Decorative({
+const syne = Syne({
   variable: "--font-heading",
   subsets: ["latin"],
-  weight: ["700", "900"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 const dmSans = DM_Sans({
@@ -16,7 +17,8 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: "ClashGPT - Your Clash Royale AI Companion",
-  description: "Ask questions about Clash Royale, discover the meta, and get deck recommendations - all powered by AI.",
+  description:
+    "Ask questions about Clash Royale, discover the meta, and get deck recommendations - all powered by AI.",
 };
 
 export default function RootLayout({
@@ -25,11 +27,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${cinzelDecorative.variable} ${dmSans.variable} antialiased font-[family-name:var(--font-body)]`}
+        className={`${syne.variable} ${dmSans.variable} antialiased font-[family-name:var(--font-body)]`}
       >
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
