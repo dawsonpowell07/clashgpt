@@ -2,8 +2,9 @@
 
 import { type InputProps } from "@copilotkit/react-ui";
 import { useState } from "react";
+import { Send } from "lucide-react";
 
-export function CustomInput({ inProgress, onSend }: InputProps) {
+export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
   const [value, setValue] = useState("");
 
   const handleSubmit = (inputValue: string) => {
@@ -13,13 +14,19 @@ export function CustomInput({ inProgress, onSend }: InputProps) {
     }
   };
 
+  const wrapperStyle = "flex gap-3 p-4 border-t border-border bg-card";
+  const inputStyle =
+    "flex-1 p-3 rounded-lg border border-input bg-input/20 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/50 disabled:bg-muted disabled:cursor-not-allowed text-base transition-all duration-300";
+  const buttonStyle =
+    "px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed font-medium transition-all duration-300 hover:shadow-lg active:scale-95 flex items-center gap-2";
+
   return (
-    <div className="flex gap-3 p-6 border-t border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+    <div className={wrapperStyle}>
       <input
         disabled={inProgress}
         type="text"
         placeholder="Ask about decks, players, strategies..."
-        className="flex-1 p-3 border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:border-black dark:focus:border-white disabled:bg-neutral-50 dark:disabled:bg-neutral-800 disabled:cursor-not-allowed font-[family-name:var(--font-body)] text-base transition-all duration-300 bg-white dark:bg-neutral-900 text-black dark:text-white"
+        className={inputStyle}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
@@ -31,10 +38,11 @@ export function CustomInput({ inProgress, onSend }: InputProps) {
       />
       <button
         disabled={inProgress || !value.trim()}
-        className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:bg-neutral-400 disabled:cursor-not-allowed font-[family-name:var(--font-body)] font-medium transition-all duration-300 hover:shadow-lg active:scale-95"
+        className={buttonStyle}
         onClick={() => handleSubmit(value)}
       >
-        Send
+        <Send className="w-4 h-4" />
+        Ask
       </button>
     </div>
   );

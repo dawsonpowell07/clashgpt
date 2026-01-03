@@ -13,7 +13,7 @@ export function CustomMessages({
   }, [messages]);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white dark:bg-neutral-900">
+    <div className="flex-1 overflow-y-auto bg-background">
       <div className="max-w-4xl mx-auto px-6 py-8">
         {messages.map((message, index) => {
           const isCurrentMessage = index === messages.length - 1;

@@ -1,11 +1,16 @@
 import { type UserMessageProps } from "@copilotkit/react-ui";
+import "@copilotkit/react-ui/styles.css";
 
-export function CustomUserMessage(props: UserMessageProps) {
+export const CustomUserMessage = (props: UserMessageProps) => {
+  const wrapperStyles = "flex items-center gap-2 justify-end mb-4";
+  const messageStyles =
+    "bg-primary text-primary-foreground py-2 px-4 rounded-xl break-words flex-shrink-0 max-w-[80%] shadow-sm transition-all duration-300 hover:shadow-lg";
+  const avatarStyles =
+    "bg-primary text-primary-foreground shadow-sm min-h-10 min-w-10 rounded-full flex items-center justify-center font-medium text-sm";
   return (
-    <div className="flex items-start gap-3 justify-end mb-6">
-      <div className="bg-black dark:bg-neutral-100 text-white dark:text-black py-3 px-4 max-w-[80%] font-[family-name:var(--font-body)] transition-all duration-300 hover:shadow-lg">
-        {props.message?.content}
-      </div>
+    <div className={wrapperStyles}>
+      <div className={messageStyles}>{props.message?.content}</div>
+      <div className={avatarStyles}>TS</div>
     </div>
   );
-}
+};

@@ -1,18 +1,27 @@
-import { type AssistantMessageProps, useChatContext, Markdown } from "@copilotkit/react-ui";
+import { type AssistantMessageProps } from "@copilotkit/react-ui";
+import { useChatContext } from "@copilotkit/react-ui";
+import { Markdown } from "@copilotkit/react-ui";
+import { Bot } from "lucide-react";
 
-export function CustomAssistantMessage(props: AssistantMessageProps) {
+import "@copilotkit/react-ui/styles.css";
+
+export const CustomAssistantMessage = (props: AssistantMessageProps) => {
   const { icons } = useChatContext();
-  const { message, isLoading, subComponent } = props;
-
+  const { message, isLoading } = props;
+  const wrapperStyles = "flex items-start gap-2 mb-4";
+  const avatarStyles =
+    "bg-card border border-border shadow-sm min-h-10 min-w-10 rounded-full text-foreground flex items-center justify-center font-medium text-sm";
+  const messageStyles =
+    "bg-card text-foreground py-2 px-4 rounded-xl break-words flex-shrink-0 max-w-[80%] border border-border shadow-sm transition-all duration-300 hover:shadow-md";
   return (
-    <div className="mb-6">
-      <div className="flex items-start gap-3">
-        <div className="bg-neutral-50 dark:bg-neutral-800 text-black dark:text-white py-3 px-4 max-w-[80%] border border-neutral-200 dark:border-neutral-700 font-[family-name:var(--font-body)] transition-all duration-300 hover:shadow-md">
-          {message && <Markdown content={message.content || ""} />}
-          {isLoading && icons.spinnerIcon}
-        </div>
+    <div className={wrapperStyles}>
+      <div className={avatarStyles}>
+        <Bot className="w-5 h-5" />
       </div>
-      {subComponent && <div className="mt-3 ml-0">{subComponent}</div>}
+      <div className={messageStyles}>
+        {message && <Markdown content={message.content || ""} />}
+        {isLoading && icons.spinnerIcon}
+      </div>
     </div>
   );
-}
+};
