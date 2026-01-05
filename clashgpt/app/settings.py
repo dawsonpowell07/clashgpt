@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     prod_db_port: int = 5432
 
     # Local Database
-    local_db_user: str = "postgres"
-    local_db_name: str = "postgres"
+    local_db_user: str = "dawsonpowell"
+    local_db_name: str = "clashgpt"
     local_db_host: str = "localhost"
     local_db_port: int = 5432
 

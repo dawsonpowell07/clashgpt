@@ -12,7 +12,6 @@ from pathlib import Path
 
 import httpx
 
-
 API_BASE_URL = "http://localhost:8000"
 OUTPUT_DIR = Path("cards")
 
@@ -55,7 +54,8 @@ async def download_card_images(card: dict, client: httpx.AsyncClient) -> None:
     # Download evolution variant if available
     if "evolutionMedium" in icon_urls:
         filepath = card_folder / f"{card_name}_evolution.png"
-        tasks.append(download_image(client, icon_urls["evolutionMedium"], filepath))
+        tasks.append(download_image(
+            client, icon_urls["evolutionMedium"], filepath))
 
     await asyncio.gather(*tasks)
 

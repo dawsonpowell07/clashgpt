@@ -175,10 +175,12 @@ class ClashRoyaleService:
     @staticmethod
     def _map_card(card_data: dict[str, Any]) -> Card:
         """Map API card response to Card."""
+        elixir_cost = card_data.get("elixirCost") or 0
+
         return Card(
             id=str(card_data["id"]),
             name=card_data["name"],
-            elixir_cost=card_data["elixirCost"],
+            elixir_cost=elixir_cost,
             icon_urls=card_data.get("iconUrls", {}),
             rarity=Rarity[card_data["rarity"].upper()]
         )
@@ -232,6 +234,7 @@ class ClashRoyaleService:
             pol_data = player_data["currentPathOfLegendSeasonResult"]
             current_pol_medals = pol_data.get("trophies")
             current_pol_rank = pol_data.get("rank")
+            current_pol_league = pol_data.get("leagueNumber")
 
         if "bestPathOfLegendSeasonResult" in player_data:
             pol_data = player_data["bestPathOfLegendSeasonResult"]
@@ -254,7 +257,10 @@ class ClashRoyaleService:
             current_path_of_legends_rank=current_pol_rank,
             best_path_of_legends_medals=best_pol_medals,
             best_path_of_legends_rank=best_pol_rank,
-            current_favorite_card=current_favorite_card
+            current_favorite_card=current_favorite_card,
+            total_donations=player_data.get("totalDonations"),
+            challenge_max_wins=player_data.get("challengeMaxWins"),
+            current_path_of_legends_league=current_pol_league
         )
 
     @staticmethod

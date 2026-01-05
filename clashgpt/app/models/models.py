@@ -123,3 +123,6 @@ class Player(BaseModel):
     best_path_of_legends_medals: int | None
     best_path_of_legends_rank: int | None
     current_favorite_card: Card | None
+    total_donations: int | None
+    challenge_max_wins: int | None
+    current_path_of_legends_league: int | None
