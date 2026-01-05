@@ -6,6 +6,7 @@ import "@copilotkit/react-ui/styles.css";
 import { PlayerProfile } from "@/components/player-profile";
 import { BattleLog } from "@/components/battle-log";
 import { DeckSearchResults } from "@/components/deck-search-results";
+import { ClanInfo } from "@/components/clan-info";
 import { CustomInput } from "@/components/chat";
 
 export default function ChatPage() {
@@ -100,6 +101,45 @@ function Chat() {
     },
   });
 
+  // Render clan info when backend calls get_clan_info
+  useRenderToolCall({
+    name: "get_clan_info",
+    render: ({ args, result, status }) => {
+      console.log("[get_clan_info render]", { status, args, result });
+
+      // Show loading state while fetching
+      if (status !== "complete") {
+        return (
+          <div className="bg-primary/20 border border-primary/40 text-white p-6 rounded-xl max-w-2xl my-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl animate-spin">⚙️</span>
+              <span className="text-lg font-medium">
+                Fetching clan data for {args.clan_tag || "..."}
+              </span>
+            </div>
+          </div>
+        );
+      }
+
+      // Show error state if no result
+      if (!result || !result.members_list) {
+        return (
+          <div className="bg-destructive/20 border border-destructive/40 text-white p-6 rounded-xl max-w-2xl my-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">❌</span>
+              <span className="text-lg font-medium">
+                Could not fetch clan data for {args.clan_tag}
+              </span>
+            </div>
+          </div>
+        );
+      }
+
+      // Show clan info with full data
+      return <ClanInfo clan={result} className="my-4" />;
+    },
+  });
+
   // Render deck results when backend calls search_decks
   useRenderToolCall({
     name: "search_decks",
@@ -190,6 +230,7 @@ function Chat() {
       if (
         name === "get_player_info" ||
         name === "get_player_battle_log" ||
+        name === "get_clan_info" ||
         name === "search_decks" ||
         name === "get_top_decks"
       ) {

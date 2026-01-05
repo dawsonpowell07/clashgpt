@@ -21,6 +21,8 @@ from app.models.models import (
     Card,
     CardList,
     Clan,
+    ClanMemberEntry,
+    FullClan,
     Leaderboard,
     LeaderboardEntry,
     Player,
@@ -314,6 +316,47 @@ class ClashRoyaleService:
 
         return BattleLog(battles=battles)
 
+    @staticmethod
+    def _map_clan_member(member_data: dict[str, Any]) -> ClanMemberEntry:
+        """Map API clan member response to ClanMemberEntry."""
+        return ClanMemberEntry(
+            tag=member_data["tag"],
+            name=member_data["name"],
+            role=member_data.get("role"),
+            last_seen=member_data.get("lastSeen"),
+            trophies=member_data.get("trophies")
+        )
+
+    @staticmethod
+    def _map_full_clan(clan_data: dict[str, Any]) -> FullClan:
+        """Map API clan response to FullClan."""
+        # Extract location name if present
+        location_name = None
+        if "location" in clan_data:
+            location_name = clan_data["location"].get("name")
+
+        # Map member list
+        members_list = []
+        if "memberList" in clan_data:
+            members_list = [
+                ClashRoyaleService._map_clan_member(member)
+                for member in clan_data["memberList"]
+            ]
+
+        return FullClan(
+            tag=clan_data["tag"],
+            name=clan_data["name"],
+            type=clan_data.get("type"),
+            description=clan_data.get("description"),
+            clan_score=str(clan_data.get("clanScore")) if clan_data.get("clanScore") is not None else None,
+            clan_war_trophies=clan_data.get("clanWarTrophies"),
+            location=location_name,
+            required_trophies=clan_data.get("requiredTrophies"),
+            donations_per_week=clan_data.get("donationsPerWeek"),
+            num_members=clan_data.get("members"),
+            members_list=members_list
+        )
+
     async def get_player(self, player_tag: str) -> Player:
         """
         Get information about a specific player.
@@ -347,6 +390,22 @@ class ClashRoyaleService:
         else:
             battle_log_data = []
         return self._map_battle_log(battle_log_data)
+
+    # ===== CLAN ENDPOINTS =====
+
+    async def get_clan(self, clan_tag: str) -> FullClan:
+        """
+        Get information about a specific clan.
+
+        Args:
+            clan_tag: The clan tag (with or without #)
+
+        Returns:
+            FullClan with mapped and formatted clan information including members
+        """
+        encoded_tag = self._encode_tag(clan_tag)
+        clan_data = await self._request(f"/clans/{encoded_tag}")
+        return self._map_full_clan(clan_data)
 
     # ===== CARD ENDPOINTS =====
     async def get_cards(self) -> CardList:

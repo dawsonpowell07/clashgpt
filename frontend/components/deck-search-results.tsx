@@ -61,7 +61,6 @@ function DeckCardComponent({ deck }: DeckCardComponentProps) {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <ArchetypeBadge archetype={deck.archetype} />
-            <FTPBadge tier={deck.ftp_tier} />
           </div>
           <div className="text-sm text-muted-foreground">
             Avg Elixir:{" "}
@@ -163,39 +162,11 @@ function ArchetypeBadge({ archetype }: ArchetypeBadgeProps) {
     <span
       className={cn(
         "px-2.5 py-1 rounded-full text-xs font-semibold border",
-        archetypeColors[archetype] || "bg-muted/50 text-foreground border-border"
+        archetypeColors[archetype] ||
+          "bg-muted/50 text-foreground border-border"
       )}
     >
       {archetypeLabels[archetype] || archetype}
-    </span>
-  );
-}
-
-interface FTPBadgeProps {
-  tier: string;
-}
-
-function FTPBadge({ tier }: FTPBadgeProps) {
-  const tierColors: Record<string, string> = {
-    FRIENDLY: "bg-green-500/20 text-green-400 border-green-500/30",
-    MODERATE: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    PAYTOWIN: "bg-red-500/20 text-red-400 border-red-500/30",
-  };
-
-  const tierLabels: Record<string, string> = {
-    FRIENDLY: "F2P Friendly",
-    MODERATE: "Moderate",
-    PAYTOWIN: "Pay to Win",
-  };
-
-  return (
-    <span
-      className={cn(
-        "px-2.5 py-1 rounded-full text-xs font-semibold border",
-        tierColors[tier] || "bg-muted/50 text-foreground border-border"
-      )}
-    >
-      {tierLabels[tier] || tier}
     </span>
   );
 }

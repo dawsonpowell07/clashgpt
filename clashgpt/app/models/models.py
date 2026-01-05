@@ -106,6 +106,28 @@ class BattleLog(BaseModel):
     battles: list[Battle]
 
 
+class ClanMemberEntry(BaseModel):
+    tag: str
+    name: str
+    role: str | None
+    last_seen: str | None
+    trophies: int | None
+
+
+class FullClan(BaseModel):
+    tag: str
+    name: str
+    type: str | None
+    description: str | None
+    clan_score: str | None
+    clan_war_trophies: int | None
+    location: str | None
+    required_trophies: int | None
+    donations_per_week: int | None
+    num_members: int | None
+    members_list: list[ClanMemberEntry]
+
+
 class Player(BaseModel):
     tag: str
     name: str

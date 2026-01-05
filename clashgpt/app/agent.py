@@ -26,6 +26,7 @@ import os
 import google.auth
 
 from app.tools import (
+    get_clan_info,
     get_player_battle_log,
     get_player_info,
     get_top_decks,
@@ -117,6 +118,7 @@ root_agent = Agent(
 
     ## When NOT to Use Knowledge Base:
     - **Player stats/rankings** → Use get_player_info, get_player_battle_log, get_top_players
+    - **Clan information** → Use get_clan_info
     - **Current meta decks** → Use get_top_decks, search_decks
     - **Deck building with specific cards** → Use search_decks with include_cards
     - **Greetings/small talk** → Respond naturally without tools
@@ -147,6 +149,11 @@ root_agent = Agent(
     - "Show me player #ABC123" → get_player_info(player_tag="#ABC123")
     - "My last 20 battles" → get_player_battle_log(player_tag="<tag>", limit=20)
     - "Top players in USA" → get_top_players(location_id="<usa_id>", limit=50)
+
+    ### Clan Data Queries (Clan tools):
+    - "Show me clan #QPY2CU0Y" → get_clan_info(clan_tag="#QPY2CU0Y")
+    - "Get info for clan #ABC123" → get_clan_info(clan_tag="#ABC123")
+    - "Who's in clan #QPY2CU0Y?" → get_clan_info(clan_tag="#QPY2CU0Y")
 
     ### Deck Queries (Deck tools):
     - "Top meta decks" → get_top_decks(limit=20)
@@ -296,6 +303,7 @@ root_agent = Agent(
 
     """,
     tools=[
+        get_clan_info,
         get_player_info,
         get_player_battle_log,
         get_top_players,
