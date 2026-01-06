@@ -7,6 +7,8 @@ import { PlayerProfile } from "@/components/player-profile";
 import { BattleLog } from "@/components/battle-log";
 import { DeckSearchResults } from "@/components/deck-search-results";
 import { ClanInfo } from "@/components/clan-info";
+import { ClanSearchResults } from "@/components/clan-search-results";
+import { KnowledgeSearch } from "@/components/knowledge-search";
 import { CustomInput } from "@/components/chat";
 
 export default function ChatPage() {
@@ -140,6 +142,43 @@ function Chat() {
     },
   });
 
+  // Render clan search results when backend calls search_clans
+  useRenderToolCall({
+    name: "search_clans",
+    render: ({ args, result, status }) => {
+      console.log("[search_clans render]", { status, args, result });
+
+      // Show loading state while fetching
+      if (status !== "complete") {
+        return (
+          <div className="bg-primary/20 border border-primary/40 text-white p-6 rounded-xl max-w-2xl my-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl animate-spin">⚙️</span>
+              <span className="text-lg font-medium">Searching for clans...</span>
+            </div>
+          </div>
+        );
+      }
+
+      // Show error state if no result
+      if (!result || !result.items) {
+        return (
+          <div className="bg-destructive/20 border border-destructive/40 text-white p-6 rounded-xl max-w-2xl my-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">❌</span>
+              <span className="text-lg font-medium">
+                Could not find any clans matching your criteria
+              </span>
+            </div>
+          </div>
+        );
+      }
+
+      // Show clan search results
+      return <ClanSearchResults results={result} className="my-4" />;
+    },
+  });
+
   // Render deck results when backend calls search_decks
   useRenderToolCall({
     name: "search_decks",
@@ -219,6 +258,24 @@ function Chat() {
     },
   });
 
+  // Render knowledge search when backend calls search_knowledge_base
+  useRenderToolCall({
+    name: "search_knowledge_base",
+    render: ({ args, status }) => {
+      console.log("[search_knowledge_base render]", { status, args });
+
+      // Show animated knowledge search while executing
+      // Component returns null when complete to let agent's text response show
+      return (
+        <KnowledgeSearch
+          query={args.query}
+          status={status}
+          className="my-4"
+        />
+      );
+    },
+  });
+
   // Debug: Catch-all renderer to see what other backend tools are being called
   useRenderToolCall({
     name: "*",
@@ -231,8 +288,10 @@ function Chat() {
         name === "get_player_info" ||
         name === "get_player_battle_log" ||
         name === "get_clan_info" ||
+        name === "search_clans" ||
         name === "search_decks" ||
-        name === "get_top_decks"
+        name === "get_top_decks" ||
+        name === "search_knowledge_base"
       ) {
         return <></>;
       }

@@ -22,6 +22,9 @@ from app.models.models import (
     CardList,
     Clan,
     ClanMemberEntry,
+    ClanSearchPaging,
+    ClanSearchResult,
+    ClanSearchResults,
     FullClan,
     Leaderboard,
     LeaderboardEntry,
@@ -348,13 +351,37 @@ class ClashRoyaleService:
             name=clan_data["name"],
             type=clan_data.get("type"),
             description=clan_data.get("description"),
-            clan_score=str(clan_data.get("clanScore")) if clan_data.get("clanScore") is not None else None,
+            clan_score=str(clan_data.get("clanScore")) if clan_data.get(
+                "clanScore") is not None else None,
             clan_war_trophies=clan_data.get("clanWarTrophies"),
             location=location_name,
             required_trophies=clan_data.get("requiredTrophies"),
             donations_per_week=clan_data.get("donationsPerWeek"),
             num_members=clan_data.get("members"),
             members_list=members_list
+        )
+
+    @staticmethod
+    def _map_clan_search_result(clan_data: dict[str, Any]) -> ClanSearchResult:
+        """Map API clan search response to ClanSearchResult."""
+        # Extract location info if present
+        location_id = None
+        location_name = None
+        if "location" in clan_data:
+            location_id = clan_data["location"].get("id")
+            location_name = clan_data["location"].get("name")
+
+        return ClanSearchResult(
+            tag=clan_data["tag"],
+            name=clan_data["name"],
+            type=clan_data.get("type"),
+            badge_id=clan_data["badgeId"],
+            clan_score=clan_data.get("clanScore"),
+            clan_war_trophies=clan_data.get("clanWarTrophies"),
+            location_id=location_id,
+            location_name=location_name,
+            members=clan_data.get("members"),
+            required_trophies=clan_data.get("requiredTrophies")
         )
 
     async def get_player(self, player_tag: str) -> Player:
@@ -406,6 +433,105 @@ class ClashRoyaleService:
         encoded_tag = self._encode_tag(clan_tag)
         clan_data = await self._request(f"/clans/{encoded_tag}")
         return self._map_full_clan(clan_data)
+
+    async def search_clans(
+        self,
+        name: str | None = None,
+        location_id: int | None = None,
+        min_members: int | None = None,
+        max_members: int | None = None,
+        min_score: int | None = None,
+        limit: int = 10,
+        after: str | None = None,
+        before: str | None = None
+    ) -> ClanSearchResults:
+        """
+        Search for clans by name and/or various criteria.
+
+        At least one filtering criterion must be provided. If name is used,
+        it must be at least 3 characters long. Name search is a wildcard search.
+
+        Args:
+            name: Search clans by name (min 3 characters, wildcard search)
+            location_id: Filter by clan location identifier
+            min_members: Filter by minimum number of clan members
+            max_members: Filter by maximum number of clan members
+            min_score: Filter by minimum clan score
+            limit: Limit the number of items returned (default: 10, max: 25)
+            after: Return items after this cursor (pagination)
+            before: Return items before this cursor (pagination)
+
+        Returns:
+            ClanSearchResults with list of matching clans and pagination info
+
+        Raises:
+            ClashRoyaleAPIError: If no search criteria provided or name too short
+        """
+        # Build query parameters
+        params: dict[str, Any] = {}
+
+        if name is not None:
+            if len(name) < 3:
+                raise ClashRoyaleAPIError(
+                    "Clan name must be at least 3 characters long"
+                )
+            params["name"] = name
+
+        if location_id is not None:
+            params["locationId"] = location_id
+
+        if min_members is not None:
+            params["minMembers"] = min_members
+
+        if max_members is not None:
+            params["maxMembers"] = max_members
+
+        if min_score is not None:
+            params["minScore"] = min_score
+
+        # Clamp limit to max of 25
+        params["limit"] = min(limit, 25)
+
+        if after is not None and before is not None:
+            raise ClashRoyaleAPIError(
+                "Cannot specify both 'after' and 'before' pagination markers"
+            )
+
+        if after is not None:
+            params["after"] = after
+
+        if before is not None:
+            params["before"] = before
+
+        # Ensure at least one filtering criterion is provided
+        # (limit, after, before are not filtering criteria)
+        has_filter = any([
+            name is not None,
+            location_id is not None,
+            min_members is not None,
+            max_members is not None,
+            min_score is not None
+        ])
+        if not has_filter:
+            raise ClashRoyaleAPIError(
+                "At least one filtering criterion must be provided (name, location_id, min_members, max_members, or min_score)"
+            )
+
+        # Make the request
+        response = await self._request("/clans", params=params)
+
+        # Parse results
+        items_data = response.get("items", [])
+        clans = [self._map_clan_search_result(
+            clan_data) for clan_data in items_data]
+
+        # Parse paging info
+        paging = None
+        if "paging" in response:
+            paging = ClanSearchPaging(
+                cursors=response["paging"].get("cursors"))
+
+        return ClanSearchResults(items=clans, paging=paging)
 
     # ===== CARD ENDPOINTS =====
     async def get_cards(self) -> CardList:

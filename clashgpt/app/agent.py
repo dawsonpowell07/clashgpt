@@ -31,6 +31,7 @@ from app.tools import (
     get_player_info,
     get_top_decks,
     get_top_players,
+    search_clans,
     search_decks,
     search_knowledge_base,
 )
@@ -118,7 +119,8 @@ root_agent = Agent(
 
     ## When NOT to Use Knowledge Base:
     - **Player stats/rankings** → Use get_player_info, get_player_battle_log, get_top_players
-    - **Clan information** → Use get_clan_info
+    - **Clan information** → Use get_clan_info, search_clans
+    - **Finding clans** → Use search_clans with filters (name, location, members, score)
     - **Current meta decks** → Use get_top_decks, search_decks
     - **Deck building with specific cards** → Use search_decks with include_cards
     - **Greetings/small talk** → Respond naturally without tools
@@ -154,6 +156,10 @@ root_agent = Agent(
     - "Show me clan #QPY2CU0Y" → get_clan_info(clan_tag="#QPY2CU0Y")
     - "Get info for clan #ABC123" → get_clan_info(clan_tag="#ABC123")
     - "Who's in clan #QPY2CU0Y?" → get_clan_info(clan_tag="#QPY2CU0Y")
+    - "Find clans named RoyalChampions" → search_clans(name="RoyalChampions")
+    - "Find active clans with 40+ members" → search_clans(min_members=40, min_score=50000)
+    - "Search for clans in USA with 30+ members" → search_clans(location_id=57000249, min_members=30)
+    - "Find competitive clans" → search_clans(min_members=45, min_score=60000, limit=10)
 
     ### Deck Queries (Deck tools):
     - "Top meta decks" → get_top_decks(limit=20)
@@ -308,6 +314,7 @@ root_agent = Agent(
         get_player_battle_log,
         get_top_players,
         get_top_decks,
+        search_clans,
         search_decks,
         search_knowledge_base,
     ],

@@ -240,8 +240,9 @@ class DatabaseService:
         exclude_card_ids: list[str] | None = None,
         archetype: DeckArchetype | None = None,
         ftp_tier: FreeToPlayLevel | None = None,
-        limit: int = 50
-    ) -> list[Deck]:
+        limit: int = 50,
+        offset: int = 0
+    ) -> tuple[list[Deck], int]:
         """
         Search for decks with filters.
 
@@ -251,54 +252,61 @@ class DatabaseService:
             archetype: Optional archetype filter
             ftp_tier: Optional free-to-play tier filter
             limit: Maximum number of results (default: 50)
+            offset: Number of results to skip (default: 0)
 
         Returns:
-            List of Deck objects matching the filters
+            Tuple of (List of Deck objects matching the filters, Total count of matching decks)
         """
         logger.info(
             f"DB query: search_decks | "
             f"include_cards={include_card_ids}, exclude_cards={exclude_card_ids}, "
             f"archetype={archetype.value if archetype else None}, "
-            f"ftp_tier={ftp_tier.value if ftp_tier else None}, limit={limit}"
+            f"ftp_tier={ftp_tier.value if ftp_tier else None}, limit={limit}, offset={offset}"
         )
         async with self.async_session() as session:
-            # Build dynamic query
-            query = """
-                SELECT id, deck_hash, cards, avg_elixir, archetype, ftp_tier
-                FROM decks
-                WHERE 1=1
-            """
+            # Build base WHERE clause for both queries
+            where_clause = "WHERE 1=1"
             params: dict[str, Any] = {}
 
             # Filter by included cards
             if include_card_ids:
                 for i, card_id in enumerate(include_card_ids):
-                    # Check if the cards JSONB array contains an object with this card_id
-                    query += f" AND EXISTS (SELECT 1 FROM jsonb_array_elements(cards) AS card WHERE card->>'card_id' = :include_card_{i})"
+                    where_clause += f" AND EXISTS (SELECT 1 FROM jsonb_array_elements(cards) AS card WHERE card->>'card_id' = :include_card_{i})"
                     params[f"include_card_{i}"] = card_id
 
             # Filter by excluded cards
             if exclude_card_ids:
                 for i, card_id in enumerate(exclude_card_ids):
-                    # Check that no card in the array has this card_id
-                    query += f" AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(cards) AS card WHERE card->>'card_id' = :exclude_card_{i})"
+                    where_clause += f" AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(cards) AS card WHERE card->>'card_id' = :exclude_card_{i})"
                     params[f"exclude_card_{i}"] = card_id
 
             # Filter by archetype
             if archetype:
-                query += " AND archetype = :archetype"
+                where_clause += " AND archetype = :archetype"
                 params["archetype"] = archetype.value
 
             # Filter by FTP tier
             if ftp_tier:
-                query += " AND ftp_tier = :ftp_tier"
+                where_clause += " AND ftp_tier = :ftp_tier"
                 params["ftp_tier"] = ftp_tier.value
 
-            # Order by most recently seen and apply limit
-            query += " ORDER BY last_seen_at DESC LIMIT :limit"
-            params["limit"] = limit
+            # Get total count
+            count_query = f"SELECT COUNT(*) FROM decks {where_clause}"
+            count_result = await session.execute(text(count_query), params)
+            total_count = count_result.scalar() or 0
 
-            result = await session.execute(text(query), params)
+            # Get paginated results
+            data_query = f"""
+                SELECT id, deck_hash, cards, avg_elixir, archetype, ftp_tier
+                FROM decks
+                {where_clause}
+                ORDER BY last_seen_at DESC
+                LIMIT :limit OFFSET :offset
+            """
+            params["limit"] = limit
+            params["offset"] = offset
+
+            result = await session.execute(text(data_query), params)
             rows = result.fetchall()
 
             decks = []
@@ -315,8 +323,8 @@ class DatabaseService:
                 )
                 decks.append(deck)
 
-            logger.info(f"DB result: search_decks returned {len(decks)} decks")
-            return decks
+            logger.info(f"DB result: search_decks returned {len(decks)} decks out of {total_count} total")
+            return decks, total_count
 
     # ===== LOCATIONS ENDPOINTS =====
 

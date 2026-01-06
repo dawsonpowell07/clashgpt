@@ -77,6 +77,16 @@ class Deck(BaseModel):
     ftp_tier: FreeToPlayLevel
 
 
+class PaginatedDecks(BaseModel):
+    decks: list[Deck]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    has_next: bool
+    has_previous: bool
+
+
 class Battle(BaseModel):
     type: str
     battle_time: str
@@ -126,6 +136,31 @@ class FullClan(BaseModel):
     donations_per_week: int | None
     num_members: int | None
     members_list: list[ClanMemberEntry]
+
+
+class ClanSearchResult(BaseModel):
+    """Represents a clan in search results."""
+    tag: str
+    name: str
+    type: str | None
+    badge_id: int
+    clan_score: int | None
+    clan_war_trophies: int | None
+    location_id: int | None
+    location_name: str | None
+    members: int | None
+    required_trophies: int | None
+
+
+class ClanSearchPaging(BaseModel):
+    """Pagination information for clan search."""
+    cursors: dict[str, str] | None = None
+
+
+class ClanSearchResults(BaseModel):
+    """Paginated clan search results."""
+    items: list[ClanSearchResult]
+    paging: ClanSearchPaging | None = None
 
 
 class Player(BaseModel):

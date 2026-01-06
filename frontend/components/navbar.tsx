@@ -14,7 +14,7 @@ export function Navbar() {
       <div className="flex h-16 items-center justify-between px-6 md:px-12">
         {/* Left: Logo/Brand */}
         <Link
-          href="/chat"
+          href="/"
           className="group flex items-center gap-2 transition-opacity hover:opacity-80"
         >
           <span className="font-[family-name:var(--font-heading)] text-xl md:text-2xl font-bold tracking-tight text-foreground">

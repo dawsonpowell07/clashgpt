@@ -16,6 +16,7 @@ from app.models.models import (
     DeckArchetype,
     FreeToPlayLevel,
     Locations,
+    PaginatedDecks,
     Rarity,
 )
 from app.services.database import get_database_service
@@ -61,15 +62,16 @@ async def list_endpoints():
                     "example": "/api/decks/top?limit=10&archetype=CYCLE"
                 },
                 "GET /api/decks/search": {
-                    "description": "Search for decks with various filters",
+                    "description": "Search for decks with various filters (paginated)",
                     "parameters": {
                         "include": "Optional - Comma-separated card IDs that must be in deck",
                         "exclude": "Optional - Comma-separated card IDs that must not be in deck",
                         "archetype": "Optional - Filter by archetype",
                         "ftp_tier": "Optional - Filter by FTP tier (FRIENDLY, MODERATE, PAYTOWIN)",
-                        "limit": "Optional - Maximum results (1-200, default: 50)"
+                        "page": "Optional - Page number (1-indexed, default: 1)",
+                        "page_size": "Optional - Results per page (1-200, default: 24)"
                     },
-                    "example": "/api/decks/search?include=26000000,26000001&archetype=CYCLE&ftp_tier=FRIENDLY"
+                    "example": "/api/decks/search?include=26000000,26000001&archetype=CYCLE&ftp_tier=FRIENDLY&page=1&page_size=24"
                 }
             },
             "locations": {
@@ -157,31 +159,33 @@ async def get_top_decks(
     return await db.get_top_decks(limit=limit, archetype=archetype)
 
 
-@router.get("/decks/search", response_model=list[Deck])
+@router.get("/decks/search", response_model=PaginatedDecks)
 async def search_decks(
     include: Annotated[str | None, Query(description="Comma-separated card IDs that must be in deck")] = None,
     exclude: Annotated[str | None, Query(description="Comma-separated card IDs that must not be in deck")] = None,
     archetype: Annotated[DeckArchetype | None, Query(description="Filter by deck archetype")] = None,
     ftp_tier: Annotated[FreeToPlayLevel | None, Query(description="Filter by free-to-play tier")] = None,
-    limit: Annotated[int, Query(ge=1, le=200)] = 50
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=200)] = 24
 ):
     """
-    Search for decks with various filters.
+    Search for decks with various filters (paginated).
 
     Args:
         include: Comma-separated list of card IDs that must be in the deck
         exclude: Comma-separated list of card IDs that must not be in the deck
         archetype: Optional archetype filter (CYCLE, BEATDOWN, BRIDGESPAM, etc.)
         ftp_tier: Optional FTP tier filter (FRIENDLY, MODERATE, PAYTOWIN)
-        limit: Maximum number of results (1-200, default: 50)
+        page: Page number (1-indexed, default: 1)
+        page_size: Results per page (1-200, default: 24)
 
     Returns:
-        List of decks matching the search criteria
+        Paginated response with decks matching the search criteria and pagination metadata
 
     Examples:
-        - /decks/search?include=26000000,26000001&archetype=CYCLE
-        - /decks/search?exclude=26000010&ftp_tier=FRIENDLY&limit=10
-        - /decks/search?archetype=BEATDOWN
+        - /decks/search?include=26000000,26000001&archetype=CYCLE&page=1&page_size=24
+        - /decks/search?exclude=26000010&ftp_tier=FRIENDLY&page=2&page_size=12
+        - /decks/search?archetype=BEATDOWN&page=1
     """
     db = get_database_service()
 
@@ -197,12 +201,32 @@ async def search_decks(
         exclude_card_ids = [cid.strip()
                             for cid in exclude_card_ids if cid.strip()]
 
-    return await db.search_decks(
+    # Calculate offset from page
+    offset = (page - 1) * page_size
+
+    # Get decks and total count
+    decks, total = await db.search_decks(
         include_card_ids=include_card_ids,
         exclude_card_ids=exclude_card_ids,
         archetype=archetype,
         ftp_tier=ftp_tier,
-        limit=limit
+        limit=page_size,
+        offset=offset
+    )
+
+    # Calculate pagination metadata
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+    has_next = page < total_pages
+    has_previous = page > 1
+
+    return PaginatedDecks(
+        decks=decks,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        has_next=has_next,
+        has_previous=has_previous
     )
 
 
