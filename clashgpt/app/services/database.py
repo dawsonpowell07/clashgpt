@@ -17,6 +17,9 @@ from app.models.models import (
     CardList,
     Deck,
     DeckArchetype,
+    DeckSortBy,
+    DeckStats,
+    DeckWithStats,
     FreeToPlayLevel,
     Location,
     Locations,
@@ -325,6 +328,383 @@ class DatabaseService:
 
             logger.info(f"DB result: search_decks returned {len(decks)} decks out of {total_count} total")
             return decks, total_count
+
+    async def get_top_decks_with_stats(
+        self,
+        limit: int = 50,
+        archetype: DeckArchetype | None = None,
+        sort_by: DeckSortBy = DeckSortBy.RECENT,
+        min_games: int = 0
+    ) -> list[DeckWithStats]:
+        """
+        Get top decks with their stats, optionally filtered and sorted.
+
+        Args:
+            limit: Maximum number of decks to return (default: 50)
+            archetype: Optional archetype to filter by
+            sort_by: How to sort the results (default: RECENT)
+            min_games: Minimum number of games played (default: 0)
+
+        Returns:
+            List of DeckWithStats objects ordered by sort_by criteria
+        """
+        logger.info(
+            f"DB query: get_top_decks_with_stats | limit={limit}, archetype={archetype.value if archetype else None}, "
+            f"sort_by={sort_by.value}, min_games={min_games}"
+        )
+
+        # Build ORDER BY clause based on sort_by
+        if sort_by == DeckSortBy.RECENT:
+            order_clause = "ORDER BY d.last_seen_at DESC"
+        elif sort_by == DeckSortBy.GAMES_PLAYED:
+            order_clause = "ORDER BY COALESCE(ds.games_played, 0) DESC"
+        elif sort_by == DeckSortBy.WIN_RATE:
+            order_clause = "ORDER BY CASE WHEN COALESCE(ds.games_played, 0) > 0 THEN CAST(ds.wins AS FLOAT) / ds.games_played ELSE 0 END DESC"
+        elif sort_by == DeckSortBy.WINS:
+            order_clause = "ORDER BY COALESCE(ds.wins, 0) DESC"
+        else:
+            order_clause = "ORDER BY d.last_seen_at DESC"
+
+        async with self.async_session() as session:
+            # Build WHERE clause
+            where_conditions = []
+            params: dict[str, Any] = {"limit": limit}
+
+            if archetype:
+                where_conditions.append("d.archetype = :archetype")
+                params["archetype"] = archetype.value
+
+            if min_games > 0:
+                where_conditions.append("COALESCE(ds.games_played, 0) >= :min_games")
+                params["min_games"] = min_games
+
+            where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+
+            query = f"""
+                SELECT
+                    d.id, d.deck_hash, d.cards, d.avg_elixir, d.archetype, d.ftp_tier,
+                    ds.games_played, ds.wins, ds.losses, ds.unique_players
+                FROM decks d
+                LEFT JOIN deck_stats ds ON d.id = ds.id
+                {where_clause}
+                {order_clause}
+                LIMIT :limit
+            """
+
+            result = await session.execute(text(query), params)
+            rows = result.fetchall()
+
+            decks = []
+            for row in rows:
+                games = row[6] if row[6] is not None else 0
+                wins = row[7] if row[7] is not None else 0
+                losses = row[8] if row[8] is not None else 0
+                win_rate = (wins / games) if games > 0 else None
+
+                deck = DeckWithStats(
+                    id=row[0],
+                    deck_hash=row[1],
+                    cards=row[2],
+                    avg_elixir=float(row[3]),
+                    archetype=DeckArchetype(row[4]) if row[4] else DeckArchetype.BEATDOWN,
+                    ftp_tier=FreeToPlayLevel(row[5]) if row[5] else FreeToPlayLevel.MODERATE,
+                    games_played=games,
+                    wins=wins,
+                    losses=losses,
+                    unique_players=row[9] if row[9] is not None else 0,
+                    win_rate=win_rate
+                )
+                decks.append(deck)
+
+            logger.info(f"DB result: get_top_decks_with_stats returned {len(decks)} decks")
+            return decks
+
+    async def search_decks_with_stats(
+        self,
+        include_card_ids: list[str] | None = None,
+        exclude_card_ids: list[str] | None = None,
+        archetype: DeckArchetype | None = None,
+        ftp_tier: FreeToPlayLevel | None = None,
+        sort_by: DeckSortBy = DeckSortBy.RECENT,
+        min_games: int = 0,
+        limit: int = 50,
+        offset: int = 0
+    ) -> tuple[list[DeckWithStats], int]:
+        """
+        Search for decks with stats and filters.
+
+        Args:
+            include_card_ids: List of card IDs that must be in the deck
+            exclude_card_ids: List of card IDs that must not be in the deck
+            archetype: Optional archetype filter
+            ftp_tier: Optional free-to-play tier filter
+            sort_by: How to sort the results (default: RECENT)
+            min_games: Minimum number of games played (default: 0)
+            limit: Maximum number of results (default: 50)
+            offset: Number of results to skip (default: 0)
+
+        Returns:
+            Tuple of (List of DeckWithStats objects, Total count of matching decks)
+        """
+        logger.info(
+            f"DB query: search_decks_with_stats | "
+            f"include_cards={include_card_ids}, exclude_cards={exclude_card_ids}, "
+            f"archetype={archetype.value if archetype else None}, "
+            f"ftp_tier={ftp_tier.value if ftp_tier else None}, sort_by={sort_by.value}, "
+            f"min_games={min_games}, limit={limit}, offset={offset}"
+        )
+
+        # Build ORDER BY clause based on sort_by
+        if sort_by == DeckSortBy.RECENT:
+            order_clause = "ORDER BY d.last_seen_at DESC"
+        elif sort_by == DeckSortBy.GAMES_PLAYED:
+            order_clause = "ORDER BY COALESCE(ds.games_played, 0) DESC"
+        elif sort_by == DeckSortBy.WIN_RATE:
+            order_clause = "ORDER BY CASE WHEN COALESCE(ds.games_played, 0) > 0 THEN CAST(ds.wins AS FLOAT) / ds.games_played ELSE 0 END DESC"
+        elif sort_by == DeckSortBy.WINS:
+            order_clause = "ORDER BY COALESCE(ds.wins, 0) DESC"
+        else:
+            order_clause = "ORDER BY d.last_seen_at DESC"
+
+        async with self.async_session() as session:
+            # Build WHERE clause
+            where_clause = "WHERE 1=1"
+            params: dict[str, Any] = {}
+
+            # Filter by included cards
+            if include_card_ids:
+                for i, card_id in enumerate(include_card_ids):
+                    where_clause += f" AND EXISTS (SELECT 1 FROM jsonb_array_elements(d.cards) AS card WHERE card->>'card_id' = :include_card_{i})"
+                    params[f"include_card_{i}"] = card_id
+
+            # Filter by excluded cards
+            if exclude_card_ids:
+                for i, card_id in enumerate(exclude_card_ids):
+                    where_clause += f" AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(d.cards) AS card WHERE card->>'card_id' = :exclude_card_{i})"
+                    params[f"exclude_card_{i}"] = card_id
+
+            # Filter by archetype
+            if archetype:
+                where_clause += " AND d.archetype = :archetype"
+                params["archetype"] = archetype.value
+
+            # Filter by FTP tier
+            if ftp_tier:
+                where_clause += " AND d.ftp_tier = :ftp_tier"
+                params["ftp_tier"] = ftp_tier.value
+
+            # Filter by minimum games
+            if min_games > 0:
+                where_clause += " AND COALESCE(ds.games_played, 0) >= :min_games"
+                params["min_games"] = min_games
+
+            # Get total count
+            count_query = f"""
+                SELECT COUNT(*)
+                FROM decks d
+                LEFT JOIN deck_stats ds ON d.id = ds.id
+                {where_clause}
+            """
+            count_result = await session.execute(text(count_query), params)
+            total_count = count_result.scalar() or 0
+
+            # Get paginated results
+            data_query = f"""
+                SELECT
+                    d.id, d.deck_hash, d.cards, d.avg_elixir, d.archetype, d.ftp_tier,
+                    ds.games_played, ds.wins, ds.losses, ds.unique_players
+                FROM decks d
+                LEFT JOIN deck_stats ds ON d.id = ds.id
+                {where_clause}
+                {order_clause}
+                LIMIT :limit OFFSET :offset
+            """
+            params["limit"] = limit
+            params["offset"] = offset
+
+            result = await session.execute(text(data_query), params)
+            rows = result.fetchall()
+
+            decks = []
+            for row in rows:
+                games = row[6] if row[6] is not None else 0
+                wins = row[7] if row[7] is not None else 0
+                losses = row[8] if row[8] is not None else 0
+                win_rate = (wins / games) if games > 0 else None
+
+                deck = DeckWithStats(
+                    id=row[0],
+                    deck_hash=row[1],
+                    cards=row[2],
+                    avg_elixir=float(row[3]),
+                    archetype=DeckArchetype(row[4]) if row[4] else DeckArchetype.BEATDOWN,
+                    ftp_tier=FreeToPlayLevel(row[5]) if row[5] else FreeToPlayLevel.MODERATE,
+                    games_played=games,
+                    wins=wins,
+                    losses=losses,
+                    unique_players=row[9] if row[9] is not None else 0,
+                    win_rate=win_rate
+                )
+                decks.append(deck)
+
+            logger.info(f"DB result: search_decks_with_stats returned {len(decks)} decks out of {total_count} total")
+            return decks, total_count
+
+    # ===== DECK STATS ENDPOINTS =====
+
+    async def get_deck_stats(self, deck_id: str) -> DeckStats | None:
+        """
+        Get statistics for a specific deck by ID.
+
+        Args:
+            deck_id: The deck ID to fetch stats for
+
+        Returns:
+            DeckStats object or None if not found
+        """
+        logger.info(f"DB query: get_deck_stats | deck_id={deck_id}")
+        async with self.async_session() as session:
+            stmt = text("""
+                SELECT id, games_played, wins, losses, unique_players
+                FROM deck_stats
+                WHERE id = :deck_id
+            """)
+            result = await session.execute(stmt, {"deck_id": deck_id})
+            row = result.fetchone()
+
+            if row:
+                logger.info(f"DB result: get_deck_stats found stats for deck {deck_id}")
+                return DeckStats(
+                    id=row[0],
+                    games_played=row[1],
+                    wins=row[2],
+                    losses=row[3],
+                    unique_players=row[4]
+                )
+            logger.info(f"DB result: get_deck_stats found no stats for deck {deck_id}")
+            return None
+
+    async def insert_deck_stats(self, deck_stats: DeckStats) -> DeckStats:
+        """
+        Insert a new deck stats record.
+
+        Args:
+            deck_stats: DeckStats object to insert
+
+        Returns:
+            The inserted DeckStats object
+        """
+        logger.info(f"DB query: insert_deck_stats | deck_id={deck_stats.id}")
+        async with self.async_session() as session:
+            stmt = text("""
+                INSERT INTO deck_stats (id, games_played, wins, losses, unique_players)
+                VALUES (:id, :games_played, :wins, :losses, :unique_players)
+                RETURNING id, games_played, wins, losses, unique_players
+            """)
+            result = await session.execute(stmt, {
+                "id": deck_stats.id,
+                "games_played": deck_stats.games_played,
+                "wins": deck_stats.wins,
+                "losses": deck_stats.losses,
+                "unique_players": deck_stats.unique_players
+            })
+            await session.commit()
+            row = result.fetchone()
+
+            logger.info(f"DB result: insert_deck_stats inserted stats for deck {deck_stats.id}")
+            return DeckStats(
+                id=row[0],
+                games_played=row[1],
+                wins=row[2],
+                losses=row[3],
+                unique_players=row[4]
+            )
+
+    async def upsert_deck_stats(self, deck_stats: DeckStats) -> DeckStats:
+        """
+        Insert or update deck stats record by replacing all values.
+        If a record with the same id exists, replaces it; otherwise inserts.
+
+        Args:
+            deck_stats: DeckStats object to upsert
+
+        Returns:
+            The upserted DeckStats object
+        """
+        logger.info(f"DB query: upsert_deck_stats | deck_id={deck_stats.id}")
+        async with self.async_session() as session:
+            stmt = text("""
+                INSERT INTO deck_stats (id, games_played, wins, losses, unique_players)
+                VALUES (:id, :games_played, :wins, :losses, :unique_players)
+                ON CONFLICT (id) DO UPDATE SET
+                    games_played = EXCLUDED.games_played,
+                    wins = EXCLUDED.wins,
+                    losses = EXCLUDED.losses,
+                    unique_players = EXCLUDED.unique_players
+                RETURNING id, games_played, wins, losses, unique_players
+            """)
+            result = await session.execute(stmt, {
+                "id": deck_stats.id,
+                "games_played": deck_stats.games_played,
+                "wins": deck_stats.wins,
+                "losses": deck_stats.losses,
+                "unique_players": deck_stats.unique_players
+            })
+            await session.commit()
+            row = result.fetchone()
+
+            logger.info(f"DB result: upsert_deck_stats upserted stats for deck {deck_stats.id}")
+            return DeckStats(
+                id=row[0],
+                games_played=row[1],
+                wins=row[2],
+                losses=row[3],
+                unique_players=row[4]
+            )
+
+    async def increment_deck_stats(self, deck_stats: DeckStats) -> DeckStats:
+        """
+        Increment deck stats by adding the provided values to existing stats.
+        Creates a new record if the deck doesn't exist yet.
+
+        Args:
+            deck_stats: DeckStats object with values to add to existing stats
+
+        Returns:
+            The updated DeckStats object with new totals
+        """
+        logger.info(f"DB query: increment_deck_stats | deck_id={deck_stats.id}")
+        async with self.async_session() as session:
+            # Use ON CONFLICT to handle both insert and update cases
+            # If record exists, add to existing values; if not, insert as new
+            stmt = text("""
+                INSERT INTO deck_stats (id, games_played, wins, losses, unique_players)
+                VALUES (:id, :games_played, :wins, :losses, :unique_players)
+                ON CONFLICT (id) DO UPDATE SET
+                    games_played = deck_stats.games_played + EXCLUDED.games_played,
+                    wins = deck_stats.wins + EXCLUDED.wins,
+                    losses = deck_stats.losses + EXCLUDED.losses,
+                    unique_players = deck_stats.unique_players + EXCLUDED.unique_players
+                RETURNING id, games_played, wins, losses, unique_players
+            """)
+            result = await session.execute(stmt, {
+                "id": deck_stats.id,
+                "games_played": deck_stats.games_played,
+                "wins": deck_stats.wins,
+                "losses": deck_stats.losses,
+                "unique_players": deck_stats.unique_players
+            })
+            await session.commit()
+            row = result.fetchone()
+
+            logger.info(f"DB result: increment_deck_stats updated stats for deck {deck_stats.id}")
+            return DeckStats(
+                id=row[0],
+                games_played=row[1],
+                wins=row[2],
+                losses=row[3],
+                unique_players=row[4]
+            )
 
     # ===== LOCATIONS ENDPOINTS =====
 

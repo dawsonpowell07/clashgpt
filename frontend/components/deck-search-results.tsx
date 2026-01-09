@@ -15,6 +15,11 @@ interface Deck {
   avg_elixir: number;
   archetype: string;
   ftp_tier: string;
+  games_played?: number;
+  wins?: number;
+  losses?: number;
+  unique_players?: number;
+  win_rate?: number | null;
 }
 
 interface DeckSearchResultsData {
@@ -54,6 +59,13 @@ interface DeckCardComponentProps {
 }
 
 function DeckCardComponent({ deck }: DeckCardComponentProps) {
+  const hasStats =
+    deck.games_played !== undefined && deck.games_played !== null;
+  const winRate =
+    deck.win_rate !== undefined && deck.win_rate !== null
+      ? (deck.win_rate * 100).toFixed(1)
+      : null;
+
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
       {/* Header */}
@@ -70,6 +82,66 @@ function DeckCardComponent({ deck }: DeckCardComponentProps) {
           </div>
         </div>
       </div>
+
+      {/* Stats Section (if available) */}
+      {hasStats && (
+        <div className="px-4 py-3 bg-muted/10 border-b border-border">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            {/* Win Rate - Most prominent */}
+            {winRate && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase">
+                  Win Rate
+                </span>
+                <span
+                  className={cn(
+                    "text-lg font-bold",
+                    parseFloat(winRate) >= 55
+                      ? "text-green-500"
+                      : parseFloat(winRate) >= 50
+                        ? "text-yellow-500"
+                        : "text-red-500"
+                  )}
+                >
+                  {winRate}%
+                </span>
+              </div>
+            )}
+
+            {/* Games Played */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Games:</span>
+              <span className="text-sm font-semibold text-foreground">
+                {deck.games_played}
+              </span>
+            </div>
+
+            {/* W/L Record */}
+            {deck.wins !== undefined && deck.losses !== undefined && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Record:</span>
+                <span className="text-sm font-semibold text-green-500">
+                  {deck.wins}
+                </span>
+                <span className="text-xs text-muted-foreground">-</span>
+                <span className="text-sm font-semibold text-red-500">
+                  {deck.losses}
+                </span>
+              </div>
+            )}
+
+            {/* Unique Players */}
+            {deck.unique_players !== undefined && deck.unique_players > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Players:</span>
+                <span className="text-sm font-semibold text-foreground">
+                  {deck.unique_players}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Deck Cards */}
       <div className="p-4">

@@ -77,8 +77,47 @@ class Deck(BaseModel):
     ftp_tier: FreeToPlayLevel
 
 
+class DeckStats(BaseModel):
+    id: str
+    games_played: int
+    wins: int
+    losses: int
+    unique_players: int
+
+
+class DeckSortBy(str, Enum):
+    RECENT = "RECENT"  # Most recently seen (last_seen_at DESC)
+    GAMES_PLAYED = "GAMES_PLAYED"  # Most games played
+    WIN_RATE = "WIN_RATE"  # Highest win rate
+    WINS = "WINS"  # Most wins
+
+
+class DeckWithStats(BaseModel):
+    id: str
+    deck_hash: str
+    cards: list[dict]
+    avg_elixir: float
+    archetype: DeckArchetype
+    ftp_tier: FreeToPlayLevel
+    games_played: int | None = None
+    wins: int | None = None
+    losses: int | None = None
+    unique_players: int | None = None
+    win_rate: float | None = None  # Calculated field (wins / games_played)
+
+
 class PaginatedDecks(BaseModel):
     decks: list[Deck]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    has_next: bool
+    has_previous: bool
+
+
+class PaginatedDecksWithStats(BaseModel):
+    decks: list[DeckWithStats]
     total: int
     page: int
     page_size: int

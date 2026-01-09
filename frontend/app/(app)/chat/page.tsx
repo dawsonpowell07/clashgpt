@@ -213,13 +213,21 @@ function Chat() {
 
       // Show loading state while fetching
       if (status !== "complete") {
+        // Customize loading message based on sort_by parameter
+        let loadingMessage = "Searching for decks";
+        if (args.sort_by === "WIN_RATE") {
+          loadingMessage = "Finding highest win rate decks";
+        } else if (args.sort_by === "GAMES_PLAYED") {
+          loadingMessage = "Finding most popular decks";
+        } else if (args.sort_by === "WINS") {
+          loadingMessage = "Finding decks with most wins";
+        }
+
         return (
           <div className="bg-primary/20 border border-primary/40 text-white p-6 rounded-xl max-w-2xl my-4">
             <div className="flex items-center gap-3">
               <span className="text-2xl animate-spin">⚙️</span>
-              <span className="text-lg font-medium">
-                Searching for decks...
-              </span>
+              <span className="text-lg font-medium">{loadingMessage}...</span>
             </div>
           </div>
         );
@@ -252,13 +260,29 @@ function Chat() {
 
       // Show loading state while fetching
       if (status !== "complete") {
+        // Customize loading message based on sort_by and archetype
+        let loadingMessage = "Fetching top meta decks";
+        if (args.sort_by === "WIN_RATE") {
+          loadingMessage = args.archetype
+            ? `Finding best ${args.archetype.toLowerCase()} decks by win rate`
+            : "Finding highest win rate decks";
+        } else if (args.sort_by === "GAMES_PLAYED") {
+          loadingMessage = args.archetype
+            ? `Finding most popular ${args.archetype.toLowerCase()} decks`
+            : "Finding most popular decks";
+        } else if (args.sort_by === "WINS") {
+          loadingMessage = args.archetype
+            ? `Finding ${args.archetype.toLowerCase()} decks with most wins`
+            : "Finding decks with most wins";
+        } else if (args.archetype) {
+          loadingMessage = `Fetching top ${args.archetype.toLowerCase()} decks`;
+        }
+
         return (
           <div className="bg-primary/20 border border-primary/40 text-white p-6 rounded-xl max-w-2xl my-4">
             <div className="flex items-center gap-3">
               <span className="text-2xl animate-spin">⚙️</span>
-              <span className="text-lg font-medium">
-                Fetching top meta decks...
-              </span>
+              <span className="text-lg font-medium">{loadingMessage}...</span>
             </div>
           </div>
         );
@@ -353,7 +377,7 @@ function Chat() {
           className="h-full rounded-2xl"
           labels={{
             initial:
-              "Hi I'm clashgpt! Ask me to find top decks with certain cards or anything clash related",
+              "Hi I'm ClashGPT! Ask me to find top decks with win rates, search for specific cards, or anything Clash Royale related!",
           }}
           Input={CustomInput}
         />
