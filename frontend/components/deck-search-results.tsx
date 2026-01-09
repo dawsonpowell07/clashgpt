@@ -90,7 +90,10 @@ interface CardDisplayProps {
 function CardDisplay({ card }: CardDisplayProps) {
   const hasEvolution = card.card_variant === "EVOLUTION";
   const isHero = card.card_variant === "HERO";
-  const cardFileName = card.card_name.toLowerCase().replace(/ /g, "_");
+  const cardFileName = card.card_name
+    .toLowerCase()
+    .replace(/ /g, "_")
+    .replace(/\./g, "");
 
   // Determine the image suffix based on variant
   const imageSuffix = hasEvolution ? "_evolution" : isHero ? "_hero" : "";

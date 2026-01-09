@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CopilotChat, CopilotKitCSSProperties } from "@copilotkit/react-ui";
 import { CopilotKit, useRenderToolCall } from "@copilotkit/react-core";
 import "@copilotkit/react-ui/styles.css";
@@ -12,11 +13,31 @@ import { KnowledgeSearch } from "@/components/knowledge-search";
 import { CustomInput } from "@/components/chat";
 
 export default function ChatPage() {
+  // Use lazy initialization to get or create threadId from sessionStorage
+  const [threadId] = useState<string>(() => {
+    // Check if we're in the browser
+    if (typeof window === "undefined") {
+      return crypto.randomUUID();
+    }
+
+    // Try to get existing threadId from sessionStorage
+    const existingThreadId = sessionStorage.getItem("copilotkit-thread-id");
+    if (existingThreadId) {
+      return existingThreadId;
+    }
+
+    // Generate new threadId and store it
+    const newThreadId = crypto.randomUUID();
+    sessionStorage.setItem("copilotkit-thread-id", newThreadId);
+    return newThreadId;
+  });
+
   return (
     <CopilotKit
       runtimeUrl="/api/copilotkit"
       agent="clash_gpt"
       publicApiKey="ck_pub_9265cbc1005d6ea24830000a4f8b502c"
+      threadId={threadId}
     >
       <Chat />
     </CopilotKit>
@@ -154,7 +175,9 @@ function Chat() {
           <div className="bg-primary/20 border border-primary/40 text-white p-6 rounded-xl max-w-2xl my-4">
             <div className="flex items-center gap-3">
               <span className="text-2xl animate-spin">⚙️</span>
-              <span className="text-lg font-medium">Searching for clans...</span>
+              <span className="text-lg font-medium">
+                Searching for clans...
+              </span>
             </div>
           </div>
         );
@@ -194,7 +217,9 @@ function Chat() {
           <div className="bg-primary/20 border border-primary/40 text-white p-6 rounded-xl max-w-2xl my-4">
             <div className="flex items-center gap-3">
               <span className="text-2xl animate-spin">⚙️</span>
-              <span className="text-lg font-medium">Searching for decks...</span>
+              <span className="text-lg font-medium">
+                Searching for decks...
+              </span>
             </div>
           </div>
         );
@@ -267,11 +292,7 @@ function Chat() {
       // Show animated knowledge search while executing
       // Component returns null when complete to let agent's text response show
       return (
-        <KnowledgeSearch
-          query={args.query}
-          status={status}
-          className="my-4"
-        />
+        <KnowledgeSearch query={args.query} status={status} className="my-4" />
       );
     },
   });

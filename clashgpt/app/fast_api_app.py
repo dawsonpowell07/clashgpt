@@ -188,7 +188,7 @@ if __name__ == "__main__":
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
-
+session_service = DatabaseSessionService(db_url=session_service_uri)
 adk_agent = ADKAgent(
     adk_agent=root_agent,
     app_name="clash_gpt",
@@ -196,8 +196,6 @@ adk_agent = ADKAgent(
         "headers", {}).get("user_id", "user"),
     session_timeout_seconds=3600,
     use_in_memory_services=True,
-    session_service=DatabaseSessionService(db_url=session_service_uri),
-    artifact_service=GcsArtifactService(artifact_service_uri),
 )
 
 add_adk_fastapi_endpoint(app, adk_agent, path="/agent", extract_headers=["x-user-id"]

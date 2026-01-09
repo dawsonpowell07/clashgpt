@@ -177,9 +177,11 @@ function DeckPreview({ cards }: DeckPreviewProps) {
             <Image
               src={`/cards/${card.name
                 .toLowerCase()
-                .replace(/ /g, "_")}/${card.name
+                .replace(/ /g, "_")
+                .replace(/\./g, "")}/${card.name
                 .toLowerCase()
-                .replace(/ /g, "_")}.png`}
+                .replace(/ /g, "_")
+                .replace(/\./g, "")}.png`}
               alt={card.name}
               fill
               className="object-contain"

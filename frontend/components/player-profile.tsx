@@ -255,9 +255,11 @@ export function PlayerProfile({ player, className }: PlayerProfileProps) {
                   <Image
                     src={`/cards/${player.current_favorite_card.name
                       .toLowerCase()
-                      .replace(/ /g, "_")}/${player.current_favorite_card.name
+                      .replace(/ /g, "_")
+                      .replace(/\./g, "")}/${player.current_favorite_card.name
                       .toLowerCase()
-                      .replace(/ /g, "_")}.png`}
+                      .replace(/ /g, "_")
+                      .replace(/\./g, "")}.png`}
                     alt={player.current_favorite_card.name}
                     fill
                     className="object-contain"
