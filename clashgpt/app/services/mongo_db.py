@@ -14,6 +14,14 @@ from app.settings import settings
 logger = logging.getLogger(__name__)
 
 
+class MongoDBServiceError(Exception):
+    """Base exception for MongoDB service errors."""
+
+
+class MongoDBConnectionError(MongoDBServiceError):
+    """Raised when MongoDB connection or configuration fails."""
+
+
 class MongoDBService:
     """
     Async service for querying MongoDB.
@@ -31,25 +39,46 @@ class MongoDBService:
             mongodb_uri: MongoDB connection URI. If not provided, will use settings.
             mongodb_database: MongoDB database name. If not provided, will use settings.
         """
-        if mongodb_uri is None:
-            mongodb_uri = settings.mongodb_uri
-        if mongodb_database is None:
-            mongodb_database = settings.mongodb_database
-
         try:
+            if mongodb_uri is None:
+                mongodb_uri = settings.mongodb_uri
+            if mongodb_database is None:
+                mongodb_database = settings.mongodb_database
+
+            if not mongodb_uri:
+                raise MongoDBConnectionError("MongoDB URI is required")
+            if not mongodb_database:
+                raise MongoDBConnectionError("MongoDB database name is required")
+
             logger.info(
-                f"Initializing MongoDB service | database={mongodb_database}")
+                f"Initializing MongoDB service | database={mongodb_database}"
+            )
             self.client = AsyncMongoClient(mongodb_uri)
             self.db = self.client[mongodb_database]
             logger.info("MongoDB connection established")
-        except (ConnectionFailure, ServerSelectionTimeoutError):
-            logger.exception("MongoDB connection failed")
+        except MongoDBServiceError:
             raise
+        except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+            logger.exception("MongoDB connection failed")
+            raise MongoDBConnectionError(
+                f"MongoDB connection failed: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("MongoDB initialization failed")
+            raise MongoDBConnectionError(
+                f"MongoDB initialization failed: {e!s}"
+            ) from e
 
     async def close(self):
         """Close MongoDB connections."""
-        logger.info("Closing MongoDB connection")
-        await self.client.close()
+        try:
+            logger.info("Closing MongoDB connection")
+            await self.client.close()
+        except Exception as e:
+            logger.exception("Failed to close MongoDB connection")
+            raise MongoDBConnectionError(
+                f"Failed to close MongoDB connection: {e!s}"
+            ) from e
 
 
 # Singleton instance

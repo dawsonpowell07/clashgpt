@@ -7,7 +7,13 @@ allowing the agent to recommend decks based on win rates, popularity, and other 
 import logging
 
 from app.models.models import DeckArchetype, DeckSortBy, FreeToPlayLevel
-from app.services.database import get_database_service
+from app.services.database import (
+    DatabaseConnectionError,
+    DatabaseDataError,
+    DatabaseQueryError,
+    DatabaseServiceError,
+    get_database_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,31 +95,87 @@ async def get_top_decks(
         f"Tool: get_top_decks | limit={limit}, archetype={archetype}, "
         f"sort_by={sort_by}, min_games={min_games}"
     )
-    db = get_database_service()
+    try:
+        if not isinstance(limit, int) or limit <= 0:
+            return {
+                "error": "Limit must be a positive integer.",
+                "error_type": "validation",
+                "suggestion": "Use a limit between 1 and 200."
+            }
+        if not isinstance(min_games, int) or min_games < 0:
+            return {
+                "error": "min_games must be a non-negative integer.",
+                "error_type": "validation",
+                "suggestion": "Use 0 or a positive integer."
+            }
 
-    # Convert string archetype to enum if provided
-    archetype_enum = None
-    if archetype:
-        try:
-            archetype_enum = DeckArchetype[archetype.upper()]
-        except KeyError:
-            logger.warning(f"Invalid archetype: {archetype}")
+        db = get_database_service()
 
-    # Convert string sort_by to enum
-    sort_by_enum = DeckSortBy.RECENT  # Default
-    if sort_by:
-        try:
-            sort_by_enum = DeckSortBy[sort_by.upper()]
-        except KeyError:
-            logger.warning(f"Invalid sort_by: {sort_by}, using RECENT")
+        # Convert string archetype to enum if provided
+        archetype_enum = None
+        if archetype:
+            try:
+                archetype_enum = DeckArchetype[archetype.upper()]
+            except KeyError:
+                logger.warning(f"Invalid archetype: {archetype}")
+                return {
+                    "error": f"Invalid archetype: {archetype}.",
+                    "error_type": "validation",
+                    "suggestion": "Use a supported archetype like CYCLE or BEATDOWN."
+                }
 
-    decks = await db.get_top_decks_with_stats(
-        limit=limit,
-        archetype=archetype_enum,
-        sort_by=sort_by_enum,
-        min_games=min_games
-    )
-    return {"decks": [deck.model_dump() for deck in decks]}
+        # Convert string sort_by to enum
+        sort_by_enum = DeckSortBy.RECENT  # Default
+        if sort_by:
+            try:
+                sort_by_enum = DeckSortBy[sort_by.upper()]
+            except KeyError:
+                logger.warning(f"Invalid sort_by: {sort_by}, using RECENT")
+                return {
+                    "error": f"Invalid sort_by: {sort_by}.",
+                    "error_type": "validation",
+                    "suggestion": "Use RECENT, WIN_RATE, GAMES_PLAYED, or WINS."
+                }
+
+        decks = await db.get_top_decks_with_stats(
+            limit=limit,
+            archetype=archetype_enum,
+            sort_by=sort_by_enum,
+            min_games=min_games
+        )
+        return {"decks": [deck.model_dump() for deck in decks]}
+    except (DatabaseConnectionError, DatabaseQueryError) as e:
+        error_msg = f"Database error while fetching top decks: {e}"
+        logger.error(f"Tool: get_top_decks | {error_msg}")
+        return {
+            "error": "Deck data is temporarily unavailable.",
+            "error_type": "database",
+            "details": str(e),
+        }
+    except DatabaseDataError as e:
+        error_msg = f"Data parsing error while fetching top decks: {e}"
+        logger.error(f"Tool: get_top_decks | {error_msg}")
+        return {
+            "error": "Deck data could not be parsed.",
+            "error_type": "data_error",
+            "details": str(e),
+        }
+    except DatabaseServiceError as e:
+        error_msg = f"Database service error while fetching top decks: {e}"
+        logger.error(f"Tool: get_top_decks | {error_msg}")
+        return {
+            "error": "Deck service is temporarily unavailable.",
+            "error_type": "database",
+            "details": str(e),
+        }
+    except Exception as e:
+        error_msg = f"Unexpected error in get_top_decks: {e}"
+        logger.error(f"Tool: get_top_decks | {error_msg}", exc_info=True)
+        return {
+            "error": "Unexpected error while fetching top decks.",
+            "error_type": "unexpected",
+            "details": str(e)
+        }
 
 
 async def search_decks(
@@ -242,50 +304,113 @@ async def search_decks(
         f"archetype={archetype}, ftp_tier={ftp_tier}, sort_by={sort_by}, "
         f"min_games={min_games}, limit={limit}"
     )
-    db = get_database_service()
+    try:
+        if not isinstance(limit, int) or limit <= 0:
+            return {
+                "error": "Limit must be a positive integer.",
+                "error_type": "validation",
+                "suggestion": "Use a limit between 1 and 200."
+            }
+        if not isinstance(min_games, int) or min_games < 0:
+            return {
+                "error": "min_games must be a non-negative integer.",
+                "error_type": "validation",
+                "suggestion": "Use 0 or a positive integer."
+            }
 
-    # Parse card IDs
-    include_card_ids = None
-    if include_cards:
-        include_card_ids = [cid.strip()
-                            for cid in include_cards.split(",") if cid.strip()]
+        db = get_database_service()
 
-    exclude_card_ids = None
-    if exclude_cards:
-        exclude_card_ids = [cid.strip()
-                            for cid in exclude_cards.split(",") if cid.strip()]
+        # Parse card IDs
+        include_card_ids = None
+        if include_cards:
+            include_card_ids = [
+                cid.strip() for cid in include_cards.split(",") if cid.strip()
+            ]
 
-    # Convert string enums to actual enums
-    archetype_enum = None
-    if archetype:
-        try:
-            archetype_enum = DeckArchetype[archetype.upper()]
-        except KeyError:
-            logger.warning(f"Invalid archetype: {archetype}")
+        exclude_card_ids = None
+        if exclude_cards:
+            exclude_card_ids = [
+                cid.strip() for cid in exclude_cards.split(",") if cid.strip()
+            ]
 
-    ftp_tier_enum = None
-    if ftp_tier:
-        try:
-            ftp_tier_enum = FreeToPlayLevel[ftp_tier.upper()]
-        except KeyError:
-            logger.warning(f"Invalid ftp_tier: {ftp_tier}")
+        # Convert string enums to actual enums
+        archetype_enum = None
+        if archetype:
+            try:
+                archetype_enum = DeckArchetype[archetype.upper()]
+            except KeyError:
+                logger.warning(f"Invalid archetype: {archetype}")
+                return {
+                    "error": f"Invalid archetype: {archetype}.",
+                    "error_type": "validation",
+                    "suggestion": "Use a supported archetype like CYCLE or BEATDOWN."
+                }
 
-    # Convert string sort_by to enum
-    sort_by_enum = DeckSortBy.RECENT  # Default
-    if sort_by:
-        try:
-            sort_by_enum = DeckSortBy[sort_by.upper()]
-        except KeyError:
-            logger.warning(f"Invalid sort_by: {sort_by}, using RECENT")
+        ftp_tier_enum = None
+        if ftp_tier:
+            try:
+                ftp_tier_enum = FreeToPlayLevel[ftp_tier.upper()]
+            except KeyError:
+                logger.warning(f"Invalid ftp_tier: {ftp_tier}")
+                return {
+                    "error": f"Invalid ftp_tier: {ftp_tier}.",
+                    "error_type": "validation",
+                    "suggestion": "Use FRIENDLY, MODERATE, or PAYTOWIN."
+                }
 
-    decks, _ = await db.search_decks_with_stats(
-        include_card_ids=include_card_ids,
-        exclude_card_ids=exclude_card_ids,
-        archetype=archetype_enum,
-        ftp_tier=ftp_tier_enum,
-        sort_by=sort_by_enum,
-        min_games=min_games,
-        limit=limit
-    )
+        # Convert string sort_by to enum
+        sort_by_enum = DeckSortBy.RECENT  # Default
+        if sort_by:
+            try:
+                sort_by_enum = DeckSortBy[sort_by.upper()]
+            except KeyError:
+                logger.warning(f"Invalid sort_by: {sort_by}, using RECENT")
+                return {
+                    "error": f"Invalid sort_by: {sort_by}.",
+                    "error_type": "validation",
+                    "suggestion": "Use RECENT, WIN_RATE, GAMES_PLAYED, or WINS."
+                }
 
-    return {"decks": [deck.model_dump() for deck in decks]}
+        decks, _ = await db.search_decks_with_stats(
+            include_card_ids=include_card_ids,
+            exclude_card_ids=exclude_card_ids,
+            archetype=archetype_enum,
+            ftp_tier=ftp_tier_enum,
+            sort_by=sort_by_enum,
+            min_games=min_games,
+            limit=limit
+        )
+
+        return {"decks": [deck.model_dump() for deck in decks]}
+    except (DatabaseConnectionError, DatabaseQueryError) as e:
+        error_msg = f"Database error while searching decks: {e}"
+        logger.error(f"Tool: search_decks | {error_msg}")
+        return {
+            "error": "Deck data is temporarily unavailable.",
+            "error_type": "database",
+            "details": str(e),
+        }
+    except DatabaseDataError as e:
+        error_msg = f"Data parsing error while searching decks: {e}"
+        logger.error(f"Tool: search_decks | {error_msg}")
+        return {
+            "error": "Deck data could not be parsed.",
+            "error_type": "data_error",
+            "details": str(e),
+        }
+    except DatabaseServiceError as e:
+        error_msg = f"Database service error while searching decks: {e}"
+        logger.error(f"Tool: search_decks | {error_msg}")
+        return {
+            "error": "Deck service is temporarily unavailable.",
+            "error_type": "database",
+            "details": str(e),
+        }
+    except Exception as e:
+        error_msg = f"Unexpected error in search_decks: {e}"
+        logger.error(f"Tool: search_decks | {error_msg}", exc_info=True)
+        return {
+            "error": "Unexpected error while searching decks.",
+            "error_type": "unexpected",
+            "details": str(e)
+        }

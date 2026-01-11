@@ -60,7 +60,9 @@ interface DeckCardComponentProps {
 
 function DeckCardComponent({ deck }: DeckCardComponentProps) {
   const hasStats =
-    deck.games_played !== undefined && deck.games_played !== null;
+    deck.games_played !== undefined &&
+    deck.games_played !== null &&
+    deck.games_played >= 20;
   const winRate =
     deck.win_rate !== undefined && deck.win_rate !== null
       ? (deck.win_rate * 100).toFixed(1)

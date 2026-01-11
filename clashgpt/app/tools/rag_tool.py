@@ -12,8 +12,21 @@ from typing import Any
 from pydantic import BaseModel, Field
 from pymongo.errors import OperationFailure
 
-from app.services.embeddings import get_embedding_service
-from app.services.mongo_db import get_mongodb
+from app.services.embeddings import (
+    EmbeddingAPIError,
+    EmbeddingAuthError,
+    EmbeddingDataError,
+    EmbeddingNetworkError,
+    EmbeddingRateLimitError,
+    EmbeddingServiceError,
+    EmbeddingTimeoutError,
+    get_embedding_service,
+)
+from app.services.mongo_db import (
+    MongoDBConnectionError,
+    MongoDBServiceError,
+    get_mongodb,
+)
 from app.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -112,6 +125,21 @@ async def _semantic_search(query: str, match_count: int) -> list[SearchResult]:
 
         return search_results
 
+    except (EmbeddingAuthError, EmbeddingRateLimitError, EmbeddingTimeoutError) as e:
+        logger.error(
+            f"semantic_search_failed: query={query}, embedding_error={e!s}"
+        )
+        return []
+    except (EmbeddingNetworkError, EmbeddingAPIError, EmbeddingDataError) as e:
+        logger.error(
+            f"semantic_search_failed: query={query}, embedding_error={e!s}"
+        )
+        return []
+    except (MongoDBConnectionError, MongoDBServiceError) as e:
+        logger.error(
+            f"semantic_search_failed: query={query}, mongo_error={e!s}"
+        )
+        return []
     except OperationFailure as e:
         error_code = e.code if hasattr(e, "code") else None
         logger.error(
@@ -195,6 +223,11 @@ async def _text_search(query: str, match_count: int) -> list[SearchResult]:
 
         return search_results
 
+    except (MongoDBConnectionError, MongoDBServiceError) as e:
+        logger.error(
+            f"text_search_failed: query={query}, mongo_error={e!s}"
+        )
+        return []
     except OperationFailure as e:
         error_code = e.code if hasattr(e, "code") else None
         logger.error(
@@ -390,6 +423,23 @@ async def search_knowledge_base(
     )
 
     try:
+        if not isinstance(query, str) or not query.strip():
+            return (
+                "Knowledge base search requires a non-empty query. "
+                "Ask the user to clarify their question."
+            )
+
+        if not isinstance(match_count, int) or match_count <= 0:
+            return (
+                "Knowledge base search requires a positive match_count. "
+                "Use a value between 1 and 50."
+            )
+
+        if search_type not in {"hybrid", "semantic", "text"}:
+            return (
+                "Unknown search_type. Use 'hybrid', 'semantic', or 'text'."
+            )
+
         # Validate match count
         match_count = min(max(1, match_count), settings.max_match_count)
 
@@ -424,7 +474,17 @@ async def search_knowledge_base(
 
         return "\n".join(response_parts)
 
+    except (EmbeddingServiceError, MongoDBServiceError) as e:
+        error_msg = f"Knowledge base services unavailable: {e!s}"
+        logger.error(error_msg)
+        return (
+            "Knowledge base is temporarily unavailable due to a backend service issue. "
+            "Please retry shortly or continue without KB context."
+        )
     except Exception as e:
         error_msg = f"Error searching knowledge base: {e!s}"
         logger.exception(error_msg)
-        return error_msg
+        return (
+            "Knowledge base search failed unexpectedly. "
+            "Please retry or continue without KB context."
+        )

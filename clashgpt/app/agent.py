@@ -14,12 +14,15 @@
 # limitations under the License.
 
 import datetime
+import json
 import logging
 from zoneinfo import ZoneInfo
 
 from google.adk.agents import Agent
 from google.adk.apps.app import App
 from google.adk.models import Gemini
+from google.adk.models.llm_response import LlmResponse
+from google.adk.models.llm_request import LlmRequest
 from google.genai import types
 
 import os
@@ -35,7 +38,9 @@ from app.tools import (
     search_decks,
     search_knowledge_base,
 )
-
+from pydantic import BaseModel
+from google.adk.agents.callback_context import CallbackContext
+from app.models.models import Player
 logger = logging.getLogger(__name__)
 
 _, project_id = google.auth.default()
@@ -44,12 +49,43 @@ os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 
+class AgentState(BaseModel):
+    """State for the agent."""
+    player_tag: str | None
+    clan_tag: str | None
+    current_player_info: Player | None
+
+
+def on_before_agent(callback_context: CallbackContext):
+    """
+    Initialize recipe state if it doesn't exist.
+    """
+
+    if "player_tag" not in callback_context.state:
+        # Initialize with default recipe
+        player_tag = "unknown"
+        callback_context.state["player_tag"] = player_tag
+
+    if "clan_tag" not in callback_context.state:
+        # Initialize with default recipe
+        clan_tag = "unknown"
+        callback_context.state["clan_tag"] = clan_tag
+
+    if "current_player_info" not in callback_context.state:
+        # Initialize with default recipe
+        current_player_info = {}
+        callback_context.state["current_player_info"] = current_player_info
+
+    return None
+
+
 root_agent = Agent(
     name="root_agent",
     model=Gemini(
         model="gemini-2.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
+    before_agent_callback=on_before_agent,
     instruction="""
     You are ClashGPT, an expert Clash Royale AI assistant with comprehensive knowledge of game mechanics, strategies, and meta information.
 
@@ -314,7 +350,14 @@ root_agent = Agent(
   {"id":"27000008","name":"X-Bow"},
   {"id":"28000008","name":"Zap"},
   {"id":"26000052","name":"Zappies"}
-
+  
+  Current players tag: {{player_tag}}
+  note: if tag is unknown then the user has not provided their tag. do not ask for it unless needed
+  
+  Current players tag: {{clan_tag}}
+  note: if tag is unknown then the user has not provided their clan tag. do not ask for it unless needed
+     
+  Current Player information: {{current_player_info}}
     """,
     tools=[
         get_clan_info,
