@@ -362,65 +362,6 @@ function Chat({ setThreadId }: ChatProps) {
     },
   });
 
-  // Render deck results when backend calls get_top_decks
-  useRenderToolCall({
-    name: "get_top_decks",
-    render: ({ args, result, status }) => {
-      console.log("[get_top_decks render]", { status, args, result });
-
-      // Show loading state while fetching
-      if (status !== "complete") {
-        // Customize loading message based on sort_by and archetype
-        let loadingMessage = "Fetching top meta decks";
-        if (args.sort_by === "WIN_RATE") {
-          loadingMessage = args.archetype
-            ? `Finding best ${args.archetype.toLowerCase()} decks by win rate`
-            : "Finding highest win rate decks";
-        } else if (args.sort_by === "GAMES_PLAYED") {
-          loadingMessage = args.archetype
-            ? `Finding most popular ${args.archetype.toLowerCase()} decks`
-            : "Finding most popular decks";
-        } else if (args.sort_by === "WINS") {
-          loadingMessage = args.archetype
-            ? `Finding ${args.archetype.toLowerCase()} decks with most wins`
-            : "Finding decks with most wins";
-        } else if (args.archetype) {
-          loadingMessage = `Fetching top ${args.archetype.toLowerCase()} decks`;
-        }
-
-        return (
-          <div className="bg-primary/20 border border-primary/40 text-white p-6 rounded-xl max-w-2xl my-4">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl animate-spin">⚙️</span>
-              <span className="text-lg font-medium">{loadingMessage}...</span>
-            </div>
-          </div>
-        );
-      }
-
-      if (hasToolError(result)) {
-        return renderToolError();
-      }
-
-      // Show error state if no result
-      if (!result || !result.decks) {
-        return (
-          <div className="bg-destructive/20 border border-destructive/40 text-white p-6 rounded-xl max-w-2xl my-4">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">❌</span>
-              <span className="text-lg font-medium">
-                Could not fetch top decks
-              </span>
-            </div>
-          </div>
-        );
-      }
-
-      // Show deck results
-      return <DeckSearchResults results={result} className="my-4" />;
-    },
-  });
-
   // Render knowledge search when backend calls search_knowledge_base
   useRenderToolCall({
     name: "search_knowledge_base",
@@ -464,7 +405,6 @@ function Chat({ setThreadId }: ChatProps) {
         name === "get_clan_info" ||
         name === "search_clans" ||
         name === "search_decks" ||
-        name === "get_top_decks" ||
         name === "search_knowledge_base"
       ) {
         return <></>;

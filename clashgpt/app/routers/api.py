@@ -12,19 +12,156 @@ from fastapi import APIRouter, HTTPException, Query
 from app.models.models import (
     Card,
     CardList,
-    Deck,
-    DeckArchetype,
     DeckSortBy,
-    DeckWithStats,
-    FreeToPlayLevel,
     Locations,
-    PaginatedDecks,
-    PaginatedDecksWithStats,
     Rarity,
 )
 from app.services.database import get_database_service
 
 router = APIRouter(prefix="/api", tags=["api"])
+
+CARD_ID_TO_NAME = {
+    "26000072": "Archer Queen",
+    "26000001": "Archers",
+    "28000001": "Arrows",
+    "26000015": "Baby Dragon",
+    "26000006": "Balloon",
+    "26000046": "Bandit",
+    "28000015": "Barbarian Barrel",
+    "27000005": "Barbarian Hut",
+    "26000008": "Barbarians",
+    "26000049": "Bats",
+    "26000068": "Battle Healer",
+    "26000036": "Battle Ram",
+    "26000102": "Berserker",
+    "27000004": "Bomb Tower",
+    "26000013": "Bomber",
+    "26000103": "Boss Bandit",
+    "26000034": "Bowler",
+    "27000000": "Cannon",
+    "26000054": "Cannon Cart",
+    "28000013": "Clone",
+    "26000027": "Dark Prince",
+    "26000040": "Dart Goblin",
+    "28000014": "Earthquake",
+    "26000063": "Electro Dragon",
+    "26000085": "Electro Giant",
+    "26000084": "Electro Spirit",
+    "26000042": "Electro Wizard",
+    "26000043": "Elite Barbarians",
+    "27000007": "Elixir Collector",
+    "26000067": "Elixir Golem",
+    "26000045": "Executioner",
+    "26000031": "Fire Spirit",
+    "28000000": "Fireball",
+    "26000064": "Firecracker",
+    "26000061": "Fisherman",
+    "26000057": "Flying Machine",
+    "28000005": "Freeze",
+    "27000010": "Furnace",
+    "26000003": "Giant",
+    "26000020": "Giant Skeleton",
+    "28000017": "Giant Snowball",
+    "28000004": "Goblin Barrel",
+    "27000012": "Goblin Cage",
+    "28000024": "Goblin Curse",
+    "26000095": "Goblin Demolisher",
+    "27000013": "Goblin Drill",
+    "26000041": "Goblin Gang",
+    "26000060": "Goblin Giant",
+    "27000001": "Goblin Hut",
+    "26000096": "Goblin Machine",
+    "26000002": "Goblins",
+    "26000099": "Goblinstein",
+    "26000074": "Golden Knight",
+    "26000009": "Golem",
+    "28000010": "Graveyard",
+    "26000025": "Guards",
+    "28000016": "Heal Spirit",
+    "26000021": "Hog Rider",
+    "26000044": "Hunter",
+    "26000038": "Ice Golem",
+    "26000030": "Ice Spirit",
+    "26000023": "Ice Wizard",
+    "26000037": "Inferno Dragon",
+    "27000003": "Inferno Tower",
+    "26000000": "Knight",
+    "26000029": "Lava Hound",
+    "28000007": "Lightning",
+    "26000093": "Little Prince",
+    "26000035": "Lumberjack",
+    "26000062": "Magic Archer",
+    "26000055": "Mega Knight",
+    "26000039": "Mega Minion",
+    "26000065": "Mighty Miner",
+    "26000032": "Miner",
+    "26000018": "Mini P.E.K.K.A",
+    "26000022": "Minion Horde",
+    "26000005": "Minions",
+    "28000006": "Mirror",
+    "26000077": "Monk",
+    "27000002": "Mortar",
+    "26000083": "Mother Witch",
+    "26000014": "Musketeer",
+    "26000048": "Night Witch",
+    "26000004": "P.E.K.K.A",
+    "26000087": "Phoenix",
+    "28000009": "Poison",
+    "26000016": "Prince",
+    "26000026": "Princess",
+    "28000002": "Rage",
+    "26000051": "Ram Rider",
+    "26000053": "Rascals",
+    "28000003": "Rocket",
+    "28000018": "Royal Delivery",
+    "26000050": "Royal Ghost",
+    "26000024": "Royal Giant",
+    "26000059": "Royal Hogs",
+    "26000047": "Royal Recruits",
+    "26000101": "Rune Giant",
+    "26000012": "Skeleton Army",
+    "26000056": "Skeleton Barrel",
+    "26000080": "Skeleton Dragons",
+    "26000069": "Skeleton King",
+    "26000010": "Skeletons",
+    "26000033": "Sparky",
+    "26000019": "Spear Goblins",
+    "28000025": "Spirit Empress",
+    "26000097": "Suspicious Bush",
+    "27000006": "Tesla",
+    "28000011": "The Log",
+    "26000028": "Three Musketeers",
+    "27000009": "Tombstone",
+    "28000012": "Tornado",
+    "26000011": "Valkyrie",
+    "28000026": "Vines",
+    "28000023": "Void",
+    "26000058": "Wall Breakers",
+    "26000007": "Witch",
+    "26000017": "Wizard",
+    "27000008": "X-Bow",
+    "28000008": "Zap",
+    "26000052": "Zappies",
+}
+
+
+def _parse_deck_id(deck_id: str) -> list[tuple[str, int]]:
+    cards = []
+    for entry in deck_id.split("|"):
+        try:
+            card_id, evo_level = entry.split("_", 1)
+            cards.append((card_id, int(evo_level)))
+        except ValueError:
+            continue
+    return cards
+
+
+def _variant_from_evolution_level(evolution_level: int) -> str:
+    if evolution_level == 1:
+        return "evolved"
+    if evolution_level == 2:
+        return "hero"
+    return "normal"
 
 
 # ===== ROOT ENDPOINT =====
@@ -56,49 +193,18 @@ async def list_endpoints():
                 }
             },
             "decks": {
-                "GET /api/decks/top": {
-                    "description": "Get top decks ordered by most recently seen",
-                    "parameters": {
-                        "limit": "Optional - Maximum number of decks (1-200, default: 50)",
-                        "archetype": "Optional - Filter by archetype (CYCLE, BEATDOWN, BRIDGESPAM, MIDLADDERMENACE, BAIT, CHIP, SIEGE)"
-                    },
-                    "example": "/api/decks/top?limit=10&archetype=CYCLE"
-                },
-                "GET /api/decks/search": {
-                    "description": "Search for decks with various filters (paginated)",
+                "GET /api/decks": {
+                    "description": "Search and filter decks with stats (paginated)",
                     "parameters": {
                         "include": "Optional - Comma-separated card IDs that must be in deck",
                         "exclude": "Optional - Comma-separated card IDs that must not be in deck",
-                        "archetype": "Optional - Filter by archetype",
-                        "ftp_tier": "Optional - Filter by FTP tier (FRIENDLY, MODERATE, PAYTOWIN)",
-                        "page": "Optional - Page number (1-indexed, default: 1)",
-                        "page_size": "Optional - Results per page (1-200, default: 24)"
-                    },
-                    "example": "/api/decks/search?include=26000000,26000001&archetype=CYCLE&ftp_tier=FRIENDLY&page=1&page_size=24"
-                },
-                "GET /api/decks/top-stats": {
-                    "description": "Get top decks with stats, sortable by various metrics",
-                    "parameters": {
-                        "limit": "Optional - Maximum number of decks (1-200, default: 10)",
-                        "archetype": "Optional - Filter by archetype",
-                        "sort_by": "Optional - Sort by (RECENT, GAMES_PLAYED, WIN_RATE, WINS, default: RECENT)",
-                        "min_games": "Optional - Minimum games played (default: 0)"
-                    },
-                    "example": "/api/decks/top-stats?limit=50&sort_by=WIN_RATE&min_games=10"
-                },
-                "GET /api/decks/search-stats": {
-                    "description": "Search for decks with stats and various filters (paginated)",
-                    "parameters": {
-                        "include": "Optional - Comma-separated card IDs that must be in deck",
-                        "exclude": "Optional - Comma-separated card IDs that must not be in deck",
-                        "archetype": "Optional - Filter by archetype",
-                        "ftp_tier": "Optional - Filter by FTP tier",
                         "sort_by": "Optional - Sort by (RECENT, GAMES_PLAYED, WIN_RATE, WINS, default: RECENT)",
                         "min_games": "Optional - Minimum games played (default: 0)",
                         "page": "Optional - Page number (1-indexed, default: 1)",
-                        "page_size": "Optional - Results per page (1-200, default: 24)"
+                        "page_size": "Optional - Results per page (1-200, default: 24)",
+                        "include_cards": "Optional - Include card details and variants for each deck (default: false)"
                     },
-                    "example": "/api/decks/search-stats?include=26000000&sort_by=WIN_RATE&min_games=20&page=1&page_size=24"
+                    "example": "/api/decks?include=26000000,26000001&sort_by=WIN_RATE&min_games=20&include_cards=true&page=1&page_size=24"
                 }
             },
             "locations": {
@@ -111,8 +217,6 @@ async def list_endpoints():
         },
         "enums": {
             "Rarity": ["COMMON", "RARE", "EPIC", "LEGENDARY", "CHAMPION"],
-            "DeckArchetype": ["CYCLE", "BEATDOWN", "BRIDGESPAM", "MIDLADDERMENACE", "BAIT", "CHIP", "SIEGE", "CONTROL"],
-            "FreeToPlayLevel": ["FRIENDLY", "MODERATE", "PAYTOWIN"],
             "DeckSortBy": ["RECENT", "GAMES_PLAYED", "WIN_RATE", "WINS"]
         },
         "documentation": "/docs"
@@ -123,7 +227,8 @@ async def list_endpoints():
 
 @router.get("/cards", response_model=CardList)
 async def get_cards(
-    rarity: Annotated[Rarity | None, Query(description="Filter by card rarity")] = None
+    rarity: Annotated[Rarity | None, Query(
+        description="Filter by card rarity")] = None
 ):
     """
     Get all cards, optionally filtered by rarity.
@@ -168,201 +273,124 @@ async def get_card_by_id(card_id: str):
 
 # ===== DECKS ENDPOINTS =====
 
-@router.get("/decks/top", response_model=list[Deck])
-async def get_top_decks(
-    limit: Annotated[int, Query(ge=1, le=200)] = 10,
-    archetype: Annotated[DeckArchetype | None, Query(description="Filter by deck archetype")] = None
-):
-    """
-    Get top decks ordered by most recently seen.
-
-    Args:
-        limit: Maximum number of decks to return (1-200, default: 10)
-        archetype: Optional archetype filter (CYCLE, BEATDOWN, BRIDGESPAM, etc.)
-
-    Returns:
-        List of top decks
-    """
-    db = get_database_service()
-    return await db.get_top_decks(limit=limit, archetype=archetype)
-
-
-@router.get("/decks/search", response_model=PaginatedDecks)
+@router.get("/decks")
 async def search_decks(
-    include: Annotated[str | None, Query(description="Comma-separated card IDs that must be in deck")] = None,
-    exclude: Annotated[str | None, Query(description="Comma-separated card IDs that must not be in deck")] = None,
-    archetype: Annotated[DeckArchetype | None, Query(description="Filter by deck archetype")] = None,
-    ftp_tier: Annotated[FreeToPlayLevel | None, Query(description="Filter by free-to-play tier")] = None,
+    include: Annotated[str | None, Query(
+        description="Comma-separated card IDs that must be in deck")] = None,
+    exclude: Annotated[str | None, Query(
+        description="Comma-separated card IDs that must not be in deck")] = None,
+    sort_by: Annotated[DeckSortBy, Query(
+        description="Sort by metric")] = DeckSortBy.RECENT,
+    min_games: Annotated[int, Query(
+        ge=0, description="Minimum games played")] = 0,
     page: Annotated[int, Query(ge=1)] = 1,
-    page_size: Annotated[int, Query(ge=1, le=200)] = 24
+    page_size: Annotated[int, Query(ge=1, le=200)] = 24,
+    include_cards: Annotated[bool, Query(
+        description="Include card details and variants")] = False
 ):
     """
-    Search for decks with various filters (paginated).
+    Search for decks with stats and filters (paginated).
 
     Args:
         include: Comma-separated list of card IDs that must be in the deck
         exclude: Comma-separated list of card IDs that must not be in the deck
-        archetype: Optional archetype filter (CYCLE, BEATDOWN, BRIDGESPAM, etc.)
-        ftp_tier: Optional FTP tier filter (FRIENDLY, MODERATE, PAYTOWIN)
+        sort_by: How to sort results (RECENT, GAMES_PLAYED, WIN_RATE, WINS, default: RECENT)
+        min_games: Minimum number of games played (default: 0)
         page: Page number (1-indexed, default: 1)
         page_size: Results per page (1-200, default: 24)
+        include_cards: Include card details and variants for each deck (default: false)
 
     Returns:
         Paginated response with decks matching the search criteria and pagination metadata
 
     Examples:
-        - /decks/search?include=26000000,26000001&archetype=CYCLE&page=1&page_size=24
-        - /decks/search?exclude=26000010&ftp_tier=FRIENDLY&page=2&page_size=12
-        - /decks/search?archetype=BEATDOWN&page=1
+        - /decks?include=26000000,26000001&sort_by=WIN_RATE&min_games=20&include_cards=true&page=1&page_size=24
+        - /decks?exclude=26000010&sort_by=WINS&page=2&page_size=12
+        - /decks?sort_by=GAMES_PLAYED&page=1
     """
     db = get_database_service()
 
-    # Parse comma-separated card IDs
-    include_card_ids = include.split(",") if include else None
-    exclude_card_ids = exclude.split(",") if exclude else None
+    include_card_ids = None
+    if include:
+        include_card_ids = []
+        for cid in include.split(","):
+            cid = cid.strip()
+            if not cid:
+                continue
+            try:
+                include_card_ids.append(int(cid))
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid include card id: {cid}"
+                ) from exc
 
-    # Clean up whitespace
-    if include_card_ids:
-        include_card_ids = [cid.strip()
-                            for cid in include_card_ids if cid.strip()]
-    if exclude_card_ids:
-        exclude_card_ids = [cid.strip()
-                            for cid in exclude_card_ids if cid.strip()]
+    exclude_card_ids = None
+    if exclude:
+        exclude_card_ids = []
+        for cid in exclude.split(","):
+            cid = cid.strip()
+            if not cid:
+                continue
+            try:
+                exclude_card_ids.append(int(cid))
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid exclude card id: {cid}"
+                ) from exc
 
-    # Calculate offset from page
     offset = (page - 1) * page_size
 
-    # Get decks and total count
-    decks, total = await db.search_decks(
-        include_card_ids=include_card_ids,
-        exclude_card_ids=exclude_card_ids,
-        archetype=archetype,
-        ftp_tier=ftp_tier,
-        limit=page_size,
-        offset=offset
-    )
-
-    # Calculate pagination metadata
-    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
-    has_next = page < total_pages
-    has_previous = page > 1
-
-    return PaginatedDecks(
-        decks=decks,
-        total=total,
-        page=page,
-        page_size=page_size,
-        total_pages=total_pages,
-        has_next=has_next,
-        has_previous=has_previous
-    )
-
-
-@router.get("/decks/top-stats", response_model=list[DeckWithStats])
-async def get_top_decks_with_stats(
-    limit: Annotated[int, Query(ge=1, le=200)] = 10,
-    archetype: Annotated[DeckArchetype | None, Query(description="Filter by deck archetype")] = None,
-    sort_by: Annotated[DeckSortBy, Query(description="Sort by metric")] = DeckSortBy.RECENT,
-    min_games: Annotated[int, Query(ge=0, description="Minimum games played")] = 0
-):
-    """
-    Get top decks with stats, sortable by various metrics.
-
-    Args:
-        limit: Maximum number of decks to return (1-200, default: 10)
-        archetype: Optional archetype filter (CYCLE, BEATDOWN, BRIDGESPAM, etc.)
-        sort_by: How to sort results (RECENT, GAMES_PLAYED, WIN_RATE, WINS, default: RECENT)
-        min_games: Minimum number of games played (default: 0)
-
-    Returns:
-        List of top decks with stats
-
-    Examples:
-        - /decks/top-stats?limit=50&sort_by=WIN_RATE&min_games=10
-        - /decks/top-stats?archetype=CYCLE&sort_by=GAMES_PLAYED
-    """
-    db = get_database_service()
-    return await db.get_top_decks_with_stats(
-        limit=limit,
-        archetype=archetype,
-        sort_by=sort_by,
-        min_games=min_games
-    )
-
-
-@router.get("/decks/search-stats", response_model=PaginatedDecksWithStats)
-async def search_decks_with_stats(
-    include: Annotated[str | None, Query(description="Comma-separated card IDs that must be in deck")] = None,
-    exclude: Annotated[str | None, Query(description="Comma-separated card IDs that must not be in deck")] = None,
-    archetype: Annotated[DeckArchetype | None, Query(description="Filter by deck archetype")] = None,
-    ftp_tier: Annotated[FreeToPlayLevel | None, Query(description="Filter by free-to-play tier")] = None,
-    sort_by: Annotated[DeckSortBy, Query(description="Sort by metric")] = DeckSortBy.RECENT,
-    min_games: Annotated[int, Query(ge=0, description="Minimum games played")] = 0,
-    page: Annotated[int, Query(ge=1)] = 1,
-    page_size: Annotated[int, Query(ge=1, le=200)] = 24
-):
-    """
-    Search for decks with stats and various filters (paginated).
-
-    Args:
-        include: Comma-separated list of card IDs that must be in the deck
-        exclude: Comma-separated list of card IDs that must not be in the deck
-        archetype: Optional archetype filter (CYCLE, BEATDOWN, BRIDGESPAM, etc.)
-        ftp_tier: Optional FTP tier filter (FRIENDLY, MODERATE, PAYTOWIN)
-        sort_by: How to sort results (RECENT, GAMES_PLAYED, WIN_RATE, WINS, default: RECENT)
-        min_games: Minimum number of games played (default: 0)
-        page: Page number (1-indexed, default: 1)
-        page_size: Results per page (1-200, default: 24)
-
-    Returns:
-        Paginated response with decks matching the search criteria and pagination metadata
-
-    Examples:
-        - /decks/search-stats?include=26000000&sort_by=WIN_RATE&min_games=20
-        - /decks/search-stats?archetype=CYCLE&ftp_tier=FRIENDLY&sort_by=GAMES_PLAYED&page=1
-        - /decks/search-stats?exclude=26000010&min_games=50&sort_by=WINS&page=1&page_size=12
-    """
-    db = get_database_service()
-
-    # Parse comma-separated card IDs
-    include_card_ids = include.split(",") if include else None
-    exclude_card_ids = exclude.split(",") if exclude else None
-
-    # Clean up whitespace
-    if include_card_ids:
-        include_card_ids = [cid.strip() for cid in include_card_ids if cid.strip()]
-    if exclude_card_ids:
-        exclude_card_ids = [cid.strip() for cid in exclude_card_ids if cid.strip()]
-
-    # Calculate offset from page
-    offset = (page - 1) * page_size
-
-    # Get decks and total count
     decks, total = await db.search_decks_with_stats(
         include_card_ids=include_card_ids,
         exclude_card_ids=exclude_card_ids,
-        archetype=archetype,
-        ftp_tier=ftp_tier,
         sort_by=sort_by,
         min_games=min_games,
         limit=page_size,
         offset=offset
     )
 
-    # Calculate pagination metadata
+    deck_payloads = []
+    for deck in decks:
+        payload = {
+            "deck_id": deck.deck_id,
+            "avg_elixir": deck.avg_elixir,
+            "games_played": deck.games_played,
+            "wins": deck.wins,
+            "losses": deck.losses,
+            "win_rate": deck.win_rate,
+            "last_seen": deck.last_seen,
+        }
+
+        if include_cards:
+            cards = []
+            for card_id, evolution_level in _parse_deck_id(deck.deck_id):
+                card_name = CARD_ID_TO_NAME.get(card_id)
+                if card_name:
+                    cards.append({
+                        "card_id": card_id,
+                        "card_name": card_name,
+                        "evolution_level": evolution_level,
+                        "variant": _variant_from_evolution_level(evolution_level),
+                    })
+            payload["cards"] = cards
+
+        deck_payloads.append(payload)
+
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
     has_next = page < total_pages
     has_previous = page > 1
 
-    return PaginatedDecksWithStats(
-        decks=decks,
-        total=total,
-        page=page,
-        page_size=page_size,
-        total_pages=total_pages,
-        has_next=has_next,
-        has_previous=has_previous
-    )
+    return {
+        "decks": deck_payloads,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_next": has_next,
+        "has_previous": has_previous
+    }
 
 
 # ===== LOCATIONS ENDPOINTS =====

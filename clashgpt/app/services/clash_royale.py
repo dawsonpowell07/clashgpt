@@ -328,7 +328,7 @@ class ClashRoyaleService:
                 rarity = Rarity.COMMON
 
             return Card(
-                id=str(card_data["id"]),
+                card_id=int(card_data["id"]),
                 name=card_data["name"],
                 elixir_cost=elixir_cost,
                 icon_urls=card_data.get("iconUrls", {}),

@@ -83,7 +83,6 @@ async def populate_database(cards):
                         elixir_cost = EXCLUDED.elixir_cost,
                         rarity = EXCLUDED.rarity,
                         icon_urls = EXCLUDED.icon_urls,
-                        updated_at = now()
                     """,
                     card.id,
                     card.name,

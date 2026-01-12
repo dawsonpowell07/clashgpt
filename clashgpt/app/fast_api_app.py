@@ -29,6 +29,7 @@ from google.cloud import logging as google_cloud_logging
 from app.agent import root_agent
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
+from app.tools.serialization import serialize_dataclass
 from app.routers.api import router as api_router
 from app.services.database import get_database_service
 from app.services.mongo_db import get_mongodb
@@ -178,7 +179,7 @@ def collect_feedback(feedback: Feedback) -> dict[str, str]:
     Returns:
         Success message
     """
-    logger.log_struct(feedback.model_dump(), severity="INFO")
+    logger.log_struct(serialize_dataclass(feedback), severity="INFO")
     return {"status": "success"}
 
 

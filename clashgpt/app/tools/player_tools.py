@@ -2,6 +2,7 @@ import logging
 
 from google.adk.tools.tool_context import ToolContext
 
+from app.tools.serialization import serialize_dataclass
 from app.services.clash_royale import (
     ClashRoyaleAPIError,
     ClashRoyaleAuthError,
@@ -38,7 +39,7 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
         async with ClashRoyaleService() as service:
             player = await service.get_player(player_tag)
             tool_context.state["current_player_info"] = player
-            return player.model_dump()
+            return serialize_dataclass(player)
 
     except ClashRoyaleNotFoundError as e:
         error_msg = f"Player not found: {player_tag}. Please verify the player tag is correct."
@@ -131,7 +132,7 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
     try:
         async with ClashRoyaleService() as service:
             battle_log = await service.get_player_battle_log(player_tag, limit=limit)
-            return battle_log.model_dump()
+            return serialize_dataclass(battle_log)
 
     except ClashRoyaleNotFoundError as e:
         error_msg = f"Player not found: {player_tag}. Please verify the player tag is correct."
@@ -245,7 +246,7 @@ async def get_top_players(location_id: int = 57000249, limit: int = 10) -> dict:
     try:
         async with ClashRoyaleService() as service:
             leaderboard = await service.get_player_rankings(location_id, limit=limit)
-            return leaderboard.model_dump()
+            return serialize_dataclass(leaderboard)
 
     except ClashRoyaleNotFoundError as e:
         error_msg = f"Location not found: {location_id}. Please verify the location ID is valid."

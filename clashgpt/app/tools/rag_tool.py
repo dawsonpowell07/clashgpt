@@ -7,9 +7,8 @@ using MongoDB Atlas with Reciprocal Rank Fusion for result merging.
 
 import asyncio
 import logging
+from dataclasses import dataclass, field
 from typing import Any
-
-from pydantic import BaseModel, Field
 from pymongo.errors import OperationFailure
 
 from app.services.embeddings import (
@@ -32,20 +31,17 @@ from app.settings import settings
 logger = logging.getLogger(__name__)
 
 
-class SearchResult(BaseModel):
+@dataclass
+class SearchResult:
     """Model for search results."""
 
-    chunk_id: str = Field(...,
-                          description="MongoDB ObjectId of chunk as string")
-    document_id: str = Field(...,
-                             description="Parent document ObjectId as string")
-    content: str = Field(..., description="Chunk text content")
-    similarity: float = Field(..., description="Relevance score (0-1)")
-    metadata: dict[str, Any] = Field(
-        default_factory=dict, description="Chunk metadata")
-    document_title: str = Field(..., description="Title from document lookup")
-    document_source: str = Field(...,
-                                 description="Source from document lookup")
+    chunk_id: str
+    document_id: str
+    content: str
+    similarity: float
+    metadata: dict[str, Any] = field(default_factory=dict)
+    document_title: str = ""
+    document_source: str = ""
 
 
 async def _semantic_search(query: str, match_count: int) -> list[SearchResult]:

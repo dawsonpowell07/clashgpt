@@ -32,13 +32,12 @@ from app.tools import (
     get_clan_info,
     get_player_battle_log,
     get_player_info,
-    get_top_decks,
     get_top_players,
     search_clans,
     search_decks,
     search_knowledge_base,
 )
-from pydantic import BaseModel
+from dataclasses import dataclass
 from google.adk.agents.callback_context import CallbackContext
 from app.models.models import Player
 logger = logging.getLogger(__name__)
@@ -49,7 +48,8 @@ os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 
-class AgentState(BaseModel):
+@dataclass
+class AgentState:
     """State for the agent."""
     player_tag: str | None
     clan_tag: str | None
@@ -158,9 +158,9 @@ root_agent = Agent(
     - **Player stats/rankings** → Use get_player_info, get_player_battle_log, get_top_players
     - **Clan information** → Use get_clan_info, search_clans
     - **Finding clans** → Use search_clans with filters (name, location, members, score)
-    - **Current meta decks** → Use get_top_decks with performance stats (win_rate, games_played)
+    - **Current meta decks** → Use search_decks with sort_by and limit
     - **Deck building with specific cards** → Use search_decks with include_cards and sort_by
-    - **Best/highest win rate decks** → Use get_top_decks or search_decks with sort_by="WIN_RATE" and min_games
+    - **Best/highest win rate decks** → Use search_decks with sort_by="WIN_RATE" and min_games
     - **Greetings/small talk** → Respond naturally without tools
     - Questions about yourself → Answer directly
 
@@ -199,18 +199,16 @@ root_agent = Agent(
     - "Search for clans in USA with 30+ members" → search_clans(location_id=57000249, min_members=30)
     - "Find competitive clans" → search_clans(min_members=45, min_score=60000, limit=10)
 
-    ### Deck Queries (Deck tools with performance stats):
-    - "Top meta decks" → get_top_decks(limit=20, sort_by="RECENT")
-    - "Best cycle decks" → get_top_decks(archetype="CYCLE", sort_by="WIN_RATE", min_games=15)
-    - "Highest win rate decks" → get_top_decks(sort_by="WIN_RATE", min_games=20, limit=10)
-    - "Most popular decks" → get_top_decks(sort_by="GAMES_PLAYED", limit=20)
+    ### Deck Queries (Deck tool with performance stats):
+    - "Top meta decks" → search_decks(limit=20, sort_by="RECENT")
+    - "Highest win rate decks" → search_decks(sort_by="WIN_RATE", min_games=20, limit=10)
+    - "Most popular decks" → search_decks(sort_by="GAMES_PLAYED", limit=20)
     - "Hog Rider decks with best win rate" → search_decks(include_cards="26000021", sort_by="WIN_RATE", min_games=15)
     - "Decks with Golem and Night Witch" → search_decks(include_cards="26000009,26000048", sort_by="RECENT")
-    - "F2P beatdown decks by win rate" → search_decks(archetype="BEATDOWN", ftp_tier="FRIENDLY", sort_by="WIN_RATE", min_games=10)
-    - "Most played siege decks" → get_top_decks(archetype="SIEGE", sort_by="GAMES_PLAYED")
+    - "Most played decks with X-Bow" → search_decks(include_cards="27000008", sort_by="GAMES_PLAYED", min_games=10)
 
     ### Smart Multi-Tool Queries:
-    - "What's the current meta and how do I play beatdown?" → get_top_decks + search_knowledge_base for beatdown strategy
+    - "What's the current meta and how do I play beatdown?" → search_decks + search_knowledge_base for beatdown strategy
     - "Show me top Hog decks and explain how cycle decks work" → search_decks + search_knowledge_base
     - "What cards have evolutions?" → search_knowledge_base only (conceptual info)
     - "Give me an X-Bow deck and explain siege strategy" → search_decks + search_knowledge_base
@@ -364,7 +362,6 @@ root_agent = Agent(
         get_player_info,
         get_player_battle_log,
         get_top_players,
-        get_top_decks,
         search_clans,
         search_decks,
         search_knowledge_base,

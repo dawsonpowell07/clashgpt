@@ -16,12 +16,11 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.models.models import (
     Card,
     CardList,
+    CardStats,
     Deck,
-    DeckArchetype,
     DeckSortBy,
     DeckStats,
     DeckWithStats,
-    FreeToPlayLevel,
     Location,
     Locations,
     Rarity,
@@ -151,7 +150,7 @@ class DatabaseService:
         try:
             async with self.async_session() as session:
                 stmt = text(
-                    "SELECT id, name, elixir_cost, rarity, icon_urls FROM cards ORDER BY name"
+                    "SELECT card_id, name, elixir_cost, rarity, icon_urls FROM cards ORDER BY name"
                 )
                 result = await session.execute(stmt)
                 rows = result.fetchall()
@@ -160,7 +159,7 @@ class DatabaseService:
                 for row in rows:
                     try:
                         card = Card(
-                            id=row[0],
+                            card_id=row[0],
                             name=row[1],
                             elixir_cost=row[2],
                             rarity=Rarity(row[3]),
@@ -188,7 +187,7 @@ class DatabaseService:
                 f"Unexpected error while fetching cards: {e!s}"
             ) from e
 
-    async def get_card_by_id(self, card_id: str) -> Card | None:
+    async def get_card_by_id(self, card_id: int) -> Card | None:
         """
         Get a card by its ID.
 
@@ -202,7 +201,7 @@ class DatabaseService:
         try:
             async with self.async_session() as session:
                 stmt = text(
-                    "SELECT id, name, elixir_cost, rarity, icon_urls FROM cards WHERE id = :card_id"
+                    "SELECT card_id, name, elixir_cost, rarity, icon_urls FROM cards WHERE card_id = :card_id"
                 )
                 result = await session.execute(stmt, {"card_id": card_id})
                 row = result.fetchone()
@@ -210,7 +209,7 @@ class DatabaseService:
                 if row:
                     try:
                         return Card(
-                            id=row[0],
+                            card_id=row[0],
                             name=row[1],
                             elixir_cost=row[2],
                             rarity=Rarity(row[3]),
@@ -249,7 +248,7 @@ class DatabaseService:
         try:
             async with self.async_session() as session:
                 stmt = text(
-                    "SELECT id, name, elixir_cost, rarity, icon_urls FROM cards WHERE rarity = :rarity ORDER BY name"
+                    "SELECT card_id, name, elixir_cost, rarity, icon_urls FROM cards WHERE rarity = :rarity ORDER BY name"
                 )
                 result = await session.execute(stmt, {"rarity": rarity.value})
                 rows = result.fetchall()
@@ -258,7 +257,7 @@ class DatabaseService:
                 for row in rows:
                     try:
                         card = Card(
-                            id=row[0],
+                            card_id=row[0],
                             name=row[1],
                             elixir_cost=row[2],
                             rarity=Rarity(row[3]),
@@ -285,262 +284,447 @@ class DatabaseService:
                 f"Unexpected error while fetching cards by rarity: {e!s}"
             ) from e
 
-    # ===== DECKS ENDPOINTS =====
+    # ===== CARD ANALYTICS =====
 
-    async def get_top_decks(
+    async def get_card_win_rates(
         self,
-        limit: int = 50,
-        archetype: DeckArchetype | None = None
-    ) -> list[Deck]:
+        season_id: int | None = None,
+        league: str | None = None,
+        min_uses: int = 100,
+        limit: int = 50
+    ) -> list[CardStats]:
         """
-        Get top decks, optionally filtered by archetype.
+        Get card win rates calculated from card_usage_facts.
 
         Args:
-            limit: Maximum number of decks to return (default: 50)
-            archetype: Optional archetype to filter by
-
-        Returns:
-            List of Deck objects ordered by last_seen_at (most recent first)
-        """
-        logger.info(
-            f"DB query: get_top_decks | limit={limit}, archetype={archetype.value if archetype else None}"
-        )
-        try:
-            async with self.async_session() as session:
-                if archetype:
-                    stmt = text("""
-                        SELECT id, deck_hash, cards, avg_elixir, archetype, ftp_tier
-                        FROM decks
-                        WHERE archetype = :archetype
-                        ORDER BY last_seen_at DESC
-                        LIMIT :limit
-                    """)
-                    result = await session.execute(
-                        stmt, {"archetype": archetype.value, "limit": limit}
-                    )
-                else:
-                    stmt = text("""
-                        SELECT id, deck_hash, cards, avg_elixir, archetype, ftp_tier
-                        FROM decks
-                        ORDER BY last_seen_at DESC
-                        LIMIT :limit
-                    """)
-                    result = await session.execute(stmt, {"limit": limit})
-
-                rows = result.fetchall()
-                decks = []
-                for row in rows:
-                    try:
-                        deck = Deck(
-                            id=row[0],
-                            deck_hash=row[1],
-                            cards=row[2],
-                            avg_elixir=float(row[3]),
-                            archetype=DeckArchetype(
-                                row[4]) if row[4] else DeckArchetype.BEATDOWN,
-                            ftp_tier=FreeToPlayLevel(
-                                row[5]) if row[5] else FreeToPlayLevel.MODERATE
-                        )
-                        decks.append(deck)
-                    except Exception as e:
-                        logger.exception("Failed to parse deck row in get_top_decks")
-                        raise DatabaseDataError(
-                            f"Failed to parse deck row: {e!s}"
-                        ) from e
-
-                logger.info(f"DB result: get_top_decks returned {len(decks)} decks")
-                return decks
-        except DatabaseServiceError:
-            raise
-        except SQLAlchemyError as e:
-            logger.exception("DB query failed: get_top_decks")
-            raise DatabaseQueryError(
-                f"Database query failed while fetching top decks: {e!s}"
-            ) from e
-        except Exception as e:
-            logger.exception("Unexpected error in get_top_decks")
-            raise DatabaseServiceError(
-                f"Unexpected error while fetching top decks: {e!s}"
-            ) from e
-
-    async def search_decks(
-        self,
-        include_card_ids: list[str] | None = None,
-        exclude_card_ids: list[str] | None = None,
-        archetype: DeckArchetype | None = None,
-        ftp_tier: FreeToPlayLevel | None = None,
-        limit: int = 50,
-        offset: int = 0
-    ) -> tuple[list[Deck], int]:
-        """
-        Search for decks with filters.
-
-        Args:
-            include_card_ids: List of card IDs that must be in the deck
-            exclude_card_ids: List of card IDs that must not be in the deck
-            archetype: Optional archetype filter
-            ftp_tier: Optional free-to-play tier filter
+            season_id: Optional season filter (e.g., 202601)
+            league: Optional league filter (e.g., "7")
+            min_uses: Minimum number of uses to include (default: 100)
             limit: Maximum number of results (default: 50)
-            offset: Number of results to skip (default: 0)
 
         Returns:
-            Tuple of (List of Deck objects matching the filters, Total count of matching decks)
+            List of CardStats ordered by win_rate descending
         """
         logger.info(
-            f"DB query: search_decks | "
-            f"include_cards={include_card_ids}, exclude_cards={exclude_card_ids}, "
-            f"archetype={archetype.value if archetype else None}, "
-            f"ftp_tier={ftp_tier.value if ftp_tier else None}, limit={limit}, offset={offset}"
+            f"DB query: get_card_win_rates | season_id={season_id}, league={league}, "
+            f"min_uses={min_uses}, limit={limit}"
         )
         try:
             async with self.async_session() as session:
-                # Build base WHERE clause for both queries
-                where_clause = "WHERE 1=1"
-                params: dict[str, Any] = {}
+                # Build WHERE clause
+                where_conditions = []
+                params: dict[str, Any] = {"min_uses": min_uses, "limit": limit}
 
-                # Filter by included cards
-                if include_card_ids:
-                    for i, card_id in enumerate(include_card_ids):
-                        where_clause += (
-                            " AND EXISTS (SELECT 1 FROM jsonb_array_elements(cards) AS card "
-                            f"WHERE card->>'card_id' = :include_card_{i})"
-                        )
-                        params[f"include_card_{i}"] = card_id
+                if season_id:
+                    where_conditions.append("cuf.season_id = :season_id")
+                    params["season_id"] = season_id
 
-                # Filter by excluded cards
-                if exclude_card_ids:
-                    for i, card_id in enumerate(exclude_card_ids):
-                        where_clause += (
-                            " AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(cards) AS card "
-                            f"WHERE card->>'card_id' = :exclude_card_{i})"
-                        )
-                        params[f"exclude_card_{i}"] = card_id
+                if league:
+                    where_conditions.append("cuf.league = :league")
+                    params["league"] = league
 
-                # Filter by archetype
-                if archetype:
-                    where_clause += " AND archetype = :archetype"
-                    params["archetype"] = archetype.value
+                where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
 
-                # Filter by FTP tier
-                if ftp_tier:
-                    where_clause += " AND ftp_tier = :ftp_tier"
-                    params["ftp_tier"] = ftp_tier.value
-
-                # Get total count
-                count_query = f"SELECT COUNT(*) FROM decks {where_clause}"
-                count_result = await session.execute(text(count_query), params)
-                total_count = count_result.scalar() or 0
-
-                # Get paginated results
-                data_query = f"""
-                    SELECT id, deck_hash, cards, avg_elixir, archetype, ftp_tier
-                    FROM decks
+                query = f"""
+                    SELECT
+                        cuf.card_id,
+                        c.name AS card_name,
+                        COUNT(*) AS total_uses,
+                        SUM(CASE WHEN cuf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+                        SUM(CASE WHEN cuf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+                        ROUND(
+                            100.0 * SUM(CASE WHEN cuf.result = 'WIN' THEN 1 ELSE 0 END) / COUNT(*),
+                            2
+                        ) AS win_rate_pct
+                    FROM card_usage_facts cuf
+                    LEFT JOIN cards c ON cuf.card_id = c.card_id
                     {where_clause}
-                    ORDER BY last_seen_at DESC
-                    LIMIT :limit OFFSET :offset
+                    GROUP BY cuf.card_id, c.name
+                    HAVING COUNT(*) >= :min_uses
+                    ORDER BY win_rate_pct DESC
+                    LIMIT :limit
                 """
-                params["limit"] = limit
-                params["offset"] = offset
 
-                result = await session.execute(text(data_query), params)
+                result = await session.execute(text(query), params)
                 rows = result.fetchall()
 
-                decks = []
+                stats_list = []
                 for row in rows:
                     try:
-                        deck = Deck(
-                            id=row[0],
-                            deck_hash=row[1],
-                            cards=row[2],
-                            avg_elixir=float(row[3]),
-                            archetype=DeckArchetype(
-                                row[4]) if row[4] else DeckArchetype.BEATDOWN,
-                            ftp_tier=FreeToPlayLevel(
-                                row[5]) if row[5] else FreeToPlayLevel.MODERATE
+                        total_uses = row[2]
+                        wins = row[3]
+                        win_rate = (wins / total_uses) if total_uses > 0 else None
+
+                        stats = CardStats(
+                            card_id=row[0],
+                            card_name=row[1],
+                            total_uses=total_uses,
+                            wins=wins,
+                            losses=row[4],
+                            win_rate=win_rate
                         )
-                        decks.append(deck)
+                        stats_list.append(stats)
                     except Exception as e:
-                        logger.exception("Failed to parse deck row in search_decks")
+                        logger.exception("Failed to parse card stats row")
                         raise DatabaseDataError(
-                            f"Failed to parse deck row: {e!s}"
+                            f"Failed to parse card stats row: {e!s}"
                         ) from e
 
-                logger.info(
-                    f"DB result: search_decks returned {len(decks)} decks out of {total_count} total"
-                )
-                return decks, total_count
+                logger.info(f"DB result: get_card_win_rates returned {len(stats_list)} cards")
+                return stats_list
         except DatabaseServiceError:
             raise
         except SQLAlchemyError as e:
-            logger.exception("DB query failed: search_decks")
+            logger.exception("DB query failed: get_card_win_rates")
             raise DatabaseQueryError(
-                f"Database query failed while searching decks: {e!s}"
+                f"Database query failed while fetching card win rates: {e!s}"
             ) from e
         except Exception as e:
-            logger.exception("Unexpected error in search_decks")
+            logger.exception("Unexpected error in get_card_win_rates")
             raise DatabaseServiceError(
-                f"Unexpected error while searching decks: {e!s}"
+                f"Unexpected error while fetching card win rates: {e!s}"
             ) from e
 
-    async def get_top_decks_with_stats(
+    async def get_card_usage_rates(
         self,
-        limit: int = 50,
-        archetype: DeckArchetype | None = None,
-        sort_by: DeckSortBy = DeckSortBy.RECENT,
-        min_games: int = 0
-    ) -> list[DeckWithStats]:
+        season_id: int | None = None,
+        league: str | None = None,
+        limit: int = 50
+    ) -> list[CardStats]:
         """
-        Get top decks with their stats, optionally filtered and sorted.
+        Get card usage rates (how often cards are played) from card_usage_facts.
 
         Args:
-            limit: Maximum number of decks to return (default: 50)
-            archetype: Optional archetype to filter by
-            sort_by: How to sort the results (default: RECENT)
-            min_games: Minimum number of games played (default: 0)
+            season_id: Optional season filter
+            league: Optional league filter
+            limit: Maximum number of results
 
         Returns:
-            List of DeckWithStats objects ordered by sort_by criteria
+            List of CardStats ordered by total_uses descending
         """
         logger.info(
-            f"DB query: get_top_decks_with_stats | limit={limit}, archetype={archetype.value if archetype else None}, "
-            f"sort_by={sort_by.value}, min_games={min_games}"
+            f"DB query: get_card_usage_rates | season_id={season_id}, league={league}, limit={limit}"
         )
-
-        # Build ORDER BY clause based on sort_by
-        if sort_by == DeckSortBy.RECENT:
-            order_clause = "ORDER BY d.last_seen_at DESC"
-        elif sort_by == DeckSortBy.GAMES_PLAYED:
-            order_clause = "ORDER BY COALESCE(ds.games_played, 0) DESC"
-        elif sort_by == DeckSortBy.WIN_RATE:
-            order_clause = "ORDER BY CASE WHEN COALESCE(ds.games_played, 0) > 0 THEN CAST(ds.wins AS FLOAT) / ds.games_played ELSE 0 END DESC"
-        elif sort_by == DeckSortBy.WINS:
-            order_clause = "ORDER BY COALESCE(ds.wins, 0) DESC"
-        else:
-            order_clause = "ORDER BY d.last_seen_at DESC"
-
         try:
             async with self.async_session() as session:
                 # Build WHERE clause
                 where_conditions = []
                 params: dict[str, Any] = {"limit": limit}
 
-                if archetype:
-                    where_conditions.append("d.archetype = :archetype")
-                    params["archetype"] = archetype.value
+                if season_id:
+                    where_conditions.append("cuf.season_id = :season_id")
+                    params["season_id"] = season_id
 
-                if min_games > 0:
-                    where_conditions.append("COALESCE(ds.games_played, 0) >= :min_games")
-                    params["min_games"] = min_games
+                if league:
+                    where_conditions.append("cuf.league = :league")
+                    params["league"] = league
 
                 where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
 
+                # Subquery to get total battles
+                total_query = f"SELECT COUNT(*) FROM card_usage_facts {where_clause}"
+                total_result = await session.execute(text(total_query), params)
+                total_uses = total_result.scalar() or 1  # Avoid division by zero
+
                 query = f"""
                     SELECT
-                        d.id, d.deck_hash, d.cards, d.avg_elixir, d.archetype, d.ftp_tier,
-                        ds.games_played, ds.wins, ds.losses, ds.unique_players
-                    FROM decks d
-                    LEFT JOIN deck_stats ds ON d.id = ds.id
+                        cuf.card_id,
+                        c.name AS card_name,
+                        COUNT(*) AS total_uses,
+                        SUM(CASE WHEN cuf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+                        SUM(CASE WHEN cuf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+                        ROUND(100.0 * COUNT(*) / :total_uses, 2) AS usage_rate_pct
+                    FROM card_usage_facts cuf
+                    LEFT JOIN cards c ON cuf.card_id = c.card_id
                     {where_clause}
+                    GROUP BY cuf.card_id, c.name
+                    ORDER BY total_uses DESC
+                    LIMIT :limit
+                """
+                params["total_uses"] = total_uses
+
+                result = await session.execute(text(query), params)
+                rows = result.fetchall()
+
+                stats_list = []
+                for row in rows:
+                    try:
+                        total = row[2]
+                        wins = row[3]
+
+                        stats = CardStats(
+                            card_id=row[0],
+                            card_name=row[1],
+                            total_uses=total,
+                            wins=wins,
+                            losses=row[4],
+                            win_rate=(wins / total) if total > 0 else None,
+                            usage_rate=row[5]
+                        )
+                        stats_list.append(stats)
+                    except Exception as e:
+                        logger.exception("Failed to parse card usage stats row")
+                        raise DatabaseDataError(
+                            f"Failed to parse card usage stats row: {e!s}"
+                        ) from e
+
+                logger.info(f"DB result: get_card_usage_rates returned {len(stats_list)} cards")
+                return stats_list
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_card_usage_rates")
+            raise DatabaseQueryError(
+                f"Database query failed while fetching card usage rates: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_card_usage_rates")
+            raise DatabaseServiceError(
+                f"Unexpected error while fetching card usage rates: {e!s}"
+            ) from e
+
+    # ===== DECKS ENDPOINTS (READ ONLY) =====
+
+    async def get_deck_by_id(self, deck_id: str) -> Deck | None:
+        """
+        Get a deck by its ID from the decks dimension table.
+
+        Args:
+            deck_id: The deck ID (plaintext composition: card_id_variant|card_id_variant|...)
+
+        Returns:
+            Deck object or None if not found
+        """
+        logger.info(f"DB query: get_deck_by_id | deck_id={deck_id}")
+        try:
+            async with self.async_session() as session:
+                stmt = text("""
+                    SELECT deck_id, avg_elixir
+                    FROM decks
+                    WHERE deck_id = :deck_id
+                """)
+                result = await session.execute(stmt, {"deck_id": deck_id})
+                row = result.fetchone()
+
+                if row:
+                    return Deck(deck_id=row[0], avg_elixir=float(row[1]))
+                return None
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_deck_by_id")
+            raise DatabaseQueryError(
+                f"Database query failed while fetching deck: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_deck_by_id")
+            raise DatabaseServiceError(
+                f"Unexpected error while fetching deck: {e!s}"
+            ) from e
+
+    async def get_deck_with_cards(self, deck_id: str) -> DeckWithStats | None:
+        """
+        Get a deck with its cards from deck_cards bridge table.
+
+        Args:
+            deck_id: The deck ID
+
+        Returns:
+            DeckWithStats with cards populated, or None if not found
+        """
+        logger.info(f"DB query: get_deck_with_cards | deck_id={deck_id}")
+        try:
+            async with self.async_session() as session:
+                deck_stmt = text(
+                    "SELECT deck_id, avg_elixir FROM decks WHERE deck_id = :deck_id"
+                )
+                deck_result = await session.execute(deck_stmt, {"deck_id": deck_id})
+                deck_row = deck_result.fetchone()
+
+                if not deck_row:
+                    return None
+
+                cards_stmt = text("""
+                    SELECT deck_id, card_id, evolution_level, is_support_card
+                    FROM deck_cards
+                    WHERE deck_id = :deck_id
+                    ORDER BY card_id
+                """)
+                cards_result = await session.execute(cards_stmt, {"deck_id": deck_id})
+                cards_rows = cards_result.fetchall()
+
+                from app.models.models import DeckCards
+
+                deck_cards = []
+                for card_row in cards_rows:
+                    deck_cards.append(
+                        DeckCards(
+                            deck_id=card_row[0],
+                            card_id=card_row[1],
+                            evolution_level=card_row[2],
+                            is_support_card=card_row[3]
+                        )
+                    )
+
+                return DeckWithStats(
+                    deck_id=deck_row[0],
+                    avg_elixir=float(deck_row[1]),
+                    cards=deck_cards
+                )
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_deck_with_cards")
+            raise DatabaseQueryError(
+                f"Database query failed while fetching deck with cards: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_deck_with_cards")
+            raise DatabaseServiceError(
+                f"Unexpected error while fetching deck with cards: {e!s}"
+            ) from e
+
+    # ===== DECK ANALYTICS (READ ONLY) =====
+
+    async def get_deck_stats(
+        self,
+        deck_id: str,
+        season_id: int | None = None,
+        league: str | None = None
+    ) -> DeckStats | None:
+        """
+        Get statistics for a deck aggregated from deck_usage_facts.
+
+        Args:
+            deck_id: The deck ID
+            season_id: Optional season filter
+            league: Optional league filter
+
+        Returns:
+            DeckStats object with aggregated statistics, or None if deck not found
+        """
+        logger.info(
+            f"DB query: get_deck_stats | deck_id={deck_id}, season_id={season_id}, league={league}"
+        )
+        try:
+            async with self.async_session() as session:
+                where_conditions = ["duf.deck_id = :deck_id"]
+                params: dict[str, Any] = {"deck_id": deck_id}
+
+                if season_id:
+                    where_conditions.append("duf.season_id = :season_id")
+                    params["season_id"] = season_id
+
+                if league:
+                    where_conditions.append("duf.league = :league")
+                    params["league"] = league
+
+                where_clause = "WHERE " + " AND ".join(where_conditions)
+
+                query = f"""
+                    SELECT
+                        duf.deck_id,
+                        COUNT(*) AS games_played,
+                        SUM(CASE WHEN duf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+                        SUM(CASE WHEN duf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses
+                    FROM deck_usage_facts duf
+                    {where_clause}
+                    GROUP BY duf.deck_id
+                """
+
+                result = await session.execute(text(query), params)
+                row = result.fetchone()
+
+                if row:
+                    games = row[1]
+                    wins = row[2]
+                    win_rate = (wins / games) if games > 0 else None
+
+                    return DeckStats(
+                        deck_id=row[0],
+                        games_played=games,
+                        wins=wins,
+                        losses=row[3],
+                        win_rate=win_rate
+                    )
+                return None
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_deck_stats")
+            raise DatabaseQueryError(
+                f"Database query failed while fetching deck stats: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_deck_stats")
+            raise DatabaseServiceError(
+                f"Unexpected error while fetching deck stats: {e!s}"
+            ) from e
+
+    async def get_top_decks_with_stats(
+        self,
+        limit: int = 50,
+        archetype: object | None = None,
+        sort_by: DeckSortBy = DeckSortBy.RECENT,
+        min_games: int = 0
+    ) -> list[DeckWithStats]:
+        """
+        Get top decks with their stats, optionally sorted.
+
+        Args:
+            limit: Maximum number of decks to return (default: 50)
+            archetype: Deprecated (not supported in the new schema)
+            sort_by: How to sort the results (default: RECENT)
+            min_games: Minimum number of games played (default: 0)
+
+        Returns:
+            List of DeckWithStats objects ordered by sort_by criteria
+        """
+        if archetype is not None:
+            logger.warning("get_top_decks_with_stats called with archetype filter; ignored.")
+        logger.info(
+            f"DB query: get_top_decks_with_stats | limit={limit}, sort_by={sort_by.value}, min_games={min_games}"
+        )
+
+        if sort_by == DeckSortBy.RECENT:
+            order_clause = "ORDER BY dsa.last_seen DESC NULLS LAST"
+        elif sort_by == DeckSortBy.GAMES_PLAYED:
+            order_clause = "ORDER BY COALESCE(dsa.games_played, 0) DESC"
+        elif sort_by == DeckSortBy.WIN_RATE:
+            order_clause = (
+                "ORDER BY CASE WHEN COALESCE(dsa.games_played, 0) > 0 "
+                "THEN CAST(dsa.wins AS FLOAT) / dsa.games_played ELSE 0 END DESC"
+            )
+        elif sort_by == DeckSortBy.WINS:
+            order_clause = "ORDER BY COALESCE(dsa.wins, 0) DESC"
+        else:
+            order_clause = "ORDER BY dsa.last_seen DESC NULLS LAST"
+
+        try:
+            async with self.async_session() as session:
+                params: dict[str, Any] = {"limit": limit, "min_games": min_games}
+
+                query = f"""
+                    WITH deck_stats_agg AS (
+                        SELECT
+                            duf.deck_id,
+                            COUNT(*) AS games_played,
+                            SUM(CASE WHEN duf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+                            SUM(CASE WHEN duf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+                            MAX(duf.battle_time) AS last_seen
+                        FROM deck_usage_facts duf
+                        GROUP BY duf.deck_id
+                    )
+                    SELECT
+                        d.deck_id,
+                        d.avg_elixir,
+                        COALESCE(dsa.games_played, 0) AS games_played,
+                        COALESCE(dsa.wins, 0) AS wins,
+                        COALESCE(dsa.losses, 0) AS losses,
+                        dsa.last_seen
+                    FROM decks d
+                    LEFT JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
+                    WHERE COALESCE(dsa.games_played, 0) >= :min_games
                     {order_clause}
                     LIMIT :limit
                 """
@@ -550,33 +734,20 @@ class DatabaseService:
 
                 decks = []
                 for row in rows:
-                    try:
-                        games = row[6] if row[6] is not None else 0
-                        wins = row[7] if row[7] is not None else 0
-                        losses = row[8] if row[8] is not None else 0
-                        win_rate = (wins / games) if games > 0 else None
+                    games = row[2]
+                    wins = row[3]
+                    win_rate = (wins / games) if games > 0 else None
 
-                        deck = DeckWithStats(
-                            id=row[0],
-                            deck_hash=row[1],
-                            cards=row[2],
-                            avg_elixir=float(row[3]),
-                            archetype=DeckArchetype(
-                                row[4]) if row[4] else DeckArchetype.BEATDOWN,
-                            ftp_tier=FreeToPlayLevel(
-                                row[5]) if row[5] else FreeToPlayLevel.MODERATE,
-                            games_played=games,
-                            wins=wins,
-                            losses=losses,
-                            unique_players=row[9] if row[9] is not None else 0,
-                            win_rate=win_rate
-                        )
-                        decks.append(deck)
-                    except Exception as e:
-                        logger.exception("Failed to parse deck row in get_top_decks_with_stats")
-                        raise DatabaseDataError(
-                            f"Failed to parse deck row: {e!s}"
-                        ) from e
+                    deck = DeckWithStats(
+                        deck_id=row[0],
+                        avg_elixir=float(row[1]),
+                        games_played=games,
+                        wins=wins,
+                        losses=row[4],
+                        win_rate=win_rate,
+                        last_seen=row[5]
+                    )
+                    decks.append(deck)
 
                 logger.info(f"DB result: get_top_decks_with_stats returned {len(decks)} decks")
                 return decks
@@ -597,8 +768,8 @@ class DatabaseService:
         self,
         include_card_ids: list[str] | None = None,
         exclude_card_ids: list[str] | None = None,
-        archetype: DeckArchetype | None = None,
-        ftp_tier: FreeToPlayLevel | None = None,
+        archetype: object | None = None,
+        ftp_tier: object | None = None,
         sort_by: DeckSortBy = DeckSortBy.RECENT,
         min_games: int = 0,
         limit: int = 50,
@@ -610,8 +781,8 @@ class DatabaseService:
         Args:
             include_card_ids: List of card IDs that must be in the deck
             exclude_card_ids: List of card IDs that must not be in the deck
-            archetype: Optional archetype filter
-            ftp_tier: Optional free-to-play tier filter
+            archetype: Deprecated (not supported in the new schema)
+            ftp_tier: Deprecated (not supported in the new schema)
             sort_by: How to sort the results (default: RECENT)
             min_games: Minimum number of games played (default: 0)
             limit: Maximum number of results (default: 50)
@@ -620,123 +791,118 @@ class DatabaseService:
         Returns:
             Tuple of (List of DeckWithStats objects, Total count of matching decks)
         """
+        if archetype is not None or ftp_tier is not None:
+            logger.warning("search_decks_with_stats called with archetype/ftp_tier filters; ignored.")
         logger.info(
-            f"DB query: search_decks_with_stats | "
-            f"include_cards={include_card_ids}, exclude_cards={exclude_card_ids}, "
-            f"archetype={archetype.value if archetype else None}, "
-            f"ftp_tier={ftp_tier.value if ftp_tier else None}, sort_by={sort_by.value}, "
+            f"DB query: search_decks_with_stats | include_cards={include_card_ids}, "
+            f"exclude_cards={exclude_card_ids}, sort_by={sort_by.value}, "
             f"min_games={min_games}, limit={limit}, offset={offset}"
         )
 
-        # Build ORDER BY clause based on sort_by
         if sort_by == DeckSortBy.RECENT:
-            order_clause = "ORDER BY d.last_seen_at DESC"
+            order_clause = "ORDER BY dsa.last_seen DESC NULLS LAST"
         elif sort_by == DeckSortBy.GAMES_PLAYED:
-            order_clause = "ORDER BY COALESCE(ds.games_played, 0) DESC"
+            order_clause = "ORDER BY COALESCE(dsa.games_played, 0) DESC"
         elif sort_by == DeckSortBy.WIN_RATE:
-            order_clause = "ORDER BY CASE WHEN COALESCE(ds.games_played, 0) > 0 THEN CAST(ds.wins AS FLOAT) / ds.games_played ELSE 0 END DESC"
+            order_clause = (
+                "ORDER BY CASE WHEN COALESCE(dsa.games_played, 0) > 0 "
+                "THEN CAST(dsa.wins AS FLOAT) / dsa.games_played ELSE 0 END DESC"
+            )
         elif sort_by == DeckSortBy.WINS:
-            order_clause = "ORDER BY COALESCE(ds.wins, 0) DESC"
+            order_clause = "ORDER BY COALESCE(dsa.wins, 0) DESC"
         else:
-            order_clause = "ORDER BY d.last_seen_at DESC"
+            order_clause = "ORDER BY dsa.last_seen DESC NULLS LAST"
 
         try:
             async with self.async_session() as session:
-                # Build WHERE clause
-                where_clause = "WHERE 1=1"
-                params: dict[str, Any] = {}
+                deck_conditions = ["COALESCE(dsa.games_played, 0) >= :min_games"]
+                params: dict[str, Any] = {
+                    "min_games": min_games,
+                    "limit": limit,
+                    "offset": offset
+                }
 
-                # Filter by included cards
                 if include_card_ids:
                     for i, card_id in enumerate(include_card_ids):
-                        where_clause += (
-                            " AND EXISTS (SELECT 1 FROM jsonb_array_elements(d.cards) AS card "
-                            f"WHERE card->>'card_id' = :include_card_{i})"
+                        deck_conditions.append(
+                            f"EXISTS (SELECT 1 FROM deck_cards "
+                            f"WHERE deck_id = d.deck_id AND card_id = :include_{i})"
                         )
-                        params[f"include_card_{i}"] = card_id
+                        params[f"include_{i}"] = card_id
 
-                # Filter by excluded cards
                 if exclude_card_ids:
                     for i, card_id in enumerate(exclude_card_ids):
-                        where_clause += (
-                            " AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(d.cards) AS card "
-                            f"WHERE card->>'card_id' = :exclude_card_{i})"
+                        deck_conditions.append(
+                            f"NOT EXISTS (SELECT 1 FROM deck_cards "
+                            f"WHERE deck_id = d.deck_id AND card_id = :exclude_{i})"
                         )
-                        params[f"exclude_card_{i}"] = card_id
+                        params[f"exclude_{i}"] = card_id
 
-                # Filter by archetype
-                if archetype:
-                    where_clause += " AND d.archetype = :archetype"
-                    params["archetype"] = archetype.value
+                where_clause = "WHERE " + " AND ".join(deck_conditions)
 
-                # Filter by FTP tier
-                if ftp_tier:
-                    where_clause += " AND d.ftp_tier = :ftp_tier"
-                    params["ftp_tier"] = ftp_tier.value
-
-                # Filter by minimum games
-                if min_games > 0:
-                    where_clause += " AND COALESCE(ds.games_played, 0) >= :min_games"
-                    params["min_games"] = min_games
-
-                # Get total count
                 count_query = f"""
+                    WITH deck_stats_agg AS (
+                        SELECT
+                            duf.deck_id,
+                            COUNT(*) AS games_played,
+                            SUM(CASE WHEN duf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+                            SUM(CASE WHEN duf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+                            MAX(duf.battle_time) AS last_seen
+                        FROM deck_usage_facts duf
+                        GROUP BY duf.deck_id
+                    )
                     SELECT COUNT(*)
                     FROM decks d
-                    LEFT JOIN deck_stats ds ON d.id = ds.id
+                    LEFT JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
                     {where_clause}
                 """
                 count_result = await session.execute(text(count_query), params)
                 total_count = count_result.scalar() or 0
 
-                # Get paginated results
                 data_query = f"""
+                    WITH deck_stats_agg AS (
+                        SELECT
+                            duf.deck_id,
+                            COUNT(*) AS games_played,
+                            SUM(CASE WHEN duf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+                            SUM(CASE WHEN duf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+                            MAX(duf.battle_time) AS last_seen
+                        FROM deck_usage_facts duf
+                        GROUP BY duf.deck_id
+                    )
                     SELECT
-                        d.id, d.deck_hash, d.cards, d.avg_elixir, d.archetype, d.ftp_tier,
-                        ds.games_played, ds.wins, ds.losses, ds.unique_players
+                        d.deck_id,
+                        d.avg_elixir,
+                        COALESCE(dsa.games_played, 0) AS games_played,
+                        COALESCE(dsa.wins, 0) AS wins,
+                        COALESCE(dsa.losses, 0) AS losses,
+                        dsa.last_seen
                     FROM decks d
-                    LEFT JOIN deck_stats ds ON d.id = ds.id
+                    LEFT JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
                     {where_clause}
                     {order_clause}
                     LIMIT :limit OFFSET :offset
                 """
-                params["limit"] = limit
-                params["offset"] = offset
 
                 result = await session.execute(text(data_query), params)
                 rows = result.fetchall()
 
                 decks = []
                 for row in rows:
-                    try:
-                        games = row[6] if row[6] is not None else 0
-                        wins = row[7] if row[7] is not None else 0
-                        losses = row[8] if row[8] is not None else 0
-                        win_rate = (wins / games) if games > 0 else None
+                    games = row[2]
+                    wins = row[3]
+                    win_rate = (wins / games) if games > 0 else None
 
-                        deck = DeckWithStats(
-                            id=row[0],
-                            deck_hash=row[1],
-                            cards=row[2],
-                            avg_elixir=float(row[3]),
-                            archetype=DeckArchetype(
-                                row[4]) if row[4] else DeckArchetype.BEATDOWN,
-                            ftp_tier=FreeToPlayLevel(
-                                row[5]) if row[5] else FreeToPlayLevel.MODERATE,
-                            games_played=games,
-                            wins=wins,
-                            losses=losses,
-                            unique_players=row[9] if row[9] is not None else 0,
-                            win_rate=win_rate
-                        )
-                        decks.append(deck)
-                    except Exception as e:
-                        logger.exception(
-                            "Failed to parse deck row in search_decks_with_stats"
-                        )
-                        raise DatabaseDataError(
-                            f"Failed to parse deck row: {e!s}"
-                        ) from e
+                    deck = DeckWithStats(
+                        deck_id=row[0],
+                        avg_elixir=float(row[1]),
+                        games_played=games,
+                        wins=wins,
+                        losses=row[4],
+                        win_rate=win_rate,
+                        last_seen=row[5]
+                    )
+                    decks.append(deck)
 
                 logger.info(
                     f"DB result: search_decks_with_stats returned {len(decks)} decks out of {total_count} total"
@@ -753,244 +919,6 @@ class DatabaseService:
             logger.exception("Unexpected error in search_decks_with_stats")
             raise DatabaseServiceError(
                 f"Unexpected error while searching deck stats: {e!s}"
-            ) from e
-
-    # ===== DECK STATS ENDPOINTS =====
-
-    async def get_deck_stats(self, deck_id: str) -> DeckStats | None:
-        """
-        Get statistics for a specific deck by ID.
-
-        Args:
-            deck_id: The deck ID to fetch stats for
-
-        Returns:
-            DeckStats object or None if not found
-        """
-        logger.info(f"DB query: get_deck_stats | deck_id={deck_id}")
-        try:
-            async with self.async_session() as session:
-                stmt = text("""
-                    SELECT id, games_played, wins, losses, unique_players
-                    FROM deck_stats
-                    WHERE id = :deck_id
-                """)
-                result = await session.execute(stmt, {"deck_id": deck_id})
-                row = result.fetchone()
-
-                if row:
-                    logger.info(f"DB result: get_deck_stats found stats for deck {deck_id}")
-                    try:
-                        return DeckStats(
-                            id=row[0],
-                            games_played=row[1],
-                            wins=row[2],
-                            losses=row[3],
-                            unique_players=row[4]
-                        )
-                    except Exception as e:
-                        logger.exception("Failed to parse deck stats row in get_deck_stats")
-                        raise DatabaseDataError(
-                            f"Failed to parse deck stats row: {e!s}"
-                        ) from e
-                logger.info(f"DB result: get_deck_stats found no stats for deck {deck_id}")
-                return None
-        except DatabaseServiceError:
-            raise
-        except SQLAlchemyError as e:
-            logger.exception("DB query failed: get_deck_stats")
-            raise DatabaseQueryError(
-                f"Database query failed while fetching deck stats: {e!s}"
-            ) from e
-        except Exception as e:
-            logger.exception("Unexpected error in get_deck_stats")
-            raise DatabaseServiceError(
-                f"Unexpected error while fetching deck stats: {e!s}"
-            ) from e
-
-    async def insert_deck_stats(self, deck_stats: DeckStats) -> DeckStats:
-        """
-        Insert a new deck stats record.
-
-        Args:
-            deck_stats: DeckStats object to insert
-
-        Returns:
-            The inserted DeckStats object
-        """
-        logger.info(f"DB query: insert_deck_stats | deck_id={deck_stats.id}")
-        try:
-            async with self.async_session() as session:
-                stmt = text("""
-                    INSERT INTO deck_stats (id, games_played, wins, losses, unique_players)
-                    VALUES (:id, :games_played, :wins, :losses, :unique_players)
-                    RETURNING id, games_played, wins, losses, unique_players
-                """)
-                result = await session.execute(stmt, {
-                    "id": deck_stats.id,
-                    "games_played": deck_stats.games_played,
-                    "wins": deck_stats.wins,
-                    "losses": deck_stats.losses,
-                    "unique_players": deck_stats.unique_players
-                })
-                await session.commit()
-                row = result.fetchone()
-
-                logger.info(
-                    f"DB result: insert_deck_stats inserted stats for deck {deck_stats.id}"
-                )
-                try:
-                    return DeckStats(
-                        id=row[0],
-                        games_played=row[1],
-                        wins=row[2],
-                        losses=row[3],
-                        unique_players=row[4]
-                    )
-                except Exception as e:
-                    logger.exception("Failed to parse deck stats row in insert_deck_stats")
-                    raise DatabaseDataError(
-                        f"Failed to parse deck stats row: {e!s}"
-                    ) from e
-        except DatabaseServiceError:
-            raise
-        except SQLAlchemyError as e:
-            logger.exception("DB query failed: insert_deck_stats")
-            raise DatabaseQueryError(
-                f"Database query failed while inserting deck stats: {e!s}"
-            ) from e
-        except Exception as e:
-            logger.exception("Unexpected error in insert_deck_stats")
-            raise DatabaseServiceError(
-                f"Unexpected error while inserting deck stats: {e!s}"
-            ) from e
-
-    async def upsert_deck_stats(self, deck_stats: DeckStats) -> DeckStats:
-        """
-        Insert or update deck stats record by replacing all values.
-        If a record with the same id exists, replaces it; otherwise inserts.
-
-        Args:
-            deck_stats: DeckStats object to upsert
-
-        Returns:
-            The upserted DeckStats object
-        """
-        logger.info(f"DB query: upsert_deck_stats | deck_id={deck_stats.id}")
-        try:
-            async with self.async_session() as session:
-                stmt = text("""
-                    INSERT INTO deck_stats (id, games_played, wins, losses, unique_players)
-                    VALUES (:id, :games_played, :wins, :losses, :unique_players)
-                    ON CONFLICT (id) DO UPDATE SET
-                        games_played = EXCLUDED.games_played,
-                        wins = EXCLUDED.wins,
-                        losses = EXCLUDED.losses,
-                        unique_players = EXCLUDED.unique_players
-                    RETURNING id, games_played, wins, losses, unique_players
-                """)
-                result = await session.execute(stmt, {
-                    "id": deck_stats.id,
-                    "games_played": deck_stats.games_played,
-                    "wins": deck_stats.wins,
-                    "losses": deck_stats.losses,
-                    "unique_players": deck_stats.unique_players
-                })
-                await session.commit()
-                row = result.fetchone()
-
-                logger.info(
-                    f"DB result: upsert_deck_stats upserted stats for deck {deck_stats.id}"
-                )
-                try:
-                    return DeckStats(
-                        id=row[0],
-                        games_played=row[1],
-                        wins=row[2],
-                        losses=row[3],
-                        unique_players=row[4]
-                    )
-                except Exception as e:
-                    logger.exception("Failed to parse deck stats row in upsert_deck_stats")
-                    raise DatabaseDataError(
-                        f"Failed to parse deck stats row: {e!s}"
-                    ) from e
-        except DatabaseServiceError:
-            raise
-        except SQLAlchemyError as e:
-            logger.exception("DB query failed: upsert_deck_stats")
-            raise DatabaseQueryError(
-                f"Database query failed while upserting deck stats: {e!s}"
-            ) from e
-        except Exception as e:
-            logger.exception("Unexpected error in upsert_deck_stats")
-            raise DatabaseServiceError(
-                f"Unexpected error while upserting deck stats: {e!s}"
-            ) from e
-
-    async def increment_deck_stats(self, deck_stats: DeckStats) -> DeckStats:
-        """
-        Increment deck stats by adding the provided values to existing stats.
-        Creates a new record if the deck doesn't exist yet.
-
-        Args:
-            deck_stats: DeckStats object with values to add to existing stats
-
-        Returns:
-            The updated DeckStats object with new totals
-        """
-        logger.info(f"DB query: increment_deck_stats | deck_id={deck_stats.id}")
-        try:
-            async with self.async_session() as session:
-                # Use ON CONFLICT to handle both insert and update cases
-                # If record exists, add to existing values; if not, insert as new
-                stmt = text("""
-                    INSERT INTO deck_stats (id, games_played, wins, losses, unique_players)
-                    VALUES (:id, :games_played, :wins, :losses, :unique_players)
-                    ON CONFLICT (id) DO UPDATE SET
-                        games_played = deck_stats.games_played + EXCLUDED.games_played,
-                        wins = deck_stats.wins + EXCLUDED.wins,
-                        losses = deck_stats.losses + EXCLUDED.losses,
-                        unique_players = deck_stats.unique_players + EXCLUDED.unique_players
-                    RETURNING id, games_played, wins, losses, unique_players
-                """)
-                result = await session.execute(stmt, {
-                    "id": deck_stats.id,
-                    "games_played": deck_stats.games_played,
-                    "wins": deck_stats.wins,
-                    "losses": deck_stats.losses,
-                    "unique_players": deck_stats.unique_players
-                })
-                await session.commit()
-                row = result.fetchone()
-
-                logger.info(
-                    f"DB result: increment_deck_stats updated stats for deck {deck_stats.id}"
-                )
-                try:
-                    return DeckStats(
-                        id=row[0],
-                        games_played=row[1],
-                        wins=row[2],
-                        losses=row[3],
-                        unique_players=row[4]
-                    )
-                except Exception as e:
-                    logger.exception("Failed to parse deck stats row in increment_deck_stats")
-                    raise DatabaseDataError(
-                        f"Failed to parse deck stats row: {e!s}"
-                    ) from e
-        except DatabaseServiceError:
-            raise
-        except SQLAlchemyError as e:
-            logger.exception("DB query failed: increment_deck_stats")
-            raise DatabaseQueryError(
-                f"Database query failed while incrementing deck stats: {e!s}"
-            ) from e
-        except Exception as e:
-            logger.exception("Unexpected error in increment_deck_stats")
-            raise DatabaseServiceError(
-                f"Unexpected error while incrementing deck stats: {e!s}"
             ) from e
 
     # ===== LOCATIONS ENDPOINTS =====

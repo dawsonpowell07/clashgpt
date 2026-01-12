@@ -6,7 +6,7 @@ allowing the agent to recommend decks based on win rates, popularity, and other 
 """
 import logging
 
-from app.models.models import DeckArchetype, DeckSortBy, FreeToPlayLevel
+from app.models.models import DeckSortBy
 from app.services.database import (
     DatabaseConnectionError,
     DatabaseDataError,
@@ -17,182 +17,160 @@ from app.services.database import (
 
 logger = logging.getLogger(__name__)
 
+CARD_ID_TO_NAME = {
+    "26000072": "Archer Queen",
+    "26000001": "Archers",
+    "28000001": "Arrows",
+    "26000015": "Baby Dragon",
+    "26000006": "Balloon",
+    "26000046": "Bandit",
+    "28000015": "Barbarian Barrel",
+    "27000005": "Barbarian Hut",
+    "26000008": "Barbarians",
+    "26000049": "Bats",
+    "26000068": "Battle Healer",
+    "26000036": "Battle Ram",
+    "26000102": "Berserker",
+    "27000004": "Bomb Tower",
+    "26000013": "Bomber",
+    "26000103": "Boss Bandit",
+    "26000034": "Bowler",
+    "27000000": "Cannon",
+    "26000054": "Cannon Cart",
+    "28000013": "Clone",
+    "26000027": "Dark Prince",
+    "26000040": "Dart Goblin",
+    "28000014": "Earthquake",
+    "26000063": "Electro Dragon",
+    "26000085": "Electro Giant",
+    "26000084": "Electro Spirit",
+    "26000042": "Electro Wizard",
+    "26000043": "Elite Barbarians",
+    "27000007": "Elixir Collector",
+    "26000067": "Elixir Golem",
+    "26000045": "Executioner",
+    "26000031": "Fire Spirit",
+    "28000000": "Fireball",
+    "26000064": "Firecracker",
+    "26000061": "Fisherman",
+    "26000057": "Flying Machine",
+    "28000005": "Freeze",
+    "27000010": "Furnace",
+    "26000003": "Giant",
+    "26000020": "Giant Skeleton",
+    "28000017": "Giant Snowball",
+    "28000004": "Goblin Barrel",
+    "27000012": "Goblin Cage",
+    "28000024": "Goblin Curse",
+    "26000095": "Goblin Demolisher",
+    "27000013": "Goblin Drill",
+    "26000041": "Goblin Gang",
+    "26000060": "Goblin Giant",
+    "27000001": "Goblin Hut",
+    "26000096": "Goblin Machine",
+    "26000002": "Goblins",
+    "26000099": "Goblinstein",
+    "26000074": "Golden Knight",
+    "26000009": "Golem",
+    "28000010": "Graveyard",
+    "26000025": "Guards",
+    "28000016": "Heal Spirit",
+    "26000021": "Hog Rider",
+    "26000044": "Hunter",
+    "26000038": "Ice Golem",
+    "26000030": "Ice Spirit",
+    "26000023": "Ice Wizard",
+    "26000037": "Inferno Dragon",
+    "27000003": "Inferno Tower",
+    "26000000": "Knight",
+    "26000029": "Lava Hound",
+    "28000007": "Lightning",
+    "26000093": "Little Prince",
+    "26000035": "Lumberjack",
+    "26000062": "Magic Archer",
+    "26000055": "Mega Knight",
+    "26000039": "Mega Minion",
+    "26000065": "Mighty Miner",
+    "26000032": "Miner",
+    "26000018": "Mini P.E.K.K.A",
+    "26000022": "Minion Horde",
+    "26000005": "Minions",
+    "28000006": "Mirror",
+    "26000077": "Monk",
+    "27000002": "Mortar",
+    "26000083": "Mother Witch",
+    "26000014": "Musketeer",
+    "26000048": "Night Witch",
+    "26000004": "P.E.K.K.A",
+    "26000087": "Phoenix",
+    "28000009": "Poison",
+    "26000016": "Prince",
+    "26000026": "Princess",
+    "28000002": "Rage",
+    "26000051": "Ram Rider",
+    "26000053": "Rascals",
+    "28000003": "Rocket",
+    "28000018": "Royal Delivery",
+    "26000050": "Royal Ghost",
+    "26000024": "Royal Giant",
+    "26000059": "Royal Hogs",
+    "26000047": "Royal Recruits",
+    "26000101": "Rune Giant",
+    "26000012": "Skeleton Army",
+    "26000056": "Skeleton Barrel",
+    "26000080": "Skeleton Dragons",
+    "26000069": "Skeleton King",
+    "26000010": "Skeletons",
+    "26000033": "Sparky",
+    "26000019": "Spear Goblins",
+    "28000025": "Spirit Empress",
+    "26000097": "Suspicious Bush",
+    "27000006": "Tesla",
+    "28000011": "The Log",
+    "26000028": "Three Musketeers",
+    "27000009": "Tombstone",
+    "28000012": "Tornado",
+    "26000011": "Valkyrie",
+    "28000026": "Vines",
+    "28000023": "Void",
+    "26000058": "Wall Breakers",
+    "26000007": "Witch",
+    "26000017": "Wizard",
+    "27000008": "X-Bow",
+    "28000008": "Zap",
+    "26000052": "Zappies",
+}
 
-async def get_top_decks(
-    limit: int = 10,
-    archetype: str | None = None,
-    sort_by: str = "RECENT",
-    min_games: int = 0
-) -> dict:
-    """
-    Get the top meta decks with performance statistics from elite Path of Legend players.
 
-    This function retrieves competitive decks from our database with their win rates,
-    games played, and other performance metrics. The database is regularly updated by
-    scanning top players' battle logs. You can sort by recency, win rate, popularity,
-    or total wins.
+def _parse_deck_id(deck_id: str) -> list[tuple[str, int]]:
+    cards = []
+    for entry in deck_id.split("|"):
+        try:
+            card_id, evo_level = entry.split("_", 1)
+            cards.append((card_id, int(evo_level)))
+        except ValueError:
+            continue
+    return cards
 
-    Args:
-        limit: Maximum number of decks to return (default: 10, max: 200).
-            Use higher values to get a broader meta overview.
 
-        archetype: Optional filter to get decks of a specific archetype.
-            Valid archetypes:
-            - "CYCLE": Fast, low-elixir decks that cycle cards quickly (avg < 3.0 elixir)
-            - "BEATDOWN": Heavy tank-based decks (Golem, Giant, Lava Hound, etc.)
-            - "BRIDGESPAM": Aggressive decks with fast units (Pekka, Bandit, Ram Rider)
-            - "CONTROL": Defensive decks that control the pace (Miner, Royal Giant, Graveyard)
-            - "BAIT": Spell bait decks (Goblin Barrel, Royal Hogs + Flying Machine)
-            - "SIEGE": X-Bow or Mortar decks
-            - "MIDLADDERMENACE": Decks with Elixir Golem or Elite Barbarians
-
-        sort_by: How to sort the results (default: "RECENT").
-            Valid sorting options:
-            - "RECENT": Most recently seen in high-level play (latest meta)
-            - "WIN_RATE": Highest win rate percentage (best performing)
-            - "GAMES_PLAYED": Most games played (most popular/tested)
-            - "WINS": Most total wins (proven winners)
-
-        min_games: Minimum number of games played to include a deck (default: 0).
-            Use higher values (e.g., 10-20) to filter out decks with insufficient data.
-            Recommended when sorting by WIN_RATE to get reliable statistics.
-
-    Returns:
-        Dictionary with a "decks" list, where each deck contains:
-        - id: Unique deck identifier
-        - deck_hash: Hash of the deck composition
-        - cards: List of 8 cards with their IDs, names, and variants (evolution/hero/normal)
-        - avg_elixir: Average elixir cost of the deck
-        - archetype: The deck's archetype classification
-        - ftp_tier: Free-to-play friendliness (FRIENDLY/MODERATE/PAYTOWIN)
-        - games_played: Total number of games tracked for this deck
-        - wins: Total number of wins
-        - losses: Total number of losses
-        - unique_players: Number of unique players who used this deck
-        - win_rate: Win rate as a decimal (e.g., 0.65 = 65% win rate), null if no games
-
-    Examples:
-        # Get top 10 most recently seen decks (latest meta snapshot)
-        await get_top_decks(limit=10, sort_by="RECENT")
-
-        # Get top 20 decks by win rate with at least 15 games (most reliable)
-        await get_top_decks(limit=20, sort_by="WIN_RATE", min_games=15)
-
-        # Get most popular cycle decks (by games played)
-        await get_top_decks(limit=10, archetype="CYCLE", sort_by="GAMES_PLAYED")
-
-        # Get beatdown decks with best win rates (min 10 games for reliability)
-        await get_top_decks(limit=15, archetype="BEATDOWN", sort_by="WIN_RATE", min_games=10)
-
-        # Get top 50 decks by total wins (proven performers)
-        await get_top_decks(limit=50, sort_by="WINS")
-
-        # Get F2P-friendly decks with high win rates
-        # Note: Use search_decks() for ftp_tier filtering
-        await get_top_decks(limit=20, sort_by="WIN_RATE", min_games=10)
-    """
-    logger.info(
-        f"Tool: get_top_decks | limit={limit}, archetype={archetype}, "
-        f"sort_by={sort_by}, min_games={min_games}"
-    )
-    try:
-        if not isinstance(limit, int) or limit <= 0:
-            return {
-                "error": "Limit must be a positive integer.",
-                "error_type": "validation",
-                "suggestion": "Use a limit between 1 and 200."
-            }
-        if not isinstance(min_games, int) or min_games < 0:
-            return {
-                "error": "min_games must be a non-negative integer.",
-                "error_type": "validation",
-                "suggestion": "Use 0 or a positive integer."
-            }
-
-        db = get_database_service()
-
-        # Convert string archetype to enum if provided
-        archetype_enum = None
-        if archetype:
-            try:
-                archetype_enum = DeckArchetype[archetype.upper()]
-            except KeyError:
-                logger.warning(f"Invalid archetype: {archetype}")
-                return {
-                    "error": f"Invalid archetype: {archetype}.",
-                    "error_type": "validation",
-                    "suggestion": "Use a supported archetype like CYCLE or BEATDOWN."
-                }
-
-        # Convert string sort_by to enum
-        sort_by_enum = DeckSortBy.RECENT  # Default
-        if sort_by:
-            try:
-                sort_by_enum = DeckSortBy[sort_by.upper()]
-            except KeyError:
-                logger.warning(f"Invalid sort_by: {sort_by}, using RECENT")
-                return {
-                    "error": f"Invalid sort_by: {sort_by}.",
-                    "error_type": "validation",
-                    "suggestion": "Use RECENT, WIN_RATE, GAMES_PLAYED, or WINS."
-                }
-
-        decks = await db.get_top_decks_with_stats(
-            limit=limit,
-            archetype=archetype_enum,
-            sort_by=sort_by_enum,
-            min_games=min_games
-        )
-        return {"decks": [deck.model_dump() for deck in decks]}
-    except (DatabaseConnectionError, DatabaseQueryError) as e:
-        error_msg = f"Database error while fetching top decks: {e}"
-        logger.error(f"Tool: get_top_decks | {error_msg}")
-        return {
-            "error": "Deck data is temporarily unavailable.",
-            "error_type": "database",
-            "details": str(e),
-        }
-    except DatabaseDataError as e:
-        error_msg = f"Data parsing error while fetching top decks: {e}"
-        logger.error(f"Tool: get_top_decks | {error_msg}")
-        return {
-            "error": "Deck data could not be parsed.",
-            "error_type": "data_error",
-            "details": str(e),
-        }
-    except DatabaseServiceError as e:
-        error_msg = f"Database service error while fetching top decks: {e}"
-        logger.error(f"Tool: get_top_decks | {error_msg}")
-        return {
-            "error": "Deck service is temporarily unavailable.",
-            "error_type": "database",
-            "details": str(e),
-        }
-    except Exception as e:
-        error_msg = f"Unexpected error in get_top_decks: {e}"
-        logger.error(f"Tool: get_top_decks | {error_msg}", exc_info=True)
-        return {
-            "error": "Unexpected error while fetching top decks.",
-            "error_type": "unexpected",
-            "details": str(e)
-        }
+def _variant_from_evolution_level(evolution_level: int) -> str:
+    if evolution_level == 1:
+        return "evolved"
+    if evolution_level == 2:
+        return "hero"
+    return "normal"
 
 
 async def search_decks(
     include_cards: str | None = None,
     exclude_cards: str | None = None,
-    archetype: str | None = None,
-    ftp_tier: str | None = None,
     sort_by: str = "RECENT",
     min_games: int = 0,
     limit: int = 10
 ) -> dict:
     """
-    Search for decks with advanced filters, performance stats, and custom sorting.
-
-    This powerful search tool lets you find decks that contain specific cards, exclude certain cards,
-    filter by archetype or free-to-play tier, and sort by performance metrics like win rate.
-    Perfect for deck building, finding counters, and analyzing the meta.
+    Search for decks with filters, performance stats, and custom sorting.
+    Card details are always included based on the deck_id.
 
     Args:
         include_cards: Comma-separated list of card IDs that MUST be in the deck.
@@ -203,15 +181,6 @@ async def search_decks(
         exclude_cards: Comma-separated list of card IDs that MUST NOT be in the deck.
             Use this to avoid certain cards or find alternative decks.
             Example: "26000010" to exclude decks with Fireball.
-
-        archetype: Optional filter for deck archetype.
-            Valid values: "CYCLE", "BEATDOWN", "BRIDGESPAM", "CONTROL", "BAIT", "SIEGE", "MIDLADDERMENACE"
-
-        ftp_tier: Optional filter for free-to-play friendliness.
-            Valid values:
-            - "FRIENDLY": 0-2 legendaries/champions/heroes (easiest to upgrade)
-            - "MODERATE": 3-4 legendaries/champions/heroes (moderate investment)
-            - "PAYTOWIN": 5+ legendaries/champions/heroes (requires heavy investment)
 
         sort_by: How to sort the results (default: "RECENT").
             Valid sorting options:
@@ -228,17 +197,14 @@ async def search_decks(
 
     Returns:
         Dictionary with a "decks" list matching your search criteria. Each deck contains:
-        - id: Unique deck identifier
-        - deck_hash: Hash of the deck composition
+        - deck_id: Unique deck identifier
         - cards: List of 8 cards with their IDs, names, and variants
         - avg_elixir: Average elixir cost
-        - archetype: Deck archetype
-        - ftp_tier: Free-to-play tier
         - games_played: Total number of games tracked
         - wins: Total number of wins
         - losses: Total number of losses
-        - unique_players: Number of unique players who used this deck
         - win_rate: Win rate as a decimal (e.g., 0.65 = 65%), null if no games
+        - last_seen: Most recent battle time for this deck
 
     Examples:
         # Find Hog Rider decks with best win rates (min 15 games for reliability)
@@ -247,14 +213,6 @@ async def search_decks(
             sort_by="WIN_RATE",
             min_games=15,
             limit=10
-        )
-
-        # Find F2P-friendly cycle decks sorted by popularity
-        await search_decks(
-            archetype="CYCLE",
-            ftp_tier="FRIENDLY",
-            sort_by="GAMES_PLAYED",
-            limit=15
         )
 
         # Find high win-rate decks with Miner and Poison, no Goblin Drill
@@ -266,43 +224,13 @@ async def search_decks(
             limit=10
         )
 
-        # Find most successful beatdown decks (by total wins)
-        await search_decks(
-            archetype="BEATDOWN",
-            sort_by="WINS",
-            min_games=10,
-            limit=15
-        )
-
-        # Find moderate F2P decks with Royal Giant, sorted by win rate
-        await search_decks(
-            include_cards="26000024",
-            ftp_tier="MODERATE",
-            sort_by="WIN_RATE",
-            min_games=10,
-            limit=20
-        )
-
-        # Find recently seen bridge spam decks
-        await search_decks(
-            archetype="BRIDGESPAM",
-            sort_by="RECENT",
-            limit=20
-        )
-
-        # Find best performing F2P-friendly decks (high win rate filter)
-        await search_decks(
-            ftp_tier="FRIENDLY",
-            sort_by="WIN_RATE",
-            min_games=25,
-            limit=10
-        )
+        # Find popular decks by games played
+        await search_decks(sort_by="GAMES_PLAYED", limit=20)
     """
     logger.info(
         f"Tool: search_decks | "
         f"include_cards={include_cards}, exclude_cards={exclude_cards}, "
-        f"archetype={archetype}, ftp_tier={ftp_tier}, sort_by={sort_by}, "
-        f"min_games={min_games}, limit={limit}"
+        f"sort_by={sort_by}, min_games={min_games}, limit={limit}"
     )
     try:
         if not isinstance(limit, int) or limit <= 0:
@@ -323,40 +251,35 @@ async def search_decks(
         # Parse card IDs
         include_card_ids = None
         if include_cards:
-            include_card_ids = [
-                cid.strip() for cid in include_cards.split(",") if cid.strip()
-            ]
+            include_card_ids = []
+            for cid in include_cards.split(","):
+                cid = cid.strip()
+                if not cid:
+                    continue
+                try:
+                    include_card_ids.append(int(cid))
+                except ValueError:
+                    return {
+                        "error": f"Invalid card id: {cid}.",
+                        "error_type": "validation",
+                        "suggestion": "Use numeric card IDs, e.g. 26000024."
+                    }
 
         exclude_card_ids = None
         if exclude_cards:
-            exclude_card_ids = [
-                cid.strip() for cid in exclude_cards.split(",") if cid.strip()
-            ]
-
-        # Convert string enums to actual enums
-        archetype_enum = None
-        if archetype:
-            try:
-                archetype_enum = DeckArchetype[archetype.upper()]
-            except KeyError:
-                logger.warning(f"Invalid archetype: {archetype}")
-                return {
-                    "error": f"Invalid archetype: {archetype}.",
-                    "error_type": "validation",
-                    "suggestion": "Use a supported archetype like CYCLE or BEATDOWN."
-                }
-
-        ftp_tier_enum = None
-        if ftp_tier:
-            try:
-                ftp_tier_enum = FreeToPlayLevel[ftp_tier.upper()]
-            except KeyError:
-                logger.warning(f"Invalid ftp_tier: {ftp_tier}")
-                return {
-                    "error": f"Invalid ftp_tier: {ftp_tier}.",
-                    "error_type": "validation",
-                    "suggestion": "Use FRIENDLY, MODERATE, or PAYTOWIN."
-                }
+            exclude_card_ids = []
+            for cid in exclude_cards.split(","):
+                cid = cid.strip()
+                if not cid:
+                    continue
+                try:
+                    exclude_card_ids.append(int(cid))
+                except ValueError:
+                    return {
+                        "error": f"Invalid card id: {cid}.",
+                        "error_type": "validation",
+                        "suggestion": "Use numeric card IDs, e.g. 26000024."
+                    }
 
         # Convert string sort_by to enum
         sort_by_enum = DeckSortBy.RECENT  # Default
@@ -374,14 +297,35 @@ async def search_decks(
         decks, _ = await db.search_decks_with_stats(
             include_card_ids=include_card_ids,
             exclude_card_ids=exclude_card_ids,
-            archetype=archetype_enum,
-            ftp_tier=ftp_tier_enum,
             sort_by=sort_by_enum,
             min_games=min_games,
             limit=limit
         )
 
-        return {"decks": [deck.model_dump() for deck in decks]}
+        payloads = []
+        for deck in decks:
+            cards = []
+            for card_id, evolution_level in _parse_deck_id(deck.deck_id):
+                if card_id.startswith("159"):
+                    continue
+                cards.append({
+                    "card_id": card_id,
+                    "card_name": CARD_ID_TO_NAME.get(card_id),
+                    "evolution_level": evolution_level,
+                    "variant": _variant_from_evolution_level(evolution_level),
+                })
+            payloads.append({
+                "deck_id": deck.deck_id,
+                "avg_elixir": deck.avg_elixir,
+                "games_played": deck.games_played,
+                "wins": deck.wins,
+                "losses": deck.losses,
+                "win_rate": deck.win_rate,
+                "last_seen": deck.last_seen,
+                "cards": cards,
+            })
+
+        return {"decks": payloads}
     except (DatabaseConnectionError, DatabaseQueryError) as e:
         error_msg = f"Database error while searching decks: {e}"
         logger.error(f"Tool: search_decks | {error_msg}")

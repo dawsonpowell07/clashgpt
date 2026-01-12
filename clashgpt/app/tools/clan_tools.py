@@ -3,6 +3,7 @@ Clan-related tools for the Clash Royale agent.
 """
 import logging
 
+from app.tools.serialization import serialize_dataclass
 from app.services.clash_royale import (
     ClashRoyaleAPIError,
     ClashRoyaleAuthError,
@@ -33,7 +34,7 @@ async def get_clan_info(clan_tag: str) -> dict:
     try:
         async with ClashRoyaleService() as service:
             clan = await service.get_clan(clan_tag)
-            return clan.model_dump()
+            return serialize_dataclass(clan)
     except ClashRoyaleNotFoundError:
         error_msg = f"Clan not found: {clan_tag}. Ask the user to verify the clan tag."
         logger.warning(f"Tool: get_clan_info | {error_msg}")
@@ -151,7 +152,7 @@ async def search_clans(
                 min_score=min_score,
                 limit=limit
             )
-            return results.model_dump()
+            return serialize_dataclass(results)
     except ClashRoyaleAuthError as e:
         error_msg = f"Authentication failed when searching clans: {e}"
         logger.error(f"Tool: search_clans | {error_msg}")
