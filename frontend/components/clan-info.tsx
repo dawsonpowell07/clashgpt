@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { Trophy, Crown, Medal } from "lucide-react";
 
 interface ClanMember {
   tag: string;
@@ -80,20 +81,9 @@ export function ClanInfo({ clan, className }: ClanInfoProps) {
     return colorMap[role] || "bg-muted text-muted-foreground border-border";
   };
 
-  // Sort members by role hierarchy then trophies
-  const sortedMembers = [...clan.members_list].sort((a, b) => {
-    const roleOrder: Record<string, number> = {
-      leader: 0,
-      coLeader: 1,
-      elder: 2,
-      member: 3,
-    };
-    const roleA = roleOrder[a.role || "member"] ?? 4;
-    const roleB = roleOrder[b.role || "member"] ?? 4;
-
-    if (roleA !== roleB) return roleA - roleB;
-    return (b.trophies || 0) - (a.trophies || 0);
-  });
+  // Use the order provided by the API (already sorted by the game)
+  const topThree = clan.members_list.slice(0, 3);
+  const remainingMembers = clan.members_list.slice(3);
 
   return (
     <div
@@ -186,62 +176,216 @@ export function ClanInfo({ clan, className }: ClanInfoProps) {
       </div>
 
       {/* Members Section */}
-      <div className="p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-          <span>👥</span>
-          Members ({clan.members_list.length})
+      <div className="p-6 space-y-6">
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+          <Trophy className="w-5 h-5 text-yellow-500" />
+          Top Members
         </h3>
 
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {sortedMembers.map((member, idx) => (
-            <div
-              key={member.tag}
-              className="flex items-center justify-between p-3 bg-muted/20 hover:bg-muted/40 rounded-lg border border-border/50 transition-colors"
-            >
-              {/* Member Info */}
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <span className="text-xs text-muted-foreground w-6 flex-shrink-0">
-                  #{idx + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {member.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground font-mono truncate">
-                    {member.tag}
-                  </p>
-                </div>
-              </div>
+        {/* Podium for Top 3 */}
+        {topThree.length > 0 && (
+          <div className="bg-gradient-to-b from-muted/30 to-card border border-border rounded-xl p-6 overflow-hidden">
+            <div className="flex items-end justify-center gap-4">
+              {/* Second Place */}
+              {topThree[1] && (
+                <MemberPodiumCard
+                  member={topThree[1]}
+                  rank={2}
+                  height="h-32"
+                  medal="silver"
+                  formatRole={formatRole}
+                  getRoleBadgeColor={getRoleBadgeColor}
+                />
+              )}
 
-              {/* Role & Stats */}
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <span
-                  className={cn(
-                    "px-2 py-1 text-xs font-medium rounded border",
-                    getRoleBadgeColor(member.role)
-                  )}
-                >
-                  {formatRole(member.role)}
-                </span>
+              {/* First Place */}
+              {topThree[0] && (
+                <MemberPodiumCard
+                  member={topThree[0]}
+                  rank={1}
+                  height="h-40"
+                  medal="gold"
+                  formatRole={formatRole}
+                  getRoleBadgeColor={getRoleBadgeColor}
+                />
+              )}
 
-                {member.trophies !== null && member.trophies !== undefined && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-card/60 rounded border border-border/50">
-                    <span className="text-xs">🏆</span>
-                    <span className="text-xs font-medium text-foreground">
-                      {member.trophies.toLocaleString()}
-                    </span>
-                  </div>
-                )}
-
-                {member.last_seen && (
-                  <span className="text-xs text-muted-foreground min-w-[60px] text-right">
-                    {formatLastSeen(member.last_seen)}
-                  </span>
-                )}
-              </div>
+              {/* Third Place */}
+              {topThree[2] && (
+                <MemberPodiumCard
+                  member={topThree[2]}
+                  rank={3}
+                  height="h-24"
+                  medal="bronze"
+                  formatRole={formatRole}
+                  getRoleBadgeColor={getRoleBadgeColor}
+                />
+              )}
             </div>
-          ))}
+          </div>
+        )}
+
+        {/* Remaining Members List */}
+        {remainingMembers.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-2">
+              Other Members
+            </h3>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {remainingMembers.map((member, idx) => (
+                <div
+                  key={member.tag}
+                  className="flex items-center justify-between p-3 bg-muted/20 hover:bg-muted/40 rounded-lg border border-border/50 transition-colors"
+                >
+                  {/* Member Info */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <span className="text-xs text-muted-foreground w-6 shrink-0">
+                      #{idx + 4}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {member.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground font-mono truncate">
+                        {member.tag}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Role & Stats */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span
+                      className={cn(
+                        "px-2 py-1 text-xs font-medium rounded border",
+                        getRoleBadgeColor(member.role)
+                      )}
+                    >
+                      {formatRole(member.role)}
+                    </span>
+
+                    {member.trophies !== null && member.trophies !== undefined && (
+                      <div className="flex items-center gap-1 px-2 py-1 bg-card/60 rounded border border-border/50">
+                        <span className="text-xs">🏆</span>
+                        <span className="text-xs font-medium text-foreground">
+                          {member.trophies.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+
+                    {member.last_seen && (
+                      <span className="text-xs text-muted-foreground min-w-15 text-right">
+                        {formatLastSeen(member.last_seen)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface MemberPodiumCardProps {
+  member: ClanMember;
+  rank: number;
+  height: string;
+  medal: "gold" | "silver" | "bronze";
+  formatRole: (role: string | null | undefined) => string;
+  getRoleBadgeColor: (role: string | null | undefined) => string;
+}
+
+function MemberPodiumCard({
+  member,
+  rank,
+  height,
+  medal,
+  formatRole,
+  getRoleBadgeColor,
+}: MemberPodiumCardProps) {
+  const medalColors = {
+    gold: "text-yellow-500 bg-yellow-500/10 border-yellow-500/30",
+    silver: "text-gray-400 bg-gray-400/10 border-gray-400/30",
+    bronze: "text-orange-600 bg-orange-600/10 border-orange-600/30",
+  };
+
+  const medalIcons = {
+    gold: <Crown className="w-6 h-6" />,
+    silver: <Medal className="w-5 h-5" />,
+    bronze: <Medal className="w-5 h-5" />,
+  };
+
+  return (
+    <div className="flex flex-col items-center flex-1 max-w-[160px]">
+      {/* Member Card */}
+      <div
+        className={cn(
+          "bg-card border-2 rounded-xl p-4 w-full mb-2 transition-all hover:shadow-lg",
+          medalColors[medal]
+        )}
+      >
+        {/* Medal Icon */}
+        <div className="flex justify-center mb-3">
+          <div className={cn("rounded-full p-2 border-2", medalColors[medal])}>
+            {medalIcons[medal]}
+          </div>
         </div>
+
+        {/* Member Name */}
+        <div className="text-center mb-2">
+          <p className="font-bold text-sm truncate" title={member.name}>
+            {member.name}
+          </p>
+          <p className="text-xs text-muted-foreground font-mono truncate">
+            {member.tag}
+          </p>
+        </div>
+
+        {/* Role Badge */}
+        <div className="flex justify-center mb-2">
+          <span
+            className={cn(
+              "px-2 py-1 text-xs font-medium rounded border",
+              getRoleBadgeColor(member.role)
+            )}
+          >
+            {formatRole(member.role)}
+          </span>
+        </div>
+
+        {/* Trophies */}
+        {member.trophies !== null && member.trophies !== undefined && (
+          <div className="bg-muted/50 rounded-lg px-3 py-2 text-center border border-border/50">
+            <p className="text-xs text-muted-foreground mb-1">Trophies</p>
+            <p
+              className={cn(
+                "text-lg font-bold flex items-center justify-center gap-1",
+                medalColors[medal].split(" ")[0]
+              )}
+            >
+              <span className="text-sm">🏆</span>
+              {member.trophies.toLocaleString()}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Podium Base */}
+      <div
+        className={cn(
+          "w-full rounded-t-lg border-t-2 border-x-2 transition-all",
+          height,
+          medalColors[medal],
+          "flex items-center justify-center"
+        )}
+      >
+        <span
+          className={cn("text-3xl font-bold", medalColors[medal].split(" ")[0])}
+        >
+          {rank}
+        </span>
       </div>
     </div>
   );

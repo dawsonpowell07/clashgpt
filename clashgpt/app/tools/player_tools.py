@@ -242,6 +242,7 @@ async def get_top_players(location_id: int = 57000249, limit: int = 10) -> dict:
     """
     logger.info(
         f"Tool: get_top_players | location_id={location_id}, limit={limit}")
+    limit = min(limit, 50)
 
     try:
         async with ClashRoyaleService() as service:

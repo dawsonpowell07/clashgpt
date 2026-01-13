@@ -14,6 +14,7 @@ import { DeckSearchResults } from "@/components/deck-search-results";
 import { ClanInfo } from "@/components/clan-info";
 import { ClanSearchResults } from "@/components/clan-search-results";
 import { KnowledgeSearch } from "@/components/knowledge-search";
+import { Leaderboard } from "@/components/leaderboard";
 import { cn } from "@/lib/utils";
 import { CustomInput } from "@/components/chat";
 import {
@@ -391,6 +392,49 @@ function Chat({ setThreadId }: ChatProps) {
     },
   });
 
+  // Render leaderboard when backend calls get_top_players
+  useRenderToolCall({
+    name: "get_top_players",
+    render: ({ args, result, status }) => {
+      console.log("[get_top_players render]", { status, args, result });
+
+      // Show loading state while fetching
+      if (status !== "complete") {
+        return (
+          <div className="bg-primary/20 border border-primary/40 text-white p-6 rounded-xl max-w-2xl my-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl animate-spin">⚙️</span>
+              <span className="text-lg font-medium">
+                Fetching top players leaderboard...
+              </span>
+            </div>
+          </div>
+        );
+      }
+
+      if (hasToolError(result)) {
+        return renderToolError();
+      }
+
+      // Show error state if no result
+      if (!result || !result.entries || result.entries.length === 0) {
+        return (
+          <div className="bg-destructive/20 border border-destructive/40 text-white p-6 rounded-xl max-w-2xl my-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">❌</span>
+              <span className="text-lg font-medium">
+                Could not fetch leaderboard data
+              </span>
+            </div>
+          </div>
+        );
+      }
+
+      // Show leaderboard with podium
+      return <Leaderboard leaderboard={result} className="my-4" />;
+    },
+  });
+
   // Debug: Catch-all renderer to see what other backend tools are being called
   useRenderToolCall({
     name: "*",
@@ -405,7 +449,8 @@ function Chat({ setThreadId }: ChatProps) {
         name === "get_clan_info" ||
         name === "search_clans" ||
         name === "search_decks" ||
-        name === "search_knowledge_base"
+        name === "search_knowledge_base" ||
+        name === "get_top_players"
       ) {
         return <></>;
       }
