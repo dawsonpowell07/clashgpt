@@ -176,7 +176,9 @@ async def search_decks(
         include_cards: Comma-separated list of card IDs that MUST be in the deck.
             Use this to find decks built around specific cards or combinations.
             Example: "26000000,26000001" to find decks with both Knight and Archers.
-            Supports card variants: "26000004:EVOLUTION" for Goblin Barrel Evolution.
+            Supports card variants: "26000004_1" for evolved cards, "26000004_2" for hero cards.
+            Format: "card_id_evolution_level" where evolution_level is 0 (normal), 1 (evolved), or 2 (hero).
+            Omit evolution_level to match any variant (e.g., "26000004" matches all Goblin Barrel variants).
 
         exclude_cards: Comma-separated list of card IDs that MUST NOT be in the deck.
             Use this to avoid certain cards or find alternative decks.
@@ -248,7 +250,7 @@ async def search_decks(
 
         db = get_database_service()
 
-        # Parse card IDs
+        # Parse card IDs (supports both "card_id" and "card_id_evolution_level" format)
         include_card_ids = None
         if include_cards:
             include_card_ids = []
@@ -257,12 +259,20 @@ async def search_decks(
                 if not cid:
                     continue
                 try:
-                    include_card_ids.append(int(cid))
+                    if "_" in cid:
+                        # Validate format: card_id_evolution_level (e.g., "26000012_1")
+                        card_id, evo_level = cid.split("_", 1)
+                        int(card_id)  # Validate card_id is numeric
+                        int(evo_level)  # Validate evolution_level is numeric
+                        include_card_ids.append(cid)  # Keep as string "26000012_1"
+                    else:
+                        # Backward compatible: just card_id (any variant)
+                        include_card_ids.append(int(cid))
                 except ValueError:
                     return {
                         "error": f"Invalid card id: {cid}.",
                         "error_type": "validation",
-                        "suggestion": "Use numeric card IDs, e.g. 26000024."
+                        "suggestion": "Use numeric card IDs (e.g. 26000024) or card_id_variant (e.g. 26000024_1)."
                     }
 
         exclude_card_ids = None
@@ -273,12 +283,20 @@ async def search_decks(
                 if not cid:
                     continue
                 try:
-                    exclude_card_ids.append(int(cid))
+                    if "_" in cid:
+                        # Validate format: card_id_evolution_level (e.g., "26000012_1")
+                        card_id, evo_level = cid.split("_", 1)
+                        int(card_id)  # Validate card_id is numeric
+                        int(evo_level)  # Validate evolution_level is numeric
+                        exclude_card_ids.append(cid)  # Keep as string "26000012_1"
+                    else:
+                        # Backward compatible: just card_id (any variant)
+                        exclude_card_ids.append(int(cid))
                 except ValueError:
                     return {
                         "error": f"Invalid card id: {cid}.",
                         "error_type": "validation",
-                        "suggestion": "Use numeric card IDs, e.g. 26000024."
+                        "suggestion": "Use numeric card IDs (e.g. 26000024) or card_id_variant (e.g. 26000024_1)."
                     }
 
         # Convert string sort_by to enum

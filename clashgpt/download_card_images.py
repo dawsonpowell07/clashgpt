@@ -8,6 +8,8 @@ Downloads card images from the /cards endpoint and organizes them into folders:
 """
 
 import asyncio
+import json
+import re
 from pathlib import Path
 
 import httpx
@@ -37,7 +39,28 @@ async def download_card_images(card: dict, client: httpx.AsyncClient) -> None:
     """Download all images for a single card."""
     card_name = sanitize_filename(card["name"])
     card_folder = OUTPUT_DIR / card_name
-    icon_urls = card.get("icon_urls", {})
+    card_folder = OUTPUT_DIR / card_name
+    icon_urls_raw = card.get("icon_urls", {})
+    
+    icon_urls = {}
+    if isinstance(icon_urls_raw, dict):
+        icon_urls = icon_urls_raw
+    elif isinstance(icon_urls_raw, str):
+        try:
+            # Try parsing standardized JSON (replace single quotes with double)
+            standardized = icon_urls_raw.replace("'", '"')
+            icon_urls = json.loads(standardized)
+        except json.JSONDecodeError:
+             # Fallback: simple string matching if JSON fails
+            if "medium" in icon_urls_raw:
+                match = re.search(r"'medium':\s*'([^']+)'", icon_urls_raw)
+                if match: icon_urls["medium"] = match.group(1)
+            if "heroMedium" in icon_urls_raw:
+                match = re.search(r"'heroMedium':\s*'([^']+)'", icon_urls_raw)
+                if match: icon_urls["heroMedium"] = match.group(1)
+            if "evolutionMedium" in icon_urls_raw:
+                match = re.search(r"'evolutionMedium':\s*'([^']+)'", icon_urls_raw)
+                if match: icon_urls["evolutionMedium"] = match.group(1)
 
     tasks = []
 

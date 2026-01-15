@@ -766,8 +766,8 @@ class DatabaseService:
 
     async def search_decks_with_stats(
         self,
-        include_card_ids: list[str] | None = None,
-        exclude_card_ids: list[str] | None = None,
+        include_card_ids: list[str | int] | None = None,
+        exclude_card_ids: list[str | int] | None = None,
         archetype: object | None = None,
         ftp_tier: object | None = None,
         sort_by: DeckSortBy = DeckSortBy.RECENT,
@@ -779,8 +779,8 @@ class DatabaseService:
         Search for decks with stats and filters.
 
         Args:
-            include_card_ids: List of card IDs that must be in the deck
-            exclude_card_ids: List of card IDs that must not be in the deck
+            include_card_ids: List of card IDs (int) or card specs with variant (str: "card_id_evolution_level")
+            exclude_card_ids: List of card IDs (int) or card specs with variant (str: "card_id_evolution_level")
             archetype: Deprecated (not supported in the new schema)
             ftp_tier: Deprecated (not supported in the new schema)
             sort_by: How to sort the results (default: RECENT)
@@ -823,20 +823,44 @@ class DatabaseService:
                 }
 
                 if include_card_ids:
-                    for i, card_id in enumerate(include_card_ids):
-                        deck_conditions.append(
-                            f"EXISTS (SELECT 1 FROM deck_cards "
-                            f"WHERE deck_id = d.deck_id AND card_id = :include_{i})"
-                        )
-                        params[f"include_{i}"] = card_id
+                    for i, card_spec in enumerate(include_card_ids):
+                        if isinstance(card_spec, str) and "_" in card_spec:
+                            # Format: "card_id_evolution_level" (e.g., "26000012_1")
+                            card_id, evo_level = card_spec.split("_", 1)
+                            deck_conditions.append(
+                                f"EXISTS (SELECT 1 FROM deck_cards "
+                                f"WHERE deck_id = d.deck_id AND card_id = :include_id_{i} "
+                                f"AND evolution_level = :include_evo_{i})"
+                            )
+                            params[f"include_id_{i}"] = int(card_id)
+                            params[f"include_evo_{i}"] = int(evo_level)
+                        else:
+                            # Backward compatible: just card_id (any variant)
+                            deck_conditions.append(
+                                f"EXISTS (SELECT 1 FROM deck_cards "
+                                f"WHERE deck_id = d.deck_id AND card_id = :include_{i})"
+                            )
+                            params[f"include_{i}"] = int(card_spec) if isinstance(card_spec, str) else card_spec
 
                 if exclude_card_ids:
-                    for i, card_id in enumerate(exclude_card_ids):
-                        deck_conditions.append(
-                            f"NOT EXISTS (SELECT 1 FROM deck_cards "
-                            f"WHERE deck_id = d.deck_id AND card_id = :exclude_{i})"
-                        )
-                        params[f"exclude_{i}"] = card_id
+                    for i, card_spec in enumerate(exclude_card_ids):
+                        if isinstance(card_spec, str) and "_" in card_spec:
+                            # Format: "card_id_evolution_level" (e.g., "26000012_1")
+                            card_id, evo_level = card_spec.split("_", 1)
+                            deck_conditions.append(
+                                f"NOT EXISTS (SELECT 1 FROM deck_cards "
+                                f"WHERE deck_id = d.deck_id AND card_id = :exclude_id_{i} "
+                                f"AND evolution_level = :exclude_evo_{i})"
+                            )
+                            params[f"exclude_id_{i}"] = int(card_id)
+                            params[f"exclude_evo_{i}"] = int(evo_level)
+                        else:
+                            # Backward compatible: just card_id (any variant)
+                            deck_conditions.append(
+                                f"NOT EXISTS (SELECT 1 FROM deck_cards "
+                                f"WHERE deck_id = d.deck_id AND card_id = :exclude_{i})"
+                            )
+                            params[f"exclude_{i}"] = int(card_spec) if isinstance(card_spec, str) else card_spec
 
                 where_clause = "WHERE " + " AND ".join(deck_conditions)
 

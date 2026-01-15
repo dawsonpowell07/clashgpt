@@ -196,15 +196,15 @@ async def list_endpoints():
                 "GET /api/decks": {
                     "description": "Search and filter decks with stats (paginated)",
                     "parameters": {
-                        "include": "Optional - Comma-separated card IDs that must be in deck",
-                        "exclude": "Optional - Comma-separated card IDs that must not be in deck",
+                        "include": "Optional - Comma-separated card IDs that must be in deck. Supports variants: card_id_evolution_level (e.g., 26000012_1 for evolved)",
+                        "exclude": "Optional - Comma-separated card IDs that must not be in deck. Same format as include",
                         "sort_by": "Optional - Sort by (RECENT, GAMES_PLAYED, WIN_RATE, WINS, default: RECENT)",
                         "min_games": "Optional - Minimum games played (default: 0)",
                         "page": "Optional - Page number (1-indexed, default: 1)",
                         "page_size": "Optional - Results per page (1-200, default: 24)",
                         "include_cards": "Optional - Include card details and variants for each deck (default: false)"
                     },
-                    "example": "/api/decks?include=26000000,26000001&sort_by=WIN_RATE&min_games=20&include_cards=true&page=1&page_size=24"
+                    "example": "/api/decks?include=26000000,26000012_1&sort_by=WIN_RATE&min_games=20&include_cards=true&page=1&page_size=24"
                 }
             },
             "locations": {
@@ -262,6 +262,7 @@ async def get_card_by_id(card_id: str):
         HTTPException: 404 if card not found
     """
     db = get_database_service()
+    card_id = int(card_id)  
     card = await db.get_card_by_id(card_id)
 
     if card is None:
@@ -292,8 +293,11 @@ async def search_decks(
     Search for decks with stats and filters (paginated).
 
     Args:
-        include: Comma-separated list of card IDs that must be in the deck
-        exclude: Comma-separated list of card IDs that must not be in the deck
+        include: Comma-separated list of card IDs that must be in the deck.
+            Supports variant filtering: use "card_id_evolution_level" format (e.g., "26000012_1" for evolved Skeleton Army).
+            Evolution levels: 0 (normal), 1 (evolved), 2 (hero).
+            Omit evolution_level to match any variant (e.g., "26000012" matches all Skeleton Army variants).
+        exclude: Comma-separated list of card IDs that must not be in the deck (same format as include)
         sort_by: How to sort results (RECENT, GAMES_PLAYED, WIN_RATE, WINS, default: RECENT)
         min_games: Minimum number of games played (default: 0)
         page: Page number (1-indexed, default: 1)
@@ -305,7 +309,7 @@ async def search_decks(
 
     Examples:
         - /decks?include=26000000,26000001&sort_by=WIN_RATE&min_games=20&include_cards=true&page=1&page_size=24
-        - /decks?exclude=26000010&sort_by=WINS&page=2&page_size=12
+        - /decks?include=26000012_1&exclude=26000010&sort_by=WINS&page=2&page_size=12
         - /decks?sort_by=GAMES_PLAYED&page=1
     """
     db = get_database_service()
@@ -318,11 +322,19 @@ async def search_decks(
             if not cid:
                 continue
             try:
-                include_card_ids.append(int(cid))
+                if "_" in cid:
+                    # Validate format: card_id_evolution_level (e.g., "26000012_1")
+                    card_id, evo_level = cid.split("_", 1)
+                    int(card_id)  # Validate card_id is numeric
+                    int(evo_level)  # Validate evolution_level is numeric
+                    include_card_ids.append(cid)  # Keep as string "26000012_1"
+                else:
+                    # Backward compatible: just card_id (any variant)
+                    include_card_ids.append(int(cid))
             except ValueError as exc:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid include card id: {cid}"
+                    detail=f"Invalid include card id: {cid}. Use numeric card IDs (e.g. 26000024) or card_id_variant (e.g. 26000024_1)."
                 ) from exc
 
     exclude_card_ids = None
@@ -333,11 +345,19 @@ async def search_decks(
             if not cid:
                 continue
             try:
-                exclude_card_ids.append(int(cid))
+                if "_" in cid:
+                    # Validate format: card_id_evolution_level (e.g., "26000012_1")
+                    card_id, evo_level = cid.split("_", 1)
+                    int(card_id)  # Validate card_id is numeric
+                    int(evo_level)  # Validate evolution_level is numeric
+                    exclude_card_ids.append(cid)  # Keep as string "26000012_1"
+                else:
+                    # Backward compatible: just card_id (any variant)
+                    exclude_card_ids.append(int(cid))
             except ValueError as exc:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid exclude card id: {cid}"
+                    detail=f"Invalid exclude card id: {cid}. Use numeric card IDs (e.g. 26000024) or card_id_variant (e.g. 26000024_1)."
                 ) from exc
 
     offset = (page - 1) * page_size
