@@ -199,7 +199,8 @@ class CardStats:
     losses: int = 0
     win_rate: float | None = None  # Calculated: wins / total_uses
     usage_rate: float | None = None  # Percentage of all card slots
-    deck_appearance_rate: float | None = None  # Percentage of decks containing this card
+    # Percentage of decks containing this card
+    deck_appearance_rate: float | None = None
 
     def model_dump_json(self, indent: int | None = None) -> str:
         """Serialize to JSON string for compatibility with Pydantic API."""

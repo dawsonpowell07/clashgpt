@@ -87,7 +87,7 @@ async def populate_database(cards):
                     card.card_id,
                     card.name,
                     card.elixir_cost,
-                    card.rarity.value,
+                    card.rarity.value.upper(),
                     json.dumps(card.icon_urls)
                 )
                 inserted_cards += 1

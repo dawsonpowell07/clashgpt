@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { ChevronDown, ChevronUp, Trophy, Swords, Shield, XCircle } from "lucide-react";
 
 interface Card {
   id: string;
@@ -42,18 +46,55 @@ interface BattleLogProps {
 }
 
 export function BattleLog({ battleLog, className }: BattleLogProps) {
+  const wins = battleLog.battles.filter((b) => b.user_trophy_change > 0).length;
+  const draws = battleLog.battles.filter(
+    (b) => b.user_trophy_change === 0
+  ).length;
+  const losses = battleLog.battles.length - wins - draws; // Approx, assuming anything else is a loss
+  const winRate =
+    Math.round((wins / (battleLog.battles.length || 1)) * 100);
+
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-foreground">Recent Battles</h2>
-        <span className="text-sm text-muted-foreground">
-          {battleLog.battles.length} battles
-        </span>
+      <div className="flex items-center justify-between bg-card border border-border p-4 rounded-xl">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-primary/10 rounded-lg">
+            <Swords className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Battle Log</h2>
+            <p className="text-xs text-muted-foreground">
+              Last {battleLog.battles.length} battles
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-6">
+          <div className="text-center">
+            <div className="text-lg font-bold text-green-500">{wins}</div>
+            <div className="text-[10px] uppercase font-bold text-muted-foreground">Wins</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold text-destructive">{losses}</div>
+            <div className="text-[10px] uppercase font-bold text-muted-foreground">Losses</div>
+          </div>
+          {draws > 0 && (
+             <div className="text-center">
+             <div className="text-lg font-bold text-yellow-500">{draws}</div>
+             <div className="text-[10px] uppercase font-bold text-muted-foreground">Draws</div>
+           </div>
+          )}
+          <div className="w-px h-8 bg-border" />
+           <div className="text-center">
+            <div className="text-lg font-bold text-foreground">{winRate}%</div>
+            <div className="text-[10px] uppercase font-bold text-muted-foreground">Win Rate</div>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
         {battleLog.battles.map((battle, index) => (
-          <BattleCard key={index} battle={battle} />
+          <BattleCard key={index} battle={battle} defaultOpen={index === 0} />
         ))}
       </div>
     </div>
@@ -62,6 +103,7 @@ export function BattleLog({ battleLog, className }: BattleLogProps) {
 
 interface BattleCardProps {
   battle: Battle;
+  defaultOpen?: boolean;
 }
 
 function formatGameMode(gameMode: string): string {
@@ -78,82 +120,108 @@ function formatGameMode(gameMode: string): string {
   return gameModeMap[gameMode] || "1v1"; // Default to 1v1
 }
 
-function BattleCard({ battle }: BattleCardProps) {
+function BattleCard({ battle, defaultOpen = false }: BattleCardProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  
   const isWin = battle.user_trophy_change > 0;
   const isDraw = battle.user_trophy_change === 0;
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
-      {/* Header */}
+      {/* Header - Click to toggle */}
       <div
         className={cn(
-          "px-4 py-3 border-b border-border",
-          isWin && "bg-green-500/10 border-green-500/20",
-          isDraw && "bg-yellow-500/10 border-yellow-500/20",
-          !isWin && !isDraw && "bg-destructive/10 border-destructive/20"
+          "px-4 py-3 border-b border-transparent cursor-pointer hover:bg-muted/50 transition-colors",
+           isOpen && "border-border"
         )}
+        onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+             {/* Result Indicator */}
             <div
               className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center text-2xl font-bold",
-                isWin && "bg-green-500/20 text-green-400",
-                isDraw && "bg-yellow-500/20 text-yellow-400",
-                !isWin && !isDraw && "bg-destructive/20 text-destructive"
+                "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border",
+                isWin && "bg-green-500/20 text-green-500 border-green-500/30",
+                isDraw && "bg-yellow-500/20 text-yellow-500 border-yellow-500/30",
+                !isWin && !isDraw && "bg-destructive/20 text-destructive border-destructive/30"
               )}
             >
               {isWin ? "W" : isDraw ? "D" : "L"}
             </div>
-            <div>
+            
+            {/* Battle Info */}
+            <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-foreground">
-                  {formatGameMode(battle.game_mode_name)}
-                </span>
-                <span
-                  className={cn(
-                    "text-sm font-medium",
-                    isWin && "text-green-400",
-                    isDraw && "text-yellow-400",
-                    !isWin && !isDraw && "text-destructive"
-                  )}
-                >
-                  {battle.user_trophy_change > 0 && "+"}
-                  {battle.user_trophy_change} 🏆
-                </span>
+                 <span className="font-semibold text-sm text-foreground">
+                   {isWin ? "Victory" : isDraw ? "Draw" : "Defeat"}
+                 </span>
+                 <span className="text-xs text-muted-foreground">•</span>
+                 <span className="text-xs text-muted-foreground">
+                   {formatGameMode(battle.game_mode_name)}
+                 </span>
+                  <span className="text-xs text-muted-foreground">•</span>
+                 <span className="text-xs text-muted-foreground">
+                    {battle.arena.name}
+                 </span>
               </div>
-              <div className="text-xs text-muted-foreground">
-                {battle.arena.name}
-              </div>
+               <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>vs {battle.opponent_name}</span>
+                   {battle.user_trophy_change !== 0 && (
+                     <span
+                       className={cn(
+                         "ml-1 font-medium",
+                         isWin ? "text-green-500" : "text-destructive"
+                       )}
+                     >
+                       {isWin && "+"}
+                       {battle.user_trophy_change} 🏆
+                     </span>
+                   )}
+               </div>
             </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </div>
         </div>
       </div>
 
-      {/* Battle Details */}
-      <div className="p-4">
-        <div className="grid grid-cols-2 gap-4">
-          {/* User Side */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-foreground">
-                {battle.user_name}
-              </span>
+      {/* Battle Details - Collapsible */}
+      {isOpen && (
+        <div className="p-4 bg-muted/20 animate-in slide-in-from-top-2 duration-200">
+          <div className="grid grid-cols-2 gap-4">
+            {/* User Side */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  You
+                </span>
+                 <span className="text-xs text-muted-foreground ml-auto">
+                    {battle.user_name}
+                 </span>
+              </div>
+              <DeckPreview cards={battle.user_deck.cards} />
             </div>
-            <DeckPreview cards={battle.user_deck.cards} />
-          </div>
 
-          {/* Opponent Side */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-foreground">
-                {battle.opponent_name}
-              </span>
+            {/* Opponent Side */}
+            <div>
+               <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-red-500" />
+                <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  Opponent
+                </span>
+                 <span className="text-xs text-muted-foreground ml-auto">
+                    {battle.opponent_name}
+                 </span>
+              </div>
+              <DeckPreview cards={battle.opponent_deck.cards} />
             </div>
-            <DeckPreview cards={battle.opponent_deck.cards} />
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -167,12 +235,12 @@ function DeckPreview({ cards }: DeckPreviewProps) {
     cards.reduce((sum, card) => sum + card.elixir_cost, 0) / cards.length;
 
   return (
-    <div>
+    <div className="bg-card rounded-lg p-2 border border-border">
       <div className="grid grid-cols-4 gap-1 mb-2">
         {cards.map((card, index) => (
           <div
             key={index}
-            className="relative aspect-3/4 rounded overflow-hidden border border-border bg-muted"
+            className="relative aspect-3/4 rounded overflow-hidden border border-border bg-muted/50 group"
           >
             <Image
               src={`/cards/${card.name
@@ -184,16 +252,20 @@ function DeckPreview({ cards }: DeckPreviewProps) {
                 .replace(/\./g, "")}.png`}
               alt={card.name}
               fill
-              className="object-contain"
+              className="object-contain group-hover:scale-110 transition-transform duration-300"
             />
-            <div className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-primary/90 text-primary-foreground text-[8px] font-bold">
+            <div className="absolute top-0 right-0 bg-black/60 text-white text-[8px] px-1 rounded-bl">
               {card.elixir_cost}
             </div>
           </div>
         ))}
       </div>
-      <div className="text-xs text-muted-foreground text-center">
-        Avg Elixir: {avgElixir.toFixed(1)}
+      <div className="flex items-center justify-between px-1">
+          <span className="text-[10px] text-muted-foreground font-medium">Avg Elixir</span>
+          <span className="text-[10px] font-bold text-foreground flex items-center gap-1">
+             <div className="w-2 h-2 rounded-full bg-purple-500/50" />
+             {avgElixir.toFixed(1)}
+          </span>
       </div>
     </div>
   );
