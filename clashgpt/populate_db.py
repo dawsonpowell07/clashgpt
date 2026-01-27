@@ -76,15 +76,15 @@ async def populate_database(cards):
                 # Use INSERT ... ON CONFLICT DO UPDATE to handle duplicates
                 await conn.execute(
                     """
-                    INSERT INTO cards (id, name, elixir_cost, rarity, icon_urls)
+                    INSERT INTO cards (card_id, name, elixir_cost, rarity, icon_urls)
                     VALUES ($1, $2, $3, $4::rarity_enum, $5::jsonb)
-                    ON CONFLICT (id) DO UPDATE SET
+                    ON CONFLICT (card_id) DO UPDATE SET
                         name = EXCLUDED.name,
                         elixir_cost = EXCLUDED.elixir_cost,
                         rarity = EXCLUDED.rarity,
-                        icon_urls = EXCLUDED.icon_urls,
+                        icon_urls = EXCLUDED.icon_urls
                     """,
-                    card.id,
+                    card.card_id,
                     card.name,
                     card.elixir_cost,
                     card.rarity.value,

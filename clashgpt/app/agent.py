@@ -29,6 +29,7 @@ import os
 import google.auth
 
 from app.tools import (
+    get_card_stats,
     get_clan_info,
     get_player_battle_log,
     get_player_info,
@@ -88,6 +89,7 @@ root_agent = Agent(
     before_agent_callback=on_before_agent,
     instruction=PROMPT,
     tools=[
+        get_card_stats,
         get_clan_info,
         get_player_info,
         get_player_battle_log,

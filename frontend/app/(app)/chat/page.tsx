@@ -15,6 +15,7 @@ import { ClanInfo } from "@/components/clan-info";
 import { ClanSearchResults } from "@/components/clan-search-results";
 import { KnowledgeSearch } from "@/components/knowledge-search";
 import { Leaderboard } from "@/components/leaderboard";
+import { CardStats } from "@/components/card-stats";
 import { cn } from "@/lib/utils";
 import { CustomInput } from "@/components/chat";
 import {
@@ -435,6 +436,49 @@ function Chat({ setThreadId }: ChatProps) {
     },
   });
 
+  // Render card stats when backend calls get_card_stats
+  useRenderToolCall({
+    name: "get_card_stats",
+    render: ({ args, result, status }) => {
+      console.log("[get_card_stats render]", { status, args, result });
+
+      // Show loading state while fetching
+      if (status !== "complete") {
+        return (
+          <div className="bg-primary/20 border border-primary/40 text-white p-6 rounded-xl max-w-2xl my-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl animate-spin">⚙️</span>
+              <span className="text-lg font-medium">
+                Fetching card statistics...
+              </span>
+            </div>
+          </div>
+        );
+      }
+
+      if (hasToolError(result)) {
+        return renderToolError();
+      }
+
+      // Show error state if no result
+      if (!result || !result.card_name) {
+        return (
+          <div className="bg-destructive/20 border border-destructive/40 text-white p-6 rounded-xl max-w-2xl my-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">❌</span>
+              <span className="text-lg font-medium">
+                Could not fetch card statistics
+              </span>
+            </div>
+          </div>
+        );
+      }
+
+      // Show card stats component
+      return <CardStats stats={result} className="my-4" />;
+    },
+  });
+
   // Debug: Catch-all renderer to see what other backend tools are being called
   useRenderToolCall({
     name: "*",
@@ -450,7 +494,8 @@ function Chat({ setThreadId }: ChatProps) {
         name === "search_clans" ||
         name === "search_decks" ||
         name === "search_knowledge_base" ||
-        name === "get_top_players"
+        name === "get_top_players" ||
+        name === "get_card_stats"
       ) {
         return <></>;
       }

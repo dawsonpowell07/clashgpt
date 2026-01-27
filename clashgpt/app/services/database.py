@@ -483,6 +483,140 @@ class DatabaseService:
                 f"Unexpected error while fetching card usage rates: {e!s}"
             ) from e
 
+    async def get_card_stats_by_id(
+        self,
+        card_id: int,
+        season_id: int | None = None,
+        league: str | None = None
+    ) -> CardStats | None:
+        """
+        Get usage statistics for a specific card by ID.
+
+        Args:
+            card_id: The card ID to fetch stats for
+            season_id: Optional season filter (e.g., 202601)
+            league: Optional league filter (e.g., "7")
+
+        Returns:
+            CardStats object with usage statistics, or None if card not found
+        """
+        logger.info(
+            f"DB query: get_card_stats_by_id | card_id={card_id}, "
+            f"season_id={season_id}, league={league}"
+        )
+        try:
+            async with self.async_session() as session:
+                # First verify the card exists
+                card_stmt = text(
+                    "SELECT card_id, name FROM cards WHERE card_id = :card_id"
+                )
+                card_result = await session.execute(card_stmt, {"card_id": card_id})
+                card_row = card_result.fetchone()
+
+                if not card_row:
+                    logger.info(f"DB result: get_card_stats_by_id - card {card_id} not found")
+                    return None
+
+                card_name = card_row[1]
+
+                # Build WHERE clause for stats query
+                where_conditions = ["cuf.card_id = :card_id"]
+                params: dict[str, Any] = {"card_id": card_id}
+
+                if season_id:
+                    where_conditions.append("cuf.season_id = :season_id")
+                    params["season_id"] = season_id
+
+                if league:
+                    where_conditions.append("cuf.league = :league")
+                    params["league"] = league
+
+                where_clause = "WHERE " + " AND ".join(where_conditions)
+
+                # Get total battles for usage rate calculation
+                total_query_conditions = []
+                total_params: dict[str, Any] = {}
+                if season_id:
+                    total_query_conditions.append("season_id = :season_id")
+                    total_params["season_id"] = season_id
+                if league:
+                    total_query_conditions.append("league = :league")
+                    total_params["league"] = league
+
+                total_where = "WHERE " + " AND ".join(total_query_conditions) if total_query_conditions else ""
+                total_query = f"SELECT COUNT(*) FROM card_usage_facts {total_where}"
+                total_result = await session.execute(text(total_query), total_params)
+                total_card_uses = total_result.scalar() or 1
+
+                # Get total distinct decks for deck appearance rate
+                total_decks_query = f"SELECT COUNT(DISTINCT deck_id) FROM card_usage_facts {total_where}"
+                total_decks_result = await session.execute(text(total_decks_query), total_params)
+                total_decks = total_decks_result.scalar() or 1
+
+                # Get card usage stats including distinct deck count
+                stats_query = f"""
+                    SELECT
+                        COUNT(*) AS total_uses,
+                        SUM(CASE WHEN cuf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+                        SUM(CASE WHEN cuf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+                        COUNT(DISTINCT cuf.deck_id) AS deck_count
+                    FROM card_usage_facts cuf
+                    {where_clause}
+                """
+
+                result = await session.execute(text(stats_query), params)
+                row = result.fetchone()
+
+                if row and row[0] > 0:
+                    total_uses = row[0]
+                    wins = row[1]
+                    losses = row[2]
+                    deck_count = row[3]
+                    win_rate = (wins / total_uses) if total_uses > 0 else None
+                    usage_rate = round(100.0 * total_uses / total_card_uses, 2) if total_card_uses > 0 else None
+                    deck_appearance_rate = round(100.0 * deck_count / total_decks, 2) if total_decks > 0 else None
+
+                    stats = CardStats(
+                        card_id=card_id,
+                        card_name=card_name,
+                        total_uses=total_uses,
+                        wins=wins,
+                        losses=losses,
+                        win_rate=win_rate,
+                        usage_rate=usage_rate,
+                        deck_appearance_rate=deck_appearance_rate
+                    )
+                else:
+                    # Card exists but no usage data
+                    stats = CardStats(
+                        card_id=card_id,
+                        card_name=card_name,
+                        total_uses=0,
+                        wins=0,
+                        losses=0,
+                        win_rate=None,
+                        usage_rate=0.0,
+                        deck_appearance_rate=0.0
+                    )
+
+                logger.info(
+                    f"DB result: get_card_stats_by_id returned stats for card {card_id} "
+                    f"({card_name}): {stats.total_uses} uses, {stats.win_rate} win rate"
+                )
+                return stats
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_card_stats_by_id")
+            raise DatabaseQueryError(
+                f"Database query failed while fetching card stats: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_card_stats_by_id")
+            raise DatabaseServiceError(
+                f"Unexpected error while fetching card stats: {e!s}"
+            ) from e
+
     # ===== DECKS ENDPOINTS (READ ONLY) =====
 
     async def get_deck_by_id(self, deck_id: str) -> Deck | None:

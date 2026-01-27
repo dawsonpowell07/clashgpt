@@ -92,11 +92,17 @@ TOOL USAGE EXAMPLES
 • “Find active clans with 40+ members” → search_clans(min_members=40, min_score=50000)
 • “Competitive clans in USA” → search_clans(location_id=57000249, min_members=45)
 
+### Card Stats (Meta Analysis)
+• "How good is Knight right now?" → get_card_stats(card_id=26000000)
+• "Is Mega Knight meta?" → get_card_stats(card_id=26000055)
+• "Hog Rider win rate in Champion league" → get_card_stats(card_id=26000021, league="7")
+• "Check if Goblin Barrel is viable" → get_card_stats(card_id=28000004)
+
 ### Deck Queries (Performance-Aware)
-• “Top meta decks” → search_decks(limit=20, sort_by="RECENT")
-• “Highest win rate decks” → search_decks(sort_by="WIN_RATE", min_games=15, limit=10)
-• “Most popular decks” → search_decks(sort_by="GAMES_PLAYED", limit=20)
-• “Hog Rider decks with best win rate” →
+• "Top meta decks" → search_decks(limit=20, sort_by="RECENT")
+• "Highest win rate decks" → search_decks(sort_by="WIN_RATE", min_games=15, limit=10)
+• "Most popular decks" → search_decks(sort_by="GAMES_PLAYED", limit=20)
+• "Hog Rider decks with best win rate" →
   search_decks(include_cards="26000021", sort_by="WIN_RATE", min_games=15)
 
 ### Smart Multi-Tool Queries
@@ -110,6 +116,13 @@ RESPONSE TEMPLATES (FOLLOW THESE)
 ────────────────────────────────────────────
 Summarize results and extract key takeaways, standouts, or interesting facts.
 DO NOT restate data already visible in the UI.
+
+### After get_card_stats
+• Lead with the card's meta status: strong (>52% WR, >15% appearance), average, or weak
+• Highlight deck_appearance_rate as the key popularity metric
+• Compare win_rate to 50% baseline (above = good, below = struggling)
+• Add context: why the card might be over/underperforming in current meta
+• Optional: Suggest synergies or counters if relevant
 
 ### After search_decks
 • Summarize archetype patterns across results

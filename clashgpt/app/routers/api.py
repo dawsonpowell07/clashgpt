@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Query
 from app.models.models import (
     Card,
     CardList,
+    CardStats,
     DeckSortBy,
     Locations,
     Rarity,
@@ -190,6 +191,15 @@ async def list_endpoints():
                         "card_id": "Required - The card ID to fetch"
                     },
                     "example": "/api/cards/26000000"
+                },
+                "GET /api/cards/{card_id}/stats": {
+                    "description": "Get usage statistics for a specific card (win rate, usage rate, games played)",
+                    "parameters": {
+                        "card_id": "Required - The card ID to fetch stats for",
+                        "season_id": "Optional - Filter by season (e.g., 202601)",
+                        "league": "Optional - Filter by league tier (e.g., '7')"
+                    },
+                    "example": "/api/cards/26000000/stats?season_id=202601"
                 }
             },
             "decks": {
@@ -262,14 +272,53 @@ async def get_card_by_id(card_id: str):
         HTTPException: 404 if card not found
     """
     db = get_database_service()
-    card_id = int(card_id)  
-    card = await db.get_card_by_id(card_id)
+    card_id_int = int(card_id)
+    card = await db.get_card_by_id(card_id_int)
 
     if card is None:
         raise HTTPException(
             status_code=404, detail=f"Card with id '{card_id}' not found")
 
     return card
+
+
+@router.get("/cards/{card_id}/stats", response_model=CardStats)
+async def get_card_stats(
+    card_id: str,
+    season_id: Annotated[int | None, Query(
+        description="Filter by season (e.g., 202601)")] = None,
+    league: Annotated[str | None, Query(
+        description="Filter by league tier (e.g., '7')")] = None
+):
+    """
+    Get usage statistics for a specific card.
+
+    Returns win rate, usage rate, and total games from card_usage_facts.
+
+    Args:
+        card_id: The card ID to fetch stats for
+        season_id: Optional season filter (e.g., 202601)
+        league: Optional league filter (e.g., "7")
+
+    Returns:
+        CardStats object with usage statistics
+
+    Raises:
+        HTTPException: 404 if card not found
+    """
+    db = get_database_service()
+    card_id_int = int(card_id)
+    stats = await db.get_card_stats_by_id(
+        card_id=card_id_int,
+        season_id=season_id,
+        league=league
+    )
+
+    if stats is None:
+        raise HTTPException(
+            status_code=404, detail=f"Card with id '{card_id}' not found")
+
+    return stats
 
 
 # ===== DECKS ENDPOINTS =====
