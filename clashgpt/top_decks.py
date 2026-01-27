@@ -13,19 +13,15 @@ Usage:
 """
 
 import asyncio
-import hashlib
 import json
-import os
-from collections import defaultdict
-from datetime import datetime
 from typing import Any
 
-from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.models.models import CardVariant, DeckArchetype, DeckStats, FreeToPlayLevel
 from app.services.clash_royale import ClashRoyaleService
-from app.models.models import CardVariant, DeckArchetype, FreeToPlayLevel, Rarity
+from app.settings import settings
 
 # Countries to scan for top players
 COUNTRIES = [
@@ -38,27 +34,26 @@ COUNTRIES = [
     (57000193, "Russia"),
 ]
 
-TOP_PLAYERS_PER_COUNTRY = 25
+TOP_PLAYERS_PER_COUNTRY = 5
 BATTLE_LOG_LIMIT = 25  # Number of recent battles to analyze per player
 
 
 def get_database_url() -> str:
     """
-    Build the database URL from environment variables.
+    Build the database URL from settings.
 
     Returns:
-        Database connection URL
+        Async database connection URL
     """
-    db_user = os.environ.get("DB_USER", "postgres")
-    db_name = os.environ.get("DB_NAME", "postgres")
-    db_pass = os.environ.get("DB_PASS")
-    db_host = os.environ.get("DB_HOST", "localhost")
-    db_port = os.environ.get("DB_PORT", "5432")
-
-    if db_pass:
-        return f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+    if settings.dev_mode:
+        # Local database
+        return f"postgresql+asyncpg://{settings.local_db_user}@{settings.local_db_host}:{settings.local_db_port}/{settings.local_db_name}"
     else:
-        return f"postgresql+psycopg2://{db_user}@{db_host}:{db_port}/{db_name}"
+        # Production database
+        if settings.prod_db_password:
+            return f"postgresql+asyncpg://{settings.prod_db_user}:{settings.prod_db_password}@{settings.prod_db_host}:{settings.prod_db_port}/{settings.prod_db_name}"
+        else:
+            return f"postgresql+asyncpg://{settings.prod_db_user}@{settings.prod_db_host}:{settings.prod_db_port}/{settings.prod_db_name}"
 
 
 def determine_card_variant(card_data: dict[str, Any]) -> CardVariant:
@@ -426,12 +421,14 @@ async def collect_decks_from_player(
         return 0
 
 
-async def collect_all_decks() -> dict[str, list[dict[str, str]]]:
+async def collect_all_decks() -> tuple[dict[str, list[dict[str, str]]], dict[str, dict[str, Any]]]:
     """
-    Collect decks from top players across all countries.
+    Collect decks and stats from top players across all countries.
 
     Returns:
-        Dictionary mapping deck_hash to list of cards
+        Tuple of:
+        - Dictionary mapping deck_hash to list of cards
+        - Dictionary mapping deck_hash to stats data (games, wins, losses, player_tags)
     """
     print("Starting deck collection from top players...")
     print(
@@ -442,6 +439,8 @@ async def collect_all_decks() -> dict[str, list[dict[str, str]]]:
     deck_hashes: set[str] = set()
     # Store deck hash -> cards mapping
     decks_data: dict[str, list[dict[str, str]]] = {}
+    # Store deck hash -> stats mapping
+    stats_data: dict[str, dict[str, Any]] = {}
 
     async with ClashRoyaleService() as service:
         # Collect player tags from all countries
@@ -480,16 +479,48 @@ async def collect_all_decks() -> dict[str, list[dict[str, str]]]:
                     if battle.get("type") != "pathOfLegend":
                         continue
 
+                    # Determine winner based on crowns
+                    user_crowns = battle.get("team", [{}])[0].get("crowns", 0)
+                    opponent_crowns = battle.get("opponent", [{}])[
+                        0].get("crowns", 0)
+                    user_won = user_crowns > opponent_crowns
+                    opponent_won = opponent_crowns > user_crowns
+
+                    # Get player tags
+                    user_tag = battle.get("team", [{}])[0].get("tag")
+                    opponent_tag = battle.get("opponent", [{}])[0].get("tag")
+
                     # Extract user deck
                     if "team" in battle and len(battle["team"]) > 0:
                         user_deck = extract_deck_from_battle(battle["team"][0])
                         if user_deck:
                             deck_hash = create_deck_hash(user_deck)
+
+                            # Track deck if new
                             if deck_hash not in deck_hashes:
                                 deck_hashes.add(deck_hash)
                                 decks_data[deck_hash] = user_deck
                                 new_decks += 1
                                 total_decks += 1
+
+                            # Track stats
+                            if deck_hash not in stats_data:
+                                stats_data[deck_hash] = {
+                                    "games_played": 0,
+                                    "wins": 0,
+                                    "losses": 0,
+                                    "player_tags": set()
+                                }
+
+                            stats_data[deck_hash]["games_played"] += 1
+                            if user_won:
+                                stats_data[deck_hash]["wins"] += 1
+                            elif opponent_won:
+                                stats_data[deck_hash]["losses"] += 1
+
+                            if user_tag:
+                                stats_data[deck_hash]["player_tags"].add(
+                                    user_tag)
 
                     # Extract opponent deck
                     if "opponent" in battle and len(battle["opponent"]) > 0:
@@ -497,11 +528,32 @@ async def collect_all_decks() -> dict[str, list[dict[str, str]]]:
                             battle["opponent"][0])
                         if opponent_deck:
                             deck_hash = create_deck_hash(opponent_deck)
+
+                            # Track deck if new
                             if deck_hash not in deck_hashes:
                                 deck_hashes.add(deck_hash)
                                 decks_data[deck_hash] = opponent_deck
                                 new_decks += 1
                                 total_decks += 1
+
+                            # Track stats
+                            if deck_hash not in stats_data:
+                                stats_data[deck_hash] = {
+                                    "games_played": 0,
+                                    "wins": 0,
+                                    "losses": 0,
+                                    "player_tags": set()
+                                }
+
+                            stats_data[deck_hash]["games_played"] += 1
+                            if opponent_won:
+                                stats_data[deck_hash]["wins"] += 1
+                            elif user_won:
+                                stats_data[deck_hash]["losses"] += 1
+
+                            if opponent_tag:
+                                stats_data[deck_hash]["player_tags"].add(
+                                    opponent_tag)
 
                 print(
                     f"Found {new_decks} new unique decks (Total: {total_decks})")
@@ -510,7 +562,7 @@ async def collect_all_decks() -> dict[str, list[dict[str, str]]]:
                 print(f"✗ Error: {e}")
 
     print(f"\n✓ Collection complete! Found {len(decks_data)} unique decks\n")
-    return decks_data
+    return decks_data, stats_data
 
 
 def preview_decks(decks_data: dict[str, list[dict[str, str]]], count: int = 5):
@@ -529,19 +581,19 @@ def preview_decks(decks_data: dict[str, list[dict[str, str]]], count: int = 5):
     for i, (deck_hash, cards) in enumerate(list(decks_data.items())[:count], 1):
         print(f"Deck #{i}")
         print(f"  Hash: {deck_hash}")
-        print(f"  Cards:")
+        print("  Cards:")
         for card in cards:
             variant_suffix = f" ({card['variant']})" if card['variant'] != 'normal' else ""
             print(f"    - {card['name']}{variant_suffix}")
         print()
 
 
-def get_card_data_from_db(session, card_name: str) -> dict[str, Any] | None:
+async def get_card_data_from_db(session, card_name: str) -> dict[str, Any] | None:
     """
     Fetch card data from the database.
 
     Args:
-        session: SQLAlchemy session
+        session: Async SQLAlchemy session
         card_name: Card name to fetch
 
     Returns:
@@ -549,36 +601,43 @@ def get_card_data_from_db(session, card_name: str) -> dict[str, Any] | None:
     """
     stmt = text(
         "SELECT id, name, elixir_cost, rarity FROM cards WHERE LOWER(name) = LOWER(:name)")
-    result = session.execute(stmt, {"name": card_name}).fetchone()
+    result = await session.execute(stmt, {"name": card_name})
+    row = result.fetchone()
 
-    if result:
+    if row:
         return {
-            "id": result[0],
-            "name": result[1],
-            "elixir_cost": result[2],
-            "rarity": result[3]
+            "id": row[0],
+            "name": row[1],
+            "elixir_cost": row[2],
+            "rarity": row[3]
         }
     return None
 
 
-def upload_decks_to_database(decks_data: dict[str, list[dict[str, str]]]):
+async def upload_decks_to_database(
+    decks_data: dict[str, list[dict[str, str]]],
+    stats_data: dict[str, dict[str, Any]]
+):
     """
-    Upload collected decks to the database.
+    Upload collected decks and their stats to the database.
 
     Args:
         decks_data: Dictionary of deck_hash -> cards
+        stats_data: Dictionary of deck_hash -> stats (games, wins, losses, player_tags)
     """
     print("\nConnecting to database...")
     db_url = get_database_url()
-    engine = create_engine(db_url)
-    Session = sessionmaker(bind=engine)
+    engine = create_async_engine(db_url, echo=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
-    with Session() as session:
+    async with async_session() as session:
         print(f"Processing {len(decks_data)} decks...\n")
 
         inserted = 0
         updated = 0
         errors = 0
+        stats_inserted = 0
+        stats_updated = 0
 
         for deck_hash, cards in decks_data.items():
             try:
@@ -586,7 +645,7 @@ def upload_decks_to_database(decks_data: dict[str, list[dict[str, str]]]):
                 cards_with_data = []
                 missing_cards = []
                 for card in cards:
-                    card_data = get_card_data_from_db(session, card["name"])
+                    card_data = await get_card_data_from_db(session, card["name"])
                     if card_data:
                         cards_with_data.append({
                             **card_data,
@@ -617,21 +676,23 @@ def upload_decks_to_database(decks_data: dict[str, list[dict[str, str]]]):
                 # Check if deck already exists
                 check_stmt = text(
                     "SELECT id, last_seen_at FROM decks WHERE deck_hash = :deck_hash")
-                existing = session.execute(
-                    check_stmt, {"deck_hash": deck_hash}).fetchone()
+                result = await session.execute(check_stmt, {"deck_hash": deck_hash})
+                existing = result.fetchone()
 
+                deck_id = None
                 if existing:
-                    # Update last_seen_at
+                    # Update last_seen_at and get deck ID
+                    deck_id = existing[0]
                     update_stmt = text("""
                         UPDATE decks
                         SET last_seen_at = now()
                         WHERE deck_hash = :deck_hash
                     """)
-                    session.execute(update_stmt, {"deck_hash": deck_hash})
-                    session.commit()
+                    await session.execute(update_stmt, {"deck_hash": deck_hash})
+                    await session.commit()
                     updated += 1
                 else:
-                    # Insert new deck
+                    # Insert new deck and get deck ID
                     insert_stmt = text("""
                         INSERT INTO decks (
                             deck_hash,
@@ -651,38 +712,95 @@ def upload_decks_to_database(decks_data: dict[str, list[dict[str, str]]]):
                             now(),
                             now()
                         )
+                        RETURNING id
                     """)
 
-                    session.execute(insert_stmt, {
+                    result = await session.execute(insert_stmt, {
                         "deck_hash": deck_hash,
                         "cards": cards_json,
                         "avg_elixir": avg_elixir,
                         "ftp_tier": ftp_tier.value,
                         "archetype": archetype.value
                     })
-                    session.commit()
+                    await session.commit()
+                    deck_id = result.fetchone()[0]
                     inserted += 1
+
+                # Insert or update deck stats if we have stats data for this deck
+                if deck_id and deck_hash in stats_data:
+                    try:
+                        deck_stats = stats_data[deck_hash]
+                        unique_players = len(deck_stats["player_tags"])
+
+                        # Check if stats already exist
+                        stats_check_stmt = text(
+                            "SELECT id FROM deck_stats WHERE id = :deck_id")
+                        stats_result = await session.execute(
+                            stats_check_stmt, {"deck_id": deck_id})
+                        existing_stats = stats_result.fetchone()
+
+                        if existing_stats:
+                            # Increment existing stats
+                            stats_update_stmt = text("""
+                                UPDATE deck_stats
+                                SET games_played = games_played + :games_played,
+                                    wins = wins + :wins,
+                                    losses = losses + :losses,
+                                    unique_players = unique_players + :unique_players
+                                WHERE id = :deck_id
+                            """)
+                            await session.execute(stats_update_stmt, {
+                                "deck_id": deck_id,
+                                "games_played": deck_stats["games_played"],
+                                "wins": deck_stats["wins"],
+                                "losses": deck_stats["losses"],
+                                "unique_players": unique_players
+                            })
+                            await session.commit()
+                            stats_updated += 1
+                        else:
+                            # Insert new stats
+                            stats_insert_stmt = text("""
+                                INSERT INTO deck_stats (id, games_played, wins, losses, unique_players)
+                                VALUES (:deck_id, :games_played, :wins, :losses, :unique_players)
+                            """)
+                            await session.execute(stats_insert_stmt, {
+                                "deck_id": deck_id,
+                                "games_played": deck_stats["games_played"],
+                                "wins": deck_stats["wins"],
+                                "losses": deck_stats["losses"],
+                                "unique_players": unique_players
+                            })
+                            await session.commit()
+                            stats_inserted += 1
+                    except Exception as stats_error:
+                        print(
+                            f"  ⚠ Error updating stats for deck {deck_id}: {stats_error}")
+                        await session.rollback()
 
             except Exception as e:
                 print(f"  ✗ Error processing deck {deck_hash[:50]}...: {e}")
-                session.rollback()
+                await session.rollback()
                 errors += 1
 
         print(f"\n{'='*80}")
         print("Database upload complete!")
-        print(f"  Inserted: {inserted}")
-        print(f"  Updated (last_seen_at): {updated}")
+        print(f"  Decks Inserted: {inserted}")
+        print(f"  Decks Updated (last_seen_at): {updated}")
+        print(f"  Stats Inserted: {stats_inserted}")
+        print(f"  Stats Updated: {stats_updated}")
         print(f"  Errors: {errors}")
         print(f"{'='*80}\n")
+
+    # Close the engine
+    await engine.dispose()
 
 
 async def main():
     """Main entry point for the deck collection script."""
-    load_dotenv()
-
     try:
-        # Collect decks from top players
-        decks_data = await collect_all_decks()
+        # Collect decks and stats from top players
+        decks_data, stats_data = await collect_all_decks()
 
         if not decks_data:
             print("No decks collected. Exiting.")
@@ -691,12 +809,25 @@ async def main():
         # Preview some decks
         preview_decks(decks_data, count=5)
 
+        # Show stats summary
+        print(f"\n{'='*80}")
+        print("STATS SUMMARY")
+        print(f"{'='*80}")
+        total_games = sum(s["games_played"] for s in stats_data.values())
+        total_wins = sum(s["wins"] for s in stats_data.values())
+        total_losses = sum(s["losses"] for s in stats_data.values())
+        print(f"  Total games tracked: {total_games}")
+        print(f"  Total wins: {total_wins}")
+        print(f"  Total losses: {total_losses}")
+        print(f"  Decks with stats: {len(stats_data)}")
+        print(f"{'='*80}\n")
+
         # Ask for confirmation
-        print("\nDo you want to upload these decks to the database?")
+        print("\nDo you want to upload these decks and stats to the database?")
         confirmation = input("Type 'yes' to continue: ").strip().lower()
 
         if confirmation == "yes":
-            upload_decks_to_database(decks_data)
+            await upload_decks_to_database(decks_data, stats_data)
         else:
             print("\nUpload cancelled. No changes made to the database.")
 

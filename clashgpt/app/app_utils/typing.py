@@ -12,35 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import uuid
-from typing import (
-    Literal,
-)
+from dataclasses import dataclass, field
+from typing import Literal
 
 from google.adk.events.event import Event
 from google.genai.types import Content
-from pydantic import (
-    BaseModel,
-    Field,
-)
 
 
-class Request(BaseModel):
+@dataclass
+class Request:
     """Represents the input for a chat request with optional configuration."""
 
     message: Content
     events: list[Event]
-    user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-
-    model_config = {"extra": "allow"}
+    user_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
 
-class Feedback(BaseModel):
+@dataclass
+class Feedback:
     """Represents feedback for a conversation."""
 
     score: int | float
     text: str | None = ""
     log_type: Literal["feedback"] = "feedback"
     service_name: Literal["clashgpt"] = "clashgpt"
-    user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str = field(default_factory=lambda: str(uuid.uuid4()))
