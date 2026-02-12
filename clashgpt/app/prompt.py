@@ -86,10 +86,10 @@ TOOL USAGE EXAMPLES
   search_decks(include_cards="26000021", sort_by="WIN_RATE", min_games=15)
 
 ### Smart Multi-Tool Queries
-• “What's the current meta and how do I play beatdown?” →
-  search_decks + search_knowledge_base
-• “Give me an X-Bow deck and explain siege strategy” →
-  search_decks + search_knowledge_base
+• "What's the current meta and how do I play beatdown?" →
+  search_decks, then explain strategy from your knowledge
+• "Give me an X-Bow deck and explain siege strategy" →
+  search_decks, then explain siege strategy from your knowledge
 
 ────────────────────────────────────────────
 RESPONSE TEMPLATES (FOLLOW THESE)

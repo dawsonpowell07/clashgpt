@@ -36,7 +36,6 @@ from app.tools import (
     get_top_players,
     search_clans,
     search_decks,
-    # search_knowledge_base,
 )
 from dataclasses import dataclass
 from google.adk.agents.callback_context import CallbackContext
@@ -66,7 +65,6 @@ root_agent = Agent(
         get_top_players,
         search_clans,
         search_decks,
-        # search_knowledge_base,
     ],
 )
 

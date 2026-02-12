@@ -31,12 +31,9 @@ from google.cloud import logging as google_cloud_logging
 
 from app.agent import root_agent
 from app.app_utils.telemetry import setup_telemetry
-from app.app_utils.typing import Feedback
-from app.tools.serialization import serialize_dataclass
 from app.rate_limit import limiter
 from app.routers.api import router as api_router
 from app.services.database import get_database_service
-# from app.services.mongo_db import get_mongodb
 from app.settings import settings
 
 # Configure logging
@@ -51,8 +48,8 @@ logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 app_logger = logging.getLogger(__name__)
 allow_origins = (
-    os.getenv("ALLOW_ORIGINS", "").split(
-        ",") if os.getenv("ALLOW_ORIGINS") else None
+    [o.strip() for o in os.getenv("ALLOW_ORIGINS", "").split(",") if o.strip()]
+    if os.getenv("ALLOW_ORIGINS") else None
 )
 is_cloud_run = os.getenv("K_SERVICE") is not None
 
@@ -99,22 +96,18 @@ async def lifespan(app: FastAPI):
     """
     # Startup: Initialize database connections
     db_service = get_database_service()
-    # mongo_service = get_mongodb()
     logger.log_struct({
         "event": "database_services_initialized",
         "postgres": True,
-        "mongodb": True
     }, severity="INFO")
 
     yield
 
     # Shutdown: Close database connections
     await db_service.close()
-    # await mongo_service.close()
     logger.log_struct({
         "event": "database_services_closed",
         "postgres": True,
-        "mongodb": True
     }, severity="INFO")
 
 
@@ -135,7 +128,13 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-# Add CORS middleware for local development
+# CORS middleware
+if not settings.dev_mode and not allow_origins:
+    raise RuntimeError(
+        "ALLOW_ORIGINS environment variable must be set in production. "
+        "Example: ALLOW_ORIGINS=https://yourdomain.com,https://www.yourdomain.com"
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -143,13 +142,13 @@ app.add_middleware(
         "http://localhost:3001",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
-    ] if settings.dev_mode else (allow_origins or ["*"]),
+    ] if settings.dev_mode else allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Override lifespan to manage MongoDB connections
+# Override lifespan to manage database connections
 app.router.lifespan_context = lifespan
 
 # Include API router
@@ -157,7 +156,7 @@ app.include_router(api_router)
 
 
 # API request/response logging middleware + API key protection
-PROTECTED_PATHS = {"/agent", "/feedback"}
+PROTECTED_PATHS = {"/agent"}
 
 
 @app.middleware("http")
@@ -197,18 +196,12 @@ async def log_and_protect_requests(request: Request, call_next):
     return response
 
 
-@app.post("/feedback")
-def collect_feedback(feedback: Feedback) -> dict[str, str]:
-    """Collect and log feedback.
-
-    Args:
-        feedback: The feedback data to log
-
-    Returns:
-        Success message
+@app.get("/health")
+def health() -> dict[str, str]:
     """
-    logger.log_struct(serialize_dataclass(feedback), severity="INFO")
-    return {"status": "success"}
+    Health check endpoint for Cloud Run.
+    """
+    return {"status": "healthy"}
 
 
 # Main execution

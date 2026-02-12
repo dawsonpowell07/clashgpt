@@ -13,7 +13,7 @@ import { BattleLog } from "@/components/battle-log";
 import { DeckSearchResults } from "@/components/deck-search-results";
 import { ClanInfo } from "@/components/clan-info";
 import { ClanSearchResults } from "@/components/clan-search-results";
-import { KnowledgeSearch } from "@/components/knowledge-search";
+
 import { Leaderboard } from "@/components/leaderboard";
 import { CardStats } from "@/components/card-stats";
 import { cn } from "@/lib/utils";
@@ -136,7 +136,7 @@ function Chat({ setThreadId }: ChatProps) {
     name: "get_player_info",
     parameters: [{ name: "player_tag", type: "string", required: true }],
     render: ({ args, result, status }) => {
-      console.log("[get_player_info render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -179,7 +179,7 @@ function Chat({ setThreadId }: ChatProps) {
   useRenderToolCall({
     name: "get_player_battle_log",
     render: ({ args, result, status }) => {
-      console.log("[get_player_battle_log render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -222,7 +222,7 @@ function Chat({ setThreadId }: ChatProps) {
   useRenderToolCall({
     name: "get_clan_info",
     render: ({ args, result, status }) => {
-      console.log("[get_clan_info render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -265,7 +265,7 @@ function Chat({ setThreadId }: ChatProps) {
   useRenderToolCall({
     name: "search_clans",
     render: ({ args, result, status }) => {
-      console.log("[search_clans render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -308,10 +308,7 @@ function Chat({ setThreadId }: ChatProps) {
   useRenderToolCall({
     name: "search_decks",
     render: ({ args, result, status }) => {
-      console.log("[search_decks render]", { status, args, result });
-      if (result?.decks) {
-        console.log("[search_decks] First deck cards:", result.decks[0]?.cards);
-      }
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -358,40 +355,13 @@ function Chat({ setThreadId }: ChatProps) {
     },
   });
 
-  // Render knowledge search when backend calls search_knowledge_base
-  useRenderToolCall({
-    name: "search_knowledge_base",
-    render: ({ args, result, status }) => {
-      console.log("[search_knowledge_base render]", { status, args, result });
 
-      if (status === "complete" && hasToolError(result)) {
-        return renderToolError();
-      }
-
-      // Show animated knowledge search while executing
-      // Component returns null when complete to let agent's text response show
-      // Map inProgress to executing for component compatibility
-      const mappedStatus =
-        status === "inProgress"
-          ? "executing"
-          : status === "complete"
-          ? "complete"
-          : "executing";
-      return (
-        <KnowledgeSearch
-          query={args.query}
-          status={mappedStatus}
-          className="my-4"
-        />
-      );
-    },
-  });
 
   // Render leaderboard when backend calls get_top_players
   useRenderToolCall({
     name: "get_top_players",
     render: ({ args, result, status }) => {
-      console.log("[get_top_players render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -434,7 +404,7 @@ function Chat({ setThreadId }: ChatProps) {
   useRenderToolCall({
     name: "get_card_stats",
     render: ({ args, result, status }) => {
-      console.log("[get_card_stats render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -478,7 +448,7 @@ function Chat({ setThreadId }: ChatProps) {
     name: "*",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render: ({ name, args, result, status }: any) => {
-      console.log("[catch-all render]", { name, status, args, result });
+
 
       // Skip tools we handle specifically
       if (
@@ -487,7 +457,6 @@ function Chat({ setThreadId }: ChatProps) {
         name === "get_clan_info" ||
         name === "search_clans" ||
         name === "search_decks" ||
-        name === "search_knowledge_base" ||
         name === "get_top_players" ||
         name === "get_card_stats"
       ) {

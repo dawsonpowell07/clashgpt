@@ -17,7 +17,6 @@ dependencies = [
     "sqlalchemy>=2.0.45",
     "greenlet>=3.3.0",
     "ag-ui-adk>=0.4.0",
-    "pymongo>=4.15.5",
     "slowapi>=0.1.9",
     "cachetools>=5.3.0",
 ]
