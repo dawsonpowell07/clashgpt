@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     # Application
     dev_mode: bool = False
+    backend_api_key: str = ""
 
     # Google Cloud Storage
     logs_bucket_name: str | None = None

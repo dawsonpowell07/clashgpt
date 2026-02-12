@@ -15,10 +15,18 @@ const ratelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(75, '1 h'),
 });
 
+const BACKEND_API_KEY = process.env.BACKEND_API_KEY || '';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 const serviceAdapter = new GoogleGenerativeAIAdapter({ model:  "gemini-2.5-flash"});
 const runtime = new CopilotRuntime({
   agents: {
-    clash_gpt: new HttpAgent({ url: "http://localhost:8000/agent" }),
+    clash_gpt: new HttpAgent({
+      url: `${BACKEND_URL}/agent`,
+      headers: {
+        'x-api-key': BACKEND_API_KEY,
+      },
+    }),
   },
   runner: new InMemoryAgentRunner()
 });

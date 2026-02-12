@@ -156,14 +156,33 @@ app.router.lifespan_context = lifespan
 app.include_router(api_router)
 
 
-# API request/response logging middleware
+# API request/response logging middleware + API key protection
+PROTECTED_PATHS = {"/agent", "/feedback"}
+
+
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """Log incoming API requests and responses."""
+async def log_and_protect_requests(request: Request, call_next):
+    """Log incoming API requests and validate API key for protected routes."""
     start_time = time.time()
 
     # Log request
     app_logger.info(f"API request: {request.method} {request.url.path}")
+
+    # API key validation for protected paths
+    if any(request.url.path.startswith(p) for p in PROTECTED_PATHS):
+        api_key = request.headers.get("x-api-key")
+        expected_key = settings.backend_api_key
+
+        # In dev mode, skip check if no key is configured
+        if expected_key and api_key != expected_key:
+            app_logger.warning(
+                f"Rejected request to {request.url.path}: invalid or missing API key"
+            )
+            from starlette.responses import JSONResponse
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Forbidden: invalid or missing API key"},
+            )
 
     # Process request
     response = await call_next(request)
