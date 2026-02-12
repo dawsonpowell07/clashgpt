@@ -14,28 +14,25 @@ class Settings(BaseSettings):
     # Clash Royale API
     clash_royale_api_token: str = ""
 
-    # Production Database
-    prod_db_user: str = "postgres"
-    prod_db_password: str | None = None
-    prod_db_name: str = "postgres"
-    prod_db_host: str = "localhost"
-    prod_db_port: int = 5432
-
-    # Local Database
+    # Local Database (dev mode)
     local_db_user: str = "dawsonpowell"
     local_db_name: str = "clashgpt"
     local_db_host: str = "localhost"
     local_db_port: int = 5432
 
-    # Google Cloud
-    connection_name: str | None = None
+    # Supabase Database (production)
+    supabase_db_password: str
+    supabase_db_host: str
+    supabase_db_port: int
+    supabase_db_name: str
+    supabase_db_user: str
 
     # Application
     dev_mode: bool = False
     backend_api_key: str = ""
 
-    # Google Cloud Storage
-    logs_bucket_name: str | None = None
+    # Telemetry
+    logs_bucket_name: str = ""
 
 
 # Create a global settings instance

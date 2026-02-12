@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { CopilotChat, CopilotKitCSSProperties } from "@copilotkit/react-ui";
+import { AlertTriangle, X as XIcon, Loader2 } from "lucide-react";
 import {
   CopilotKit,
   useRenderToolCall,
@@ -25,8 +26,9 @@ import { useAuth } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 
 export default function ChatPage() {
-  const { getToken, isSignedIn, userId } = useAuth();
+  const { getToken, isSignedIn, isLoaded, userId } = useAuth();
   const [authHeaders, setAuthHeaders] = useState<Record<string, string>>({});
+  const [copilotError, setCopilotError] = useState<string | null>(null);
 
   // Keep the auth token fresh
   useEffect(() => {
@@ -65,6 +67,15 @@ export default function ChatPage() {
     return newThreadId;
   });
 
+  // Wait for Clerk to finish loading before deciding on redirect
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (!isSignedIn) {
     redirect("/");
   }
@@ -77,17 +88,28 @@ export default function ChatPage() {
       threadId={threadId}
       key={threadId}
       headers={authHeaders}
+      showDevConsole={false}
+      onError={(error) => {
+        console.error("CopilotKit error:", error);
+        setCopilotError(
+          "Something went wrong with the AI assistant. Please try sending your message again."
+        );
+        // Auto-dismiss after 8 seconds
+        setTimeout(() => setCopilotError(null), 8000);
+      }}
     >
-      <Chat setThreadId={setThreadId} />
+      <Chat setThreadId={setThreadId} copilotError={copilotError} onDismissError={() => setCopilotError(null)} />
     </CopilotKit>
   );
 }
 
 interface ChatProps {
   setThreadId: (id: string) => void;
+  copilotError: string | null;
+  onDismissError: () => void;
 }
 
-function Chat({ setThreadId }: ChatProps) {
+function Chat({ setThreadId, copilotError, onDismissError }: ChatProps) {
   const { appendMessage } = useCopilotChat();
 
   const handleClearChat = useCallback(() => {
@@ -494,6 +516,16 @@ function Chat({ setThreadId }: ChatProps) {
 
       {/* Right side: Chat interface */}
       <div className="overflow-y-auto rounded-xl h-full">
+        {/* CopilotKit Error Banner */}
+        {copilotError && (
+          <div className="mx-0 mb-3 flex items-center gap-3 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive animate-in slide-in-from-top-2 duration-200">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <p className="text-sm font-medium flex-1">{copilotError}</p>
+            <button onClick={onDismissError} className="p-1 hover:bg-destructive/10 rounded transition-colors">
+              <XIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
         <div
           className={cn(
             "flex flex-col h-full w-full rounded-xl shadow-sm border border-border"

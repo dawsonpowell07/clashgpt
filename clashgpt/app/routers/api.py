@@ -5,6 +5,7 @@ FastAPI router for database endpoints.
 Provides REST API access to cards, decks, and locations.
 """
 
+import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -23,6 +24,13 @@ from app.rate_limit import limiter
 from app.services.database import get_database_service
 
 router = APIRouter(prefix="/api", tags=["api"])
+
+# Query complexity limits
+MAX_INCLUDE_CARDS = 8
+MAX_EXCLUDE_CARDS = 8
+
+# DB query timeout (seconds)
+DECK_SEARCH_TIMEOUT = 10.0
 
 CARD_ID_TO_NAME = {
     "26000072": "Archer Queen",
@@ -333,7 +341,7 @@ async def get_card_stats(
 # ===== DECKS ENDPOINTS =====
 
 @router.get("/decks")
-@limiter.limit("30/minute")
+@limiter.limit("5/second;30/minute;500/day")
 async def search_decks(
     request: Request,
     include: Annotated[str | None, Query(
@@ -432,16 +440,37 @@ async def search_decks(
                     detail=f"Invalid exclude card id: {cid}. Use numeric card IDs (e.g. 26000024) or card_id_variant (e.g. 26000024_1)."
                 ) from exc
 
+    # Enforce query complexity limits
+    if include_card_ids and len(include_card_ids) > MAX_INCLUDE_CARDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot include more than {MAX_INCLUDE_CARDS} cards."
+        )
+    if exclude_card_ids and len(exclude_card_ids) > MAX_EXCLUDE_CARDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot exclude more than {MAX_EXCLUDE_CARDS} cards."
+        )
+
     offset = (page - 1) * page_size
 
-    decks, total = await db.search_decks_with_stats(
-        include_card_ids=include_card_ids,
-        exclude_card_ids=exclude_card_ids,
-        sort_by=sort_by,
-        min_games=min_games,
-        limit=page_size,
-        offset=offset
-    )
+    try:
+        decks, total = await asyncio.wait_for(
+            db.search_decks_with_stats(
+                include_card_ids=include_card_ids,
+                exclude_card_ids=exclude_card_ids,
+                sort_by=sort_by,
+                min_games=min_games,
+                limit=page_size,
+                offset=offset
+            ),
+            timeout=DECK_SEARCH_TIMEOUT
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="Search took too long. Try narrowing your filters."
+        ) from None
 
     deck_payloads = []
     for deck in decks:

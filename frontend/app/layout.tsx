@@ -31,6 +31,7 @@ export default function RootLayout({
       <html lang="en" suppressHydrationWarning>
         <body
           className={`${syne.variable} ${dmSans.variable} antialiased font-[family-name:var(--font-body)]`}
+          suppressHydrationWarning
         >
           {children}
         </body>

@@ -12,7 +12,7 @@ import { Redis } from '@upstash/redis';
 
 const ratelimit = new Ratelimit({
   redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(75, '1 h'),
+  limiter: Ratelimit.slidingWindow(100000, '1 h'),
 });
 
 const BACKEND_API_KEY = process.env.BACKEND_API_KEY || '';
@@ -50,11 +50,19 @@ export const POST = async (req: NextRequest) => {
     );
   }
 
-  const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
-    runtime,
-    serviceAdapter,
-    endpoint: '/api/copilotkit',
-  });
+  try {
+    const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
+      runtime,
+      serviceAdapter,
+      endpoint: '/api/copilotkit',
+    });
 
-  return handleRequest(req);
+    return handleRequest(req);
+  } catch (error) {
+    console.error('CopilotKit route error:', error);
+    return NextResponse.json(
+      { error: 'An internal error occurred. Please try again.' },
+      { status: 500 }
+    );
+  }
 };

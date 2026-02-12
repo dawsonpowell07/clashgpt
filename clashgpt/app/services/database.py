@@ -5,7 +5,6 @@ Async service for interacting with the PostgreSQL database.
 Provides read-only access to cards, decks, and locations.
 """
 import logging
-import os
 from typing import Any
 from urllib.parse import quote
 
@@ -28,7 +27,6 @@ from app.models.models import (
 from app.settings import settings
 
 logger = logging.getLogger(__name__)
-is_cloud_run = os.getenv("K_SERVICE") is not None
 
 
 class DatabaseServiceError(Exception):
@@ -88,37 +86,28 @@ class DatabaseService:
         """
         Build database URL from settings.
 
-        Uses DEV_MODE flag to determine which database to connect to:
-        - DEV_MODE=true: Always use local PostgreSQL (overrides all other settings)
+        Two flows:
+        - DEV_MODE=true: Local PostgreSQL (no password)
+        - DEV_MODE=false: Supabase PostgreSQL (password from env)
 
         Returns:
             Async database connection URL
         """
         try:
             if settings.dev_mode:
-                # Local database configuration
-                # Local DB typically doesn't need password
+                # Local database — no password needed
                 return (
                     f"postgresql+asyncpg://{settings.local_db_user}@"
                     f"{settings.local_db_host}:{settings.local_db_port}/"
                     f"{settings.local_db_name}"
                 )
 
-            # Production database configuration (Google Cloud SQL)
-            encoded_user = quote(settings.prod_db_user, safe="")
-            encoded_pass = quote(settings.prod_db_password or "", safe="")
-
-            if is_cloud_run and settings.connection_name:
-                encoded_instance = settings.connection_name.replace(":", "%3A")
-                return (
-                    f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
-                    f"/{settings.prod_db_name}"
-                    f"?host=/cloudsql/{encoded_instance}"
-                )
-
+            # Supabase database
+            encoded_pass = quote(settings.supabase_db_password or "", safe="")
             return (
-                f"postgresql+asyncpg://{settings.prod_db_user}:{settings.prod_db_password}@"
-                f"{settings.prod_db_host}:{settings.prod_db_port}/{settings.prod_db_name}"
+                f"postgresql+asyncpg://{settings.supabase_db_user}:{encoded_pass}@"
+                f"{settings.supabase_db_host}:{settings.supabase_db_port}/"
+                f"{settings.supabase_db_name}"
             )
         except Exception as e:
             logger.exception("Failed to build database URL")

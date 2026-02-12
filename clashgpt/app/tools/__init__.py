@@ -11,7 +11,6 @@ from app.tools.player_tools import (
     get_top_players,
 )
 
-
 __all__ = [
     "get_card_stats",
     "get_clan_info",

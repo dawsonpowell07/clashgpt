@@ -3,7 +3,6 @@ Clan-related tools for the Clash Royale agent.
 """
 import logging
 
-from app.tools.serialization import serialize_dataclass
 from app.services.clash_royale import (
     ClashRoyaleAPIError,
     ClashRoyaleAuthError,
@@ -14,6 +13,7 @@ from app.services.clash_royale import (
     ClashRoyaleService,
     ClashRoyaleTimeoutError,
 )
+from app.tools.serialization import serialize_dataclass
 
 logger = logging.getLogger(__name__)
 
