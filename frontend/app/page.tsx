@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { MessageSquare, Users, Trophy, BookOpen, Sparkles, Swords, Crown } from "lucide-react";
+import { SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
+import { Navbar } from "@/components/navbar";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Navbar />
+
       {/* Grid Background */}
       <div className="fixed inset-0 pointer-events-none" style={{
         backgroundImage: `linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
@@ -52,20 +56,30 @@ export default function Home() {
 
           {/* CTA */}
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <SignedIn>
+              <Link
+                href="/chat"
+                className="group inline-flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 text-lg font-medium rounded-lg border border-primary/20 transition-all duration-300 hover:bg-primary/90 hover:shadow-[0_0_30px_rgba(255,159,28,0.3)] active:scale-95"
+              >
+                Start Chatting
+                <MessageSquare className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </SignedIn>
+            <SignedOut>
+              <SignInButton mode="modal" forceRedirectUrl="/chat">
+                <button className="group inline-flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 text-lg font-medium rounded-lg border border-primary/20 transition-all duration-300 hover:bg-primary/90 hover:shadow-[0_0_30px_rgba(255,159,28,0.3)] active:scale-95 cursor-pointer">
+                  Start Chatting
+                  <MessageSquare className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                </button>
+              </SignInButton>
+            </SignedOut>
             <Link
-              href="/chat"
-              className="group inline-flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 text-lg font-medium rounded-lg border border-primary/20 transition-all duration-300 hover:bg-primary/90 hover:shadow-[0_0_30px_rgba(255,159,28,0.3)] active:scale-95"
-            >
-              Start Chatting
-              <MessageSquare className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-            </Link>
-            <a
-              href="#features"
+              href="/decks"
               className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground px-6 py-4 text-lg font-medium transition-colors"
             >
-              Learn More
+              Browse Decks
               <Crown className="w-4 h-4" />
-            </a>
+            </Link>
           </div>
 
           {/* Stats Bar */}
@@ -192,13 +206,30 @@ export default function Home() {
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
             Join players using AI-powered strategy to dominate Clash Royale
           </p>
-          <div className="pt-8">
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <SignedIn>
+              <Link
+                href="/chat"
+                className="group inline-flex items-center gap-3 bg-primary text-primary-foreground px-10 py-5 text-lg md:text-xl font-medium rounded-lg border border-primary/20 transition-all duration-300 hover:bg-primary/90 hover:shadow-[0_0_40px_rgba(255,159,28,0.4)] active:scale-95"
+              >
+                Start Your Journey
+                <MessageSquare className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </SignedIn>
+            <SignedOut>
+              <SignInButton mode="modal" forceRedirectUrl="/chat">
+                <button className="group inline-flex items-center gap-3 bg-primary text-primary-foreground px-10 py-5 text-lg md:text-xl font-medium rounded-lg border border-primary/20 transition-all duration-300 hover:bg-primary/90 hover:shadow-[0_0_40px_rgba(255,159,28,0.4)] active:scale-95 cursor-pointer">
+                  Start Your Journey
+                  <MessageSquare className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                </button>
+              </SignInButton>
+            </SignedOut>
             <Link
-              href="/chat"
-              className="group inline-flex items-center gap-3 bg-primary text-primary-foreground px-10 py-5 text-lg md:text-xl font-medium rounded-lg border border-primary/20 transition-all duration-300 hover:bg-primary/90 hover:shadow-[0_0_40px_rgba(255,159,28,0.4)] active:scale-95"
+              href="/decks"
+              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground px-6 py-5 text-lg md:text-xl font-medium transition-colors"
             >
-              Start Your Journey
-              <MessageSquare className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+              Browse Decks
+              <Crown className="w-4 h-4" />
             </Link>
           </div>
         </div>

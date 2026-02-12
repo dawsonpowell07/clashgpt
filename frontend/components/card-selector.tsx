@@ -39,7 +39,7 @@ interface CardSelectorProps {
   className?: string;
 }
 
-const HERO_CARDS = ["Giant", "Mini P.E.K.K.A", "Knight", "Musketeer", "Wizard"];
+const HERO_CARDS = ["Giant", "Mini P.E.K.K.A", "Knight", "Musketeer", "Wizard", "Goblins"];
 
 export function CardSelector({
   cards,

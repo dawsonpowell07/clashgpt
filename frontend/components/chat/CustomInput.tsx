@@ -1,11 +1,24 @@
 "use client";
 
 import { type InputProps } from "@copilotkit/react-ui";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Send } from "lucide-react";
+import { useInputContext } from "./input-context";
 
 export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
   const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { pendingInput, clearPendingInput } = useInputContext();
+
+  // When the sidebar populates pending input, set the value and focus
+  useEffect(() => {
+    if (pendingInput !== null) {
+      setValue(pendingInput);
+      clearPendingInput();
+      // Focus the input after a short delay to ensure it's rendered
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [pendingInput, clearPendingInput]);
 
   const handleSubmit = (inputValue: string) => {
     if (inputValue.trim()) {
@@ -23,6 +36,7 @@ export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
   return (
     <div className={wrapperStyle}>
       <input
+        ref={inputRef}
         disabled={inProgress}
         type="text"
         placeholder="Ask about decks, players, strategies..."

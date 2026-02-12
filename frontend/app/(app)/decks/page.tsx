@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, DecksResponse } from "@/lib/types";
 import { CardSelector } from "@/components/card-selector";
 import { DeckGridCard } from "@/components/deck-grid-card";
@@ -38,6 +38,10 @@ export default function DecksPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [page, setPage] = useState(1);
   const [minGames, setMinGames] = useState(0);
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+
+  // Debounce guard: prevent searches within 500ms of each other
+  const lastSearchTime = useRef<number>(0);
 
   // --- Effects ---
 
@@ -59,9 +63,15 @@ export default function DecksPage() {
     fetchCards();
   }, []);
 
-  // 2. Search Function
+  // 2. Search Function with debounce guard and 429 handling
   const fetchDecks = useCallback(async (pageNum: number) => {
+    // Debounce: skip if less than 500ms since last search
+    const now = Date.now();
+    if (now - lastSearchTime.current < 500) return;
+    lastSearchTime.current = now;
+
     setIsSearching(true);
+    setRateLimitError(null);
     try {
       const includeParam = Array.from(includedVariants).join(",");
       const excludeParam = Array.from(excludedVariants).join(",");
@@ -78,6 +88,12 @@ export default function DecksPage() {
       if (excludeParam) queryParams.set("exclude", excludeParam);
 
       const res = await fetch(`${API_BASE_URL}/api/decks?${queryParams.toString()}`);
+
+      if (res.status === 429) {
+        setRateLimitError("Too many requests — please wait a moment before searching again.");
+        return;
+      }
+
       if (!res.ok) throw new Error("Failed to search decks");
 
       const data = await res.json();
@@ -323,6 +339,16 @@ export default function DecksPage() {
             </div>
           )}
         </div>
+
+        {/* Rate Limit Warning */}
+        {rateLimitError && (
+          <div className="flex items-center gap-3 px-5 py-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm font-medium">{rateLimitError}</p>
+          </div>
+        )}
 
         {/* Results Section */}
         {decksData && (

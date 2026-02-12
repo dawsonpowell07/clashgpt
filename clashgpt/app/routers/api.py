@@ -7,8 +7,10 @@ Provides REST API access to cards, decks, and locations.
 
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 
+from app.cache import get_cached_decks, make_deck_cache_key, set_cached_decks
 from app.models.models import (
     Card,
     CardList,
@@ -17,6 +19,7 @@ from app.models.models import (
     Locations,
     Rarity,
 )
+from app.rate_limit import limiter
 from app.services.database import get_database_service
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -168,7 +171,8 @@ def _variant_from_evolution_level(evolution_level: int) -> str:
 # ===== ROOT ENDPOINT =====
 
 @router.get("/", response_model=dict)
-async def list_endpoints():
+@limiter.limit("60/minute")
+async def list_endpoints(request: Request):
     """
     List all available API endpoints.
 
@@ -236,7 +240,9 @@ async def list_endpoints():
 # ===== CARDS ENDPOINTS =====
 
 @router.get("/cards", response_model=CardList)
+@limiter.limit("60/minute")
 async def get_cards(
+    request: Request,
     rarity: Annotated[Rarity | None, Query(
         description="Filter by card rarity")] = None
 ):
@@ -258,7 +264,8 @@ async def get_cards(
 
 
 @router.get("/cards/{card_id}", response_model=Card)
-async def get_card_by_id(card_id: str):
+@limiter.limit("60/minute")
+async def get_card_by_id(request: Request, card_id: str):
     """
     Get a specific card by its ID.
 
@@ -283,7 +290,9 @@ async def get_card_by_id(card_id: str):
 
 
 @router.get("/cards/{card_id}/stats", response_model=CardStats)
+@limiter.limit("60/minute")
 async def get_card_stats(
+    request: Request,
     card_id: str,
     season_id: Annotated[int | None, Query(
         description="Filter by season (e.g., 202601)")] = None,
@@ -324,7 +333,9 @@ async def get_card_stats(
 # ===== DECKS ENDPOINTS =====
 
 @router.get("/decks")
+@limiter.limit("30/minute")
 async def search_decks(
+    request: Request,
     include: Annotated[str | None, Query(
         description="Comma-separated card IDs that must be in deck")] = None,
     exclude: Annotated[str | None, Query(
@@ -361,6 +372,18 @@ async def search_decks(
         - /decks?include=26000012_1&exclude=26000010&sort_by=WINS&page=2&page_size=12
         - /decks?sort_by=GAMES_PLAYED&page=1
     """
+    # --- Check cache first ---
+    cache_key = make_deck_cache_key(
+        include, exclude, sort_by.value, min_games, page, page_size, include_cards
+    )
+    cached = get_cached_decks(cache_key)
+    if cached is not None:
+        response = JSONResponse(content=cached)
+        response.headers["X-Cache"] = "HIT"
+        response.headers["Cache-Control"] = "public, max-age=300"
+        return response
+
+    # --- Cache miss: query database ---
     db = get_database_service()
 
     include_card_ids = None
@@ -451,21 +474,30 @@ async def search_decks(
     has_next = page < total_pages
     has_previous = page > 1
 
-    return {
+    result = {
         "decks": deck_payloads,
         "total": total,
         "page": page,
         "page_size": page_size,
         "total_pages": total_pages,
         "has_next": has_next,
-        "has_previous": has_previous
+        "has_previous": has_previous,
     }
+
+    # Store in cache for next time
+    set_cached_decks(cache_key, result)
+
+    response = JSONResponse(content=result)
+    response.headers["X-Cache"] = "MISS"
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return response
 
 
 # ===== LOCATIONS ENDPOINTS =====
 
 @router.get("/locations", response_model=Locations)
-async def get_locations():
+@limiter.limit("60/minute")
+async def get_locations(request: Request):
     """
     Get all locations.
 

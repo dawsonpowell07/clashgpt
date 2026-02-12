@@ -22,6 +22,9 @@ import google.auth
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from google.adk.artifacts.gcs_artifact_service import GcsArtifactService
 from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.cloud import logging as google_cloud_logging
@@ -30,9 +33,10 @@ from app.agent import root_agent
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
 from app.tools.serialization import serialize_dataclass
+from app.rate_limit import limiter
 from app.routers.api import router as api_router
 from app.services.database import get_database_service
-from app.services.mongo_db import get_mongodb
+# from app.services.mongo_db import get_mongodb
 from app.settings import settings
 
 # Configure logging
@@ -95,7 +99,7 @@ async def lifespan(app: FastAPI):
     """
     # Startup: Initialize database connections
     db_service = get_database_service()
-    mongo_service = get_mongodb()
+    # mongo_service = get_mongodb()
     logger.log_struct({
         "event": "database_services_initialized",
         "postgres": True,
@@ -106,7 +110,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown: Close database connections
     await db_service.close()
-    await mongo_service.close()
+    # await mongo_service.close()
     logger.log_struct({
         "event": "database_services_closed",
         "postgres": True,
@@ -125,6 +129,11 @@ async def lifespan(app: FastAPI):
 app = FastAPI()
 app.title = "clashgpt"
 app.description = "API for interacting with the Agent clashgpt"
+
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # Add CORS middleware for local development
 app.add_middleware(
@@ -196,7 +205,9 @@ adk_agent = ADKAgent(
     user_id_extractor=lambda input: input.state.get(
         "headers", {}).get("user_id", "user"),
     session_timeout_seconds=3600,
-    use_in_memory_services=True,
+    use_in_memory_services=False,
+    session_service=session_service,
+    
 )
 
 add_adk_fastapi_endpoint(app, adk_agent, path="/agent", extract_headers=["x-user-id"]

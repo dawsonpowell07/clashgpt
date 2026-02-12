@@ -10,7 +10,7 @@ from app.tools.player_tools import (
     get_player_info,
     get_top_players,
 )
-from app.tools.rag_tool import search_knowledge_base
+# from app.tools.rag_tool import search_knowledge_base
 
 __all__ = [
     "get_card_stats",

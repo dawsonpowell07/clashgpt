@@ -162,7 +162,7 @@ class DatabaseService:
                             card_id=row[0],
                             name=row[1],
                             elixir_cost=row[2],
-                            rarity=Rarity(row[3]),
+                            rarity=Rarity(row[3].lower()),
                             icon_urls=row[4]
                         )
                         cards.append(card)
@@ -212,7 +212,7 @@ class DatabaseService:
                             card_id=row[0],
                             name=row[1],
                             elixir_cost=row[2],
-                            rarity=Rarity(row[3]),
+                            rarity=Rarity(row[3].lower()),
                             icon_urls=row[4]
                         )
                     except Exception as e:
@@ -260,7 +260,7 @@ class DatabaseService:
                             card_id=row[0],
                             name=row[1],
                             elixir_cost=row[2],
-                            rarity=Rarity(row[3]),
+                            rarity=Rarity(row[3].lower()),
                             icon_urls=row[4]
                         )
                         cards.append(card)
