@@ -222,3 +222,5 @@ todo.md
 clashgpt/google_adk.md
 clashgpt/GEMINI.md
 clashgpt/.claude
+supabase
+*.sql

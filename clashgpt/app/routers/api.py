@@ -310,7 +310,7 @@ async def get_card_stats(
     """
     Get usage statistics for a specific card.
 
-    Returns win rate, usage rate, and total games from card_usage_facts.
+    Returns win rate, usage rate, and total games from deck_usage_facts.
 
     Args:
         card_id: The card ID to fetch stats for

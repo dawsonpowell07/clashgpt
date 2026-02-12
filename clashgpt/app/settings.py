@@ -14,10 +14,11 @@ class Settings(BaseSettings):
     # Clash Royale API
     clash_royale_api_token: str = ""
 
-    # Local Database (dev mode)
-    local_db_user: str = "dawsonpowell"
-    local_db_name: str = "clashgpt"
-    local_db_host: str = "localhost"
+    # Local Database (dev mode — Supabase local)
+    local_db_user: str = "postgres"
+    local_db_password: str = "postgres"
+    local_db_name: str = "postgres"
+    local_db_host: str = "127.0.0.1"
     local_db_port: int = 5432
 
     # Supabase Database (production)

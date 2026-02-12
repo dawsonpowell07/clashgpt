@@ -188,7 +188,7 @@ class CardList:
 @dataclass
 class CardStats:
     """
-    Aggregated statistics for a card, calculated from card_usage_facts.
+    Aggregated statistics for a card, derived from deck_usage_facts + deck_cards.
 
     This is computed on demand from fact tables, not stored in database.
     """
