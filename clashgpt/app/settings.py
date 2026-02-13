@@ -1,3 +1,5 @@
+from typing import Any
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +12,15 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore"
     )
+
+    allow_origins: str | list[str] = "http://localhost:3000,http://localhost:8000"
+
+    @field_validator("allow_origins", mode="before")
+    @classmethod
+    def parse_allow_origins(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            return [o.strip() for o in v.split(",") if o.strip()]
+        return v
 
     # Clash Royale API
     clash_royale_api_token: str = ""

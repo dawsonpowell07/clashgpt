@@ -29,20 +29,7 @@ class ProcessedBattle:
 
 @dataclass
 class DeckUsageFacts:
-    deck_id: str
-    result: Literal["WIN", "LOSS"]
-    league: str
-    battle_time: str  # timestamp
-    season_id: int
-
-    def model_dump_json(self, indent: int | None = None) -> str:
-        """Serialize to JSON string for compatibility with Pydantic API."""
-        return json.dumps(asdict(self), indent=indent)
-
-
-@dataclass
-class CardUsageFacts:
-    card_id: int
+    battle_id: str  # composite PK with deck_id
     deck_id: str
     result: Literal["WIN", "LOSS"]
     league: str
@@ -96,6 +83,7 @@ class Card:
     elixir_cost: int
     rarity: Rarity
     icon_urls: dict[str, str]
+    evolution_level: int = 0  # 0=normal, 1=evolution, 2=hero
 
     def model_dump_json(self, indent: int | None = None) -> str:
         """Serialize to JSON string for compatibility with Pydantic API."""

@@ -4,6 +4,7 @@ Database Service
 Async service for interacting with the PostgreSQL database.
 Provides read-only access to cards, decks, and locations.
 """
+import json
 import logging
 from typing import Any
 from urllib.parse import quote
@@ -153,7 +154,7 @@ class DatabaseService:
                             name=row[1],
                             elixir_cost=row[2],
                             rarity=Rarity(row[3].lower()),
-                            icon_urls=row[4]
+                            icon_urls=json.loads(row[4]) if isinstance(row[4], str) else row[4]
                         )
                         cards.append(card)
                     except Exception as e:
@@ -203,7 +204,7 @@ class DatabaseService:
                             name=row[1],
                             elixir_cost=row[2],
                             rarity=Rarity(row[3].lower()),
-                            icon_urls=row[4]
+                            icon_urls=json.loads(row[4]) if isinstance(row[4], str) else row[4]
                         )
                     except Exception as e:
                         logger.exception("Failed to parse card row in get_card_by_id")
@@ -251,7 +252,7 @@ class DatabaseService:
                             name=row[1],
                             elixir_cost=row[2],
                             rarity=Rarity(row[3].lower()),
-                            icon_urls=row[4]
+                            icon_urls=json.loads(row[4]) if isinstance(row[4], str) else row[4]
                         )
                         cards.append(card)
                     except Exception as e:

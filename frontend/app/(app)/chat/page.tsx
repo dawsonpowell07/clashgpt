@@ -23,12 +23,20 @@ import { InputContext } from "@/components/chat/input-context";
 import { ChatSidebar } from "@/components/chat-sidebar";
 import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
 import { useAuth } from "@clerk/nextjs";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function ChatPage() {
   const { getToken, isSignedIn, isLoaded, userId } = useAuth();
+  const router = useRouter();
   const [authHeaders, setAuthHeaders] = useState<Record<string, string>>({});
   const [copilotError, setCopilotError] = useState<string | null>(null);
+
+  // Redirect unauthenticated users
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.replace("/");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   // Keep the auth token fresh
   useEffect(() => {
@@ -67,17 +75,13 @@ export default function ChatPage() {
     return newThreadId;
   });
 
-  // Wait for Clerk to finish loading before deciding on redirect
-  if (!isLoaded) {
+  // Show loading while Clerk initializes or while redirecting
+  if (!isLoaded || !isSignedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
-  }
-
-  if (!isSignedIn) {
-    redirect("/");
   }
 
   return (

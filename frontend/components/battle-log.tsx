@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, Trophy, Swords, Shield, XCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Swords } from "lucide-react";
 
 interface Card {
   id: string;
@@ -11,6 +11,7 @@ interface Card {
   elixir_cost: number;
   icon_urls: Record<string, string>;
   rarity: string;
+  evolution_level: number; // 0=normal, 1=evolution, 2=hero
 }
 
 interface CardList {
@@ -226,6 +227,36 @@ function BattleCard({ battle, defaultOpen = false }: BattleCardProps) {
   );
 }
 
+// Sort cards by variant: evo cards first, then hero cards, then normal cards
+function sortCardsByVariant(cards: Card[]): Card[] {
+  const evoCards = cards.filter(card => card.evolution_level === 1);
+  const heroCards = cards.filter(card => card.evolution_level === 2);
+  const normalCards = cards.filter(card => !card.evolution_level || card.evolution_level === 0);
+
+  const sortedCards: Card[] = [];
+
+  // First row positions 0-1: Evolution cards (up to 2)
+  sortedCards.push(...evoCards.slice(0, 2));
+  const evosNeeded = 2 - Math.min(evoCards.length, 2);
+  if (evosNeeded > 0) {
+    sortedCards.push(...normalCards.splice(0, evosNeeded));
+  }
+
+  // First row positions 2-3: Hero cards (up to 2)
+  sortedCards.push(...heroCards.slice(0, 2));
+  const heroesNeeded = 2 - Math.min(heroCards.length, 2);
+  if (heroesNeeded > 0) {
+    sortedCards.push(...normalCards.splice(0, heroesNeeded));
+  }
+
+  // Second row: Remaining normal cards, then overflow
+  sortedCards.push(...normalCards);
+  if (evoCards.length > 2) sortedCards.push(...evoCards.slice(2));
+  if (heroCards.length > 2) sortedCards.push(...heroCards.slice(2));
+
+  return sortedCards;
+}
+
 interface DeckPreviewProps {
   cards: Card[];
 }
@@ -233,31 +264,18 @@ interface DeckPreviewProps {
 function DeckPreview({ cards }: DeckPreviewProps) {
   const avgElixir =
     cards.reduce((sum, card) => sum + card.elixir_cost, 0) / cards.length;
+  const sortedCards = sortCardsByVariant([...cards]);
 
   return (
     <div className="bg-card rounded-lg p-2 border border-border">
+      <div className="grid grid-cols-4 gap-1 mb-1">
+        {sortedCards.slice(0, 4).map((card, index) => (
+          <BattleCardDisplay key={index} card={card} />
+        ))}
+      </div>
       <div className="grid grid-cols-4 gap-1 mb-2">
-        {cards.map((card, index) => (
-          <div
-            key={index}
-            className="relative aspect-3/4 rounded overflow-hidden border border-border bg-muted/50 group"
-          >
-            <Image
-              src={`/cards/${card.name
-                .toLowerCase()
-                .replace(/ /g, "_")
-                .replace(/\./g, "")}/${card.name
-                .toLowerCase()
-                .replace(/ /g, "_")
-                .replace(/\./g, "")}.png`}
-              alt={card.name}
-              fill
-              className="object-contain group-hover:scale-110 transition-transform duration-300"
-            />
-            <div className="absolute top-0 right-0 bg-black/60 text-white text-[8px] px-1 rounded-bl">
-              {card.elixir_cost}
-            </div>
-          </div>
+        {sortedCards.slice(4, 8).map((card, index) => (
+          <BattleCardDisplay key={index + 4} card={card} />
         ))}
       </div>
       <div className="flex items-center justify-between px-1">
@@ -266,6 +284,48 @@ function DeckPreview({ cards }: DeckPreviewProps) {
              <div className="w-2 h-2 rounded-full bg-purple-500/50" />
              {avgElixir.toFixed(1)}
           </span>
+      </div>
+    </div>
+  );
+}
+
+function BattleCardDisplay({ card }: { card: Card }) {
+  const isEvo = card.evolution_level === 1;
+  const isHero = card.evolution_level === 2;
+  const cardFileName = card.name
+    .toLowerCase()
+    .replace(/ /g, "_")
+    .replace(/\./g, "");
+  const imageSuffix = isEvo ? "_evolution" : isHero ? "_hero" : "";
+  const borderColor = isEvo ? 'border-purple-500/50' : isHero ? 'border-yellow-500/50' : 'border-border';
+
+  return (
+    <div
+      className={cn(
+        "relative aspect-3/4 rounded overflow-hidden border bg-muted/50 group hover:scale-105 transition-transform",
+        borderColor
+      )}
+    >
+      <Image
+        src={`/cards/${cardFileName}/${cardFileName}${imageSuffix}.png`}
+        alt={card.name}
+        fill
+        className="object-contain group-hover:scale-110 transition-transform duration-300"
+      />
+      {isEvo && (
+        <div className="absolute top-0.5 left-0.5 px-1 py-px rounded bg-purple-500/90 text-white text-[6px] font-bold uppercase leading-none z-10">
+          Evo
+        </div>
+      )}
+      {isHero && (
+        <div className="absolute top-0.5 left-0.5 px-1 py-px rounded bg-yellow-500/90 text-white text-[6px] font-bold uppercase leading-none z-10">
+          Hero
+        </div>
+      )}
+      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/90 via-black/60 to-transparent p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <p className="text-white text-[8px] font-medium text-center truncate leading-tight">
+          {card.name}
+        </p>
       </div>
     </div>
   );

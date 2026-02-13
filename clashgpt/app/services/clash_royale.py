@@ -332,7 +332,8 @@ class ClashRoyaleService:
                 name=card_data["name"],
                 elixir_cost=elixir_cost,
                 icon_urls=card_data.get("iconUrls", {}),
-                rarity=rarity
+                rarity=rarity,
+                evolution_level=int(card_data.get("evolutionLevel", 0))
             )
         except ClashRoyaleDataError:
             raise

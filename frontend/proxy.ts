@@ -1,7 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 const isProtectedRoute = createRouteMatcher([
-  '/api/copilotkit(.*)',
+  // /api/copilotkit is protected in its own route handler (route.ts)
+  // to return proper JSON 401 errors instead of HTML redirects
 ])
 
 export default clerkMiddleware(async (auth, req) => {

@@ -45,10 +45,7 @@ logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 app_logger = logging.getLogger(__name__)
 
-allow_origins = (
-    [o.strip() for o in os.getenv("ALLOW_ORIGINS", "").split(",") if o.strip()]
-    if os.getenv("ALLOW_ORIGINS") else None
-)
+
 
 
 @asynccontextmanager
@@ -85,7 +82,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 # CORS middleware
-if not settings.dev_mode and not allow_origins:
+if not settings.dev_mode and not settings.allow_origins:
     raise RuntimeError(
         "ALLOW_ORIGINS environment variable must be set in production. "
         "Example: ALLOW_ORIGINS=https://yourdomain.com,https://www.yourdomain.com"
@@ -93,12 +90,12 @@ if not settings.dev_mode and not allow_origins:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
+    allow_origins=settings.allow_origins if isinstance(settings.allow_origins, list) else [
         "http://localhost:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
-    ] if settings.dev_mode else allow_origins,
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
