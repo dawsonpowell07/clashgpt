@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { CopilotChat, CopilotKitCSSProperties } from "@copilotkit/react-ui";
+import { AlertTriangle, X as XIcon, Loader2 } from "lucide-react";
 import {
   CopilotKit,
   useRenderToolCall,
-  useCoAgent,
+  useCopilotChat,
 } from "@copilotkit/react-core";
 import "@copilotkit/react-ui/styles.css";
 import { PlayerProfile } from "@/components/player-profile";
@@ -13,26 +14,48 @@ import { BattleLog } from "@/components/battle-log";
 import { DeckSearchResults } from "@/components/deck-search-results";
 import { ClanInfo } from "@/components/clan-info";
 import { ClanSearchResults } from "@/components/clan-search-results";
-import { KnowledgeSearch } from "@/components/knowledge-search";
+
 import { Leaderboard } from "@/components/leaderboard";
 import { CardStats } from "@/components/card-stats";
 import { cn } from "@/lib/utils";
 import { CustomInput } from "@/components/chat";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { InputContext } from "@/components/chat/input-context";
+import { ChatSidebar } from "@/components/chat-sidebar";
+import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
-type AgentState = {
-  player_tag: string;
-  clan_tag?: string;
-};
 export default function ChatPage() {
+  const { getToken, isSignedIn, isLoaded, userId } = useAuth();
+  const router = useRouter();
+  const [authHeaders, setAuthHeaders] = useState<Record<string, string>>({});
+  const [copilotError, setCopilotError] = useState<string | null>(null);
+
+  // Redirect unauthenticated users
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.replace("/");
+    }
+  }, [isLoaded, isSignedIn, router]);
+
+  // Keep the auth token fresh
+  useEffect(() => {
+    if (!isSignedIn) {
+      setAuthHeaders({});
+      return;
+    }
+    const updateToken = async () => {
+      const token = await getToken();
+      if (token) {
+        setAuthHeaders({
+          Authorization: `Bearer ${token}`,
+          ...(userId ? { "x-user-id": userId } : {}),
+        });
+      }
+    };
+    updateToken();
+  }, [isSignedIn, getToken, userId]);
+
   // Use lazy initialization to get or create threadId from sessionStorage
   const [threadId, setThreadId] = useState<string>(() => {
     // Check if we're in the browser
@@ -52,6 +75,15 @@ export default function ChatPage() {
     return newThreadId;
   });
 
+  // Show loading while Clerk initializes or while redirecting
+  if (!isLoaded || !isSignedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <CopilotKit
       runtimeUrl="/api/copilotkit"
@@ -59,71 +91,59 @@ export default function ChatPage() {
       publicApiKey="ck_pub_9265cbc1005d6ea24830000a4f8b502c"
       threadId={threadId}
       key={threadId}
+      headers={authHeaders}
+      showDevConsole={false}
+      onError={(error) => {
+        console.error("CopilotKit error:", error);
+        setCopilotError(
+          "Something went wrong with the AI assistant. Please try sending your message again."
+        );
+        // Auto-dismiss after 8 seconds
+        setTimeout(() => setCopilotError(null), 8000);
+      }}
     >
-      <Chat setThreadId={setThreadId} />
+      <Chat setThreadId={setThreadId} copilotError={copilotError} onDismissError={() => setCopilotError(null)} />
     </CopilotKit>
   );
 }
 
 interface ChatProps {
   setThreadId: (id: string) => void;
+  copilotError: string | null;
+  onDismissError: () => void;
 }
 
-function Chat({ setThreadId }: ChatProps) {
-  const [showClearDialog, setShowClearDialog] = useState(false);
-  const [settingsApplied, setSettingsApplied] = useState(false);
+function Chat({ setThreadId, copilotError, onDismissError }: ChatProps) {
+  const { appendMessage } = useCopilotChat();
 
-  const { state: agentState, setState: setAgentState } = useCoAgent<AgentState>(
-    {
-      name: "clash_gpt", // MUST match the agent name in CopilotRuntime
-      initialState: {
-        player_tag: "unknown",
-        clan_tag: undefined,
-      },
-    }
-  );
-
-  // Local state for form inputs - always initialize with strings to avoid uncontrolled input warning
-  const [playerTagInput, setPlayerTagInput] = useState(
-    agentState?.player_tag && agentState.player_tag !== "unknown"
-      ? agentState.player_tag
-      : ""
-  );
-  const [clanTagInput, setClanTagInput] = useState(agentState?.clan_tag || "");
-
-  // Check if settings have changed
-  const hasChanges = () => {
-    const currentPlayerTag =
-      agentState?.player_tag !== "unknown" ? agentState.player_tag : "";
-    const currentClanTag = agentState?.clan_tag || "";
-
-    return (
-      playerTagInput.trim() !== currentPlayerTag ||
-      clanTagInput.trim() !== currentClanTag
-    );
-  };
-
-  const handleApplySettings = () => {
-    setAgentState({
-      ...agentState,
-      player_tag: playerTagInput.trim() || "unknown",
-      clan_tag: clanTagInput.trim() || undefined,
-    });
-
-    // Show success indicator
-    setSettingsApplied(true);
-    setTimeout(() => setSettingsApplied(false), 2000);
-  };
-
-  const handleClearChat = () => {
+  const handleClearChat = useCallback(() => {
     const newThreadId = crypto.randomUUID();
     sessionStorage.setItem("copilotkit-thread-id", newThreadId);
     setThreadId(newThreadId);
-    setShowClearDialog(false);
-  };
+  }, [setThreadId]);
 
-  // Debug: Log agent state changes
-  console.log("[Chat] Agent State:", agentState);
+  const handleSendMessage = useCallback(
+    (message: string) => {
+      appendMessage(
+        new TextMessage({
+          role: Role.User,
+          content: message,
+        })
+      );
+    },
+    [appendMessage]
+  );
+
+  // Pending input for populating the text box without sending
+  const [pendingInput, setPendingInput] = useState<string | null>(null);
+
+  const handlePopulateInput = useCallback((text: string) => {
+    setPendingInput(text);
+  }, []);
+
+  const clearPendingInput = useCallback(() => {
+    setPendingInput(null);
+  }, []);
 
   const renderToolError = () => (
     <div className="bg-destructive/20 border border-destructive/40 text-white p-6 rounded-xl max-w-2xl my-4">
@@ -142,7 +162,7 @@ function Chat({ setThreadId }: ChatProps) {
     name: "get_player_info",
     parameters: [{ name: "player_tag", type: "string", required: true }],
     render: ({ args, result, status }) => {
-      console.log("[get_player_info render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -185,7 +205,7 @@ function Chat({ setThreadId }: ChatProps) {
   useRenderToolCall({
     name: "get_player_battle_log",
     render: ({ args, result, status }) => {
-      console.log("[get_player_battle_log render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -228,7 +248,7 @@ function Chat({ setThreadId }: ChatProps) {
   useRenderToolCall({
     name: "get_clan_info",
     render: ({ args, result, status }) => {
-      console.log("[get_clan_info render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -271,7 +291,7 @@ function Chat({ setThreadId }: ChatProps) {
   useRenderToolCall({
     name: "search_clans",
     render: ({ args, result, status }) => {
-      console.log("[search_clans render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -314,10 +334,7 @@ function Chat({ setThreadId }: ChatProps) {
   useRenderToolCall({
     name: "search_decks",
     render: ({ args, result, status }) => {
-      console.log("[search_decks render]", { status, args, result });
-      if (result?.decks) {
-        console.log("[search_decks] First deck cards:", result.decks[0]?.cards);
-      }
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -364,40 +381,13 @@ function Chat({ setThreadId }: ChatProps) {
     },
   });
 
-  // Render knowledge search when backend calls search_knowledge_base
-  useRenderToolCall({
-    name: "search_knowledge_base",
-    render: ({ args, result, status }) => {
-      console.log("[search_knowledge_base render]", { status, args, result });
 
-      if (status === "complete" && hasToolError(result)) {
-        return renderToolError();
-      }
-
-      // Show animated knowledge search while executing
-      // Component returns null when complete to let agent's text response show
-      // Map inProgress to executing for component compatibility
-      const mappedStatus =
-        status === "inProgress"
-          ? "executing"
-          : status === "complete"
-          ? "complete"
-          : "executing";
-      return (
-        <KnowledgeSearch
-          query={args.query}
-          status={mappedStatus}
-          className="my-4"
-        />
-      );
-    },
-  });
 
   // Render leaderboard when backend calls get_top_players
   useRenderToolCall({
     name: "get_top_players",
     render: ({ args, result, status }) => {
-      console.log("[get_top_players render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -440,7 +430,7 @@ function Chat({ setThreadId }: ChatProps) {
   useRenderToolCall({
     name: "get_card_stats",
     render: ({ args, result, status }) => {
-      console.log("[get_card_stats render]", { status, args, result });
+
 
       // Show loading state while fetching
       if (status !== "complete") {
@@ -484,7 +474,7 @@ function Chat({ setThreadId }: ChatProps) {
     name: "*",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render: ({ name, args, result, status }: any) => {
-      console.log("[catch-all render]", { name, status, args, result });
+
 
       // Skip tools we handle specifically
       if (
@@ -493,7 +483,6 @@ function Chat({ setThreadId }: ChatProps) {
         name === "get_clan_info" ||
         name === "search_clans" ||
         name === "search_decks" ||
-        name === "search_knowledge_base" ||
         name === "get_top_players" ||
         name === "get_card_stats"
       ) {
@@ -520,126 +509,27 @@ function Chat({ setThreadId }: ChatProps) {
   return (
     <div
       className="h-[calc(100vh-4rem)] w-full grid p-6 gap-6"
-      style={{ gridTemplateColumns: "1fr 3fr" }}
+      style={{ gridTemplateColumns: "280px 1fr" }}
     >
-      {/* Left side: Agent Config (25%) */}
-      <div className="flex flex-col rounded-xl border border-border bg-card/50 h-full overflow-y-auto">
-        <div className="p-6 border-b border-border">
-          <h2 className="text-2xl font-bold mb-2">Agent Config</h2>
-          <p className="text-sm text-muted-foreground">
-            Configure your ClashGPT assistant settings
-          </p>
-        </div>
+      {/* Left side: Command Center Sidebar */}
+      <ChatSidebar
+        onSendMessage={handleSendMessage}
+        onPopulateInput={handlePopulateInput}
+        onClearChat={handleClearChat}
+      />
 
-        <div className="flex-1 p-6 flex flex-col gap-4">
-          {/* Player Tag Input */}
-          <div className="flex flex-col gap-2">
-            <label
-              htmlFor="player-tag"
-              className="text-xs font-medium text-muted-foreground"
-            >
-              Player Tag
-            </label>
-            <input
-              id="player-tag"
-              type="text"
-              value={playerTagInput}
-              onChange={(e) => setPlayerTagInput(e.target.value)}
-              placeholder="#YOURTAG"
-              className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-            />
-            {agentState?.player_tag && agentState.player_tag !== "unknown"}
-          </div>
-
-          {/* Clan Tag Input */}
-          <div className="flex flex-col gap-2">
-            <label
-              htmlFor="clan-tag"
-              className="text-xs font-medium text-muted-foreground"
-            >
-              Clan Tag
-            </label>
-            <input
-              id="clan-tag"
-              type="text"
-              value={clanTagInput}
-              onChange={(e) => setClanTagInput(e.target.value)}
-              placeholder="#CLANTAG"
-              className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-            />
-            {agentState?.clan_tag && agentState.clan_tag !== "unknown"}
-          </div>
-
-          {/* Apply Settings Button */}
-          <Button
-            variant="default"
-            className="w-full"
-            onClick={handleApplySettings}
-            disabled={!hasChanges()}
-          >
-            Apply Settings
-          </Button>
-
-          {/* Success indicator */}
-          {settingsApplied && (
-            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-md px-3 py-2 animate-in fade-in slide-in-from-top-2 duration-300">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              <span className="font-medium">
-                Settings applied successfully!
-              </span>
-            </div>
-          )}
-
-          {/* Spacer to push Clear Chat to bottom */}
-          <div className="grow" />
-
-          {/* Clear Chat Button at bottom */}
-          <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-            <Button
-              variant="destructive"
-              className="w-full"
-              onClick={() => setShowClearDialog(true)}
-            >
-              Clear Chat & Start New
-            </Button>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Clear Chat History?</DialogTitle>
-                <DialogDescription>
-                  This will start a new conversation and clear all chat history.
-                  This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowClearDialog(false)}
-                >
-                  Cancel
-                </Button>
-                <Button variant="destructive" onClick={handleClearChat}>
-                  Clear Chat
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
-
-      {/* Right side: Chat interface (75%) */}
+      {/* Right side: Chat interface */}
       <div className="overflow-y-auto rounded-xl h-full">
+        {/* CopilotKit Error Banner */}
+        {copilotError && (
+          <div className="mx-0 mb-3 flex items-center gap-3 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive animate-in slide-in-from-top-2 duration-200">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <p className="text-sm font-medium flex-1">{copilotError}</p>
+            <button onClick={onDismissError} className="p-1 hover:bg-destructive/10 rounded transition-colors">
+              <XIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
         <div
           className={cn(
             "flex flex-col h-full w-full rounded-xl shadow-sm border border-border"
@@ -657,7 +547,9 @@ function Chat({ setThreadId }: ChatProps) {
           }
         >
           <div className={cn("flex-1 w-full rounded-xl overflow-y-auto")}>
-            <CopilotChat className="h-full w-full" Input={CustomInput} />
+            <InputContext.Provider value={{ pendingInput, clearPendingInput }}>
+              <CopilotChat className="h-full w-full" Input={CustomInput} />
+            </InputContext.Provider>
           </div>
         </div>
       </div>

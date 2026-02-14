@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Card, DecksResponse } from "@/lib/types";
 import { CardSelector } from "@/components/card-selector";
 import { DeckGridCard } from "@/components/deck-grid-card";
@@ -27,6 +28,8 @@ export default function DecksPage() {
   // --- State ---
   const [cards, setCards] = useState<Card[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
+  const [cardsError, setCardsError] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   
   // Selection State
   const [includedVariants, setIncludedVariants] = useState<Set<string>>(new Set());
@@ -38,30 +41,45 @@ export default function DecksPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [page, setPage] = useState(1);
   const [minGames, setMinGames] = useState(0);
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+
+  // Debounce guard: prevent searches within 500ms of each other
+  const lastSearchTime = useRef<number>(0);
 
   // --- Effects ---
 
   // 1. Fetch Cards on Mount
-  useEffect(() => {
-    async function fetchCards() {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/cards`);
-        if (!res.ok) throw new Error("Failed to fetch cards");
-        const data = await res.json();
-        const cardList: Card[] = data.cards || [];
-        setCards(cardList);
-      } catch (error) {
-        console.error("Error fetching cards:", error);
-      } finally {
-        setIsLoadingCards(false);
-      }
+  const fetchCards = useCallback(async () => {
+    setIsLoadingCards(true);
+    setCardsError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/cards`);
+      if (!res.ok) throw new Error("Failed to fetch cards");
+      const data = await res.json();
+      const cardList: Card[] = data.cards || [];
+      setCards(cardList);
+    } catch (error) {
+      console.error("Error fetching cards:", error);
+      setCardsError("Failed to load cards. Please check your connection and try again.");
+    } finally {
+      setIsLoadingCards(false);
     }
-    fetchCards();
   }, []);
 
-  // 2. Search Function
+  useEffect(() => {
+    fetchCards();
+  }, [fetchCards]);
+
+  // 2. Search Function with debounce guard and 429 handling
   const fetchDecks = useCallback(async (pageNum: number) => {
+    // Debounce: skip if less than 500ms since last search
+    const now = Date.now();
+    if (now - lastSearchTime.current < 500) return;
+    lastSearchTime.current = now;
+
     setIsSearching(true);
+    setRateLimitError(null);
+    setSearchError(null);
     try {
       const includeParam = Array.from(includedVariants).join(",");
       const excludeParam = Array.from(excludedVariants).join(",");
@@ -78,21 +96,32 @@ export default function DecksPage() {
       if (excludeParam) queryParams.set("exclude", excludeParam);
 
       const res = await fetch(`${API_BASE_URL}/api/decks?${queryParams.toString()}`);
+
+      if (res.status === 429) {
+        setRateLimitError("Too many requests — please wait a moment before searching again.");
+        return;
+      }
+
       if (!res.ok) throw new Error("Failed to search decks");
 
       const data = await res.json();
       setDecksData(data);
     } catch (error) {
       console.error("Error searching decks:", error);
+      setSearchError("Failed to search decks. Please try again.");
     } finally {
       setIsSearching(false);
     }
   }, [includedVariants, excludedVariants, minGames]);
 
   // Initial Search on Mount
+  const hasFetchedRef = useRef(false);
   useEffect(() => {
-    fetchDecks(1);
-  }, []); 
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchDecks(1);
+    }
+  }, [fetchDecks]);
 
   // Handle Page Change
   const handlePageChange = (newPage: number) => {
@@ -280,6 +309,18 @@ export default function DecksPage() {
             <div className="h-[200px] flex items-center justify-center text-muted-foreground">
               <Loader2 className="w-8 h-8 animate-spin" />
             </div>
+          ) : cardsError ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 bg-destructive/5 rounded-xl border border-destructive/20">
+              <AlertTriangle className="w-10 h-10 text-destructive/70 mb-3" />
+              <p className="text-sm font-medium text-destructive mb-3">{cardsError}</p>
+              <button
+                onClick={fetchCards}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-lg transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Retry
+              </button>
+            </div>
           ) : (
             <CardSelector 
               cards={cards}
@@ -323,6 +364,31 @@ export default function DecksPage() {
             </div>
           )}
         </div>
+
+        {/* Rate Limit Warning */}
+        {rateLimitError && (
+          <div className="flex items-center gap-3 px-5 py-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm font-medium">{rateLimitError}</p>
+          </div>
+        )}
+
+        {/* Search Error */}
+        {searchError && (
+          <div className="flex items-center gap-3 px-5 py-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <p className="text-sm font-medium flex-1">{searchError}</p>
+            <button
+              onClick={() => { setSearchError(null); fetchDecks(page); }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-destructive/10 hover:bg-destructive/20 rounded-md transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Results Section */}
         {decksData && (

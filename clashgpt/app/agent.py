@@ -36,7 +36,6 @@ from app.tools import (
     get_top_players,
     search_clans,
     search_decks,
-    search_knowledge_base,
 )
 from dataclasses import dataclass
 from google.adk.agents.callback_context import CallbackContext
@@ -49,44 +48,14 @@ os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 
-@dataclass
-class AgentState:
-    """State for the agent."""
-    player_tag: str | None
-    clan_tag: str | None
-    current_player_info: Player | None
-
-
-def on_before_agent(callback_context: CallbackContext):
-    """
-    Initialize recipe state if it doesn't exist.
-    """
-
-    if "player_tag" not in callback_context.state:
-        # Initialize with default recipe
-        player_tag = "unknown"
-        callback_context.state["player_tag"] = player_tag
-
-    if "clan_tag" not in callback_context.state:
-        # Initialize with default recipe
-        clan_tag = "unknown"
-        callback_context.state["clan_tag"] = clan_tag
-
-    if "current_player_info" not in callback_context.state:
-        # Initialize with default recipe
-        current_player_info = {}
-        callback_context.state["current_player_info"] = current_player_info
-
-    return None
 
 
 root_agent = Agent(
-    name="root_agent",
+    name="clash_gpt",
     model=Gemini(
         model="gemini-2.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
-    before_agent_callback=on_before_agent,
     instruction=PROMPT,
     tools=[
         get_card_stats,
@@ -96,7 +65,6 @@ root_agent = Agent(
         get_top_players,
         search_clans,
         search_decks,
-        search_knowledge_base,
     ],
 )
 

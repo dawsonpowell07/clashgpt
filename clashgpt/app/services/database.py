@@ -4,8 +4,8 @@ Database Service
 Async service for interacting with the PostgreSQL database.
 Provides read-only access to cards, decks, and locations.
 """
+import json
 import logging
-import os
 from typing import Any
 from urllib.parse import quote
 
@@ -28,7 +28,6 @@ from app.models.models import (
 from app.settings import settings
 
 logger = logging.getLogger(__name__)
-is_cloud_run = os.getenv("K_SERVICE") is not None
 
 
 class DatabaseServiceError(Exception):
@@ -88,37 +87,29 @@ class DatabaseService:
         """
         Build database URL from settings.
 
-        Uses DEV_MODE flag to determine which database to connect to:
-        - DEV_MODE=true: Always use local PostgreSQL (overrides all other settings)
+        Two flows:
+        - DEV_MODE=true: Local PostgreSQL (no password)
+        - DEV_MODE=false: Supabase PostgreSQL (password from env)
 
         Returns:
             Async database connection URL
         """
         try:
             if settings.dev_mode:
-                # Local database configuration
-                # Local DB typically doesn't need password
+                # Local Supabase database
+                encoded_pass = quote(settings.local_db_password or "", safe="")
                 return (
-                    f"postgresql+asyncpg://{settings.local_db_user}@"
+                    f"postgresql+asyncpg://{settings.local_db_user}:{encoded_pass}@"
                     f"{settings.local_db_host}:{settings.local_db_port}/"
                     f"{settings.local_db_name}"
                 )
 
-            # Production database configuration (Google Cloud SQL)
-            encoded_user = quote(settings.prod_db_user, safe="")
-            encoded_pass = quote(settings.prod_db_password or "", safe="")
-
-            if is_cloud_run and settings.connection_name:
-                encoded_instance = settings.connection_name.replace(":", "%3A")
-                return (
-                    f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
-                    f"/{settings.prod_db_name}"
-                    f"?host=/cloudsql/{encoded_instance}"
-                )
-
+            # Supabase database
+            encoded_pass = quote(settings.supabase_db_password or "", safe="")
             return (
-                f"postgresql+asyncpg://{settings.prod_db_user}:{settings.prod_db_password}@"
-                f"{settings.prod_db_host}:{settings.prod_db_port}/{settings.prod_db_name}"
+                f"postgresql+asyncpg://{settings.supabase_db_user}:{encoded_pass}@"
+                f"{settings.supabase_db_host}:{settings.supabase_db_port}/"
+                f"{settings.supabase_db_name}"
             )
         except Exception as e:
             logger.exception("Failed to build database URL")
@@ -162,8 +153,8 @@ class DatabaseService:
                             card_id=row[0],
                             name=row[1],
                             elixir_cost=row[2],
-                            rarity=Rarity(row[3]),
-                            icon_urls=row[4]
+                            rarity=Rarity(row[3].lower()),
+                            icon_urls=json.loads(row[4]) if isinstance(row[4], str) else row[4]
                         )
                         cards.append(card)
                     except Exception as e:
@@ -212,8 +203,8 @@ class DatabaseService:
                             card_id=row[0],
                             name=row[1],
                             elixir_cost=row[2],
-                            rarity=Rarity(row[3]),
-                            icon_urls=row[4]
+                            rarity=Rarity(row[3].lower()),
+                            icon_urls=json.loads(row[4]) if isinstance(row[4], str) else row[4]
                         )
                     except Exception as e:
                         logger.exception("Failed to parse card row in get_card_by_id")
@@ -260,8 +251,8 @@ class DatabaseService:
                             card_id=row[0],
                             name=row[1],
                             elixir_cost=row[2],
-                            rarity=Rarity(row[3]),
-                            icon_urls=row[4]
+                            rarity=Rarity(row[3].lower()),
+                            icon_urls=json.loads(row[4]) if isinstance(row[4], str) else row[4]
                         )
                         cards.append(card)
                     except Exception as e:
@@ -294,7 +285,7 @@ class DatabaseService:
         limit: int = 50
     ) -> list[CardStats]:
         """
-        Get card win rates calculated from card_usage_facts.
+        Get card win rates derived from deck_usage_facts + deck_cards.
 
         Args:
             season_id: Optional season filter (e.g., 202601)
@@ -316,30 +307,31 @@ class DatabaseService:
                 params: dict[str, Any] = {"min_uses": min_uses, "limit": limit}
 
                 if season_id:
-                    where_conditions.append("cuf.season_id = :season_id")
+                    where_conditions.append("duf.season_id = :season_id")
                     params["season_id"] = season_id
 
                 if league:
-                    where_conditions.append("cuf.league = :league")
+                    where_conditions.append("duf.league = :league")
                     params["league"] = league
 
                 where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
 
                 query = f"""
                     SELECT
-                        cuf.card_id,
+                        dc.card_id,
                         c.name AS card_name,
                         COUNT(*) AS total_uses,
-                        SUM(CASE WHEN cuf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
-                        SUM(CASE WHEN cuf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+                        SUM(CASE WHEN duf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+                        SUM(CASE WHEN duf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
                         ROUND(
-                            100.0 * SUM(CASE WHEN cuf.result = 'WIN' THEN 1 ELSE 0 END) / COUNT(*),
+                            100.0 * SUM(CASE WHEN duf.result = 'WIN' THEN 1 ELSE 0 END) / COUNT(*),
                             2
                         ) AS win_rate_pct
-                    FROM card_usage_facts cuf
-                    LEFT JOIN cards c ON cuf.card_id = c.card_id
+                    FROM deck_usage_facts duf
+                    JOIN deck_cards dc ON duf.deck_id = dc.deck_id
+                    LEFT JOIN cards c ON dc.card_id = c.card_id
                     {where_clause}
-                    GROUP BY cuf.card_id, c.name
+                    GROUP BY dc.card_id, c.name
                     HAVING COUNT(*) >= :min_uses
                     ORDER BY win_rate_pct DESC
                     LIMIT :limit
@@ -392,7 +384,8 @@ class DatabaseService:
         limit: int = 50
     ) -> list[CardStats]:
         """
-        Get card usage rates (how often cards are played) from card_usage_facts.
+        Get card usage rates (how often cards are played) derived from
+        deck_usage_facts + deck_cards.
 
         Args:
             season_id: Optional season filter
@@ -412,32 +405,38 @@ class DatabaseService:
                 params: dict[str, Any] = {"limit": limit}
 
                 if season_id:
-                    where_conditions.append("cuf.season_id = :season_id")
+                    where_conditions.append("duf.season_id = :season_id")
                     params["season_id"] = season_id
 
                 if league:
-                    where_conditions.append("cuf.league = :league")
+                    where_conditions.append("duf.league = :league")
                     params["league"] = league
 
                 where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
 
-                # Subquery to get total battles
-                total_query = f"SELECT COUNT(*) FROM card_usage_facts {where_clause}"
+                # Total card appearances across all decks (each battle contributes 8 card uses)
+                total_query = f"""
+                    SELECT COUNT(*)
+                    FROM deck_usage_facts duf
+                    JOIN deck_cards dc ON duf.deck_id = dc.deck_id
+                    {where_clause}
+                """
                 total_result = await session.execute(text(total_query), params)
                 total_uses = total_result.scalar() or 1  # Avoid division by zero
 
                 query = f"""
                     SELECT
-                        cuf.card_id,
+                        dc.card_id,
                         c.name AS card_name,
                         COUNT(*) AS total_uses,
-                        SUM(CASE WHEN cuf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
-                        SUM(CASE WHEN cuf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+                        SUM(CASE WHEN duf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+                        SUM(CASE WHEN duf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
                         ROUND(100.0 * COUNT(*) / :total_uses, 2) AS usage_rate_pct
-                    FROM card_usage_facts cuf
-                    LEFT JOIN cards c ON cuf.card_id = c.card_id
+                    FROM deck_usage_facts duf
+                    JOIN deck_cards dc ON duf.deck_id = dc.deck_id
+                    LEFT JOIN cards c ON dc.card_id = c.card_id
                     {where_clause}
-                    GROUP BY cuf.card_id, c.name
+                    GROUP BY dc.card_id, c.name
                     ORDER BY total_uses DESC
                     LIMIT :limit
                 """
@@ -491,6 +490,7 @@ class DatabaseService:
     ) -> CardStats | None:
         """
         Get usage statistics for a specific card by ID.
+        Derived from deck_usage_facts + deck_cards.
 
         Args:
             card_id: The card ID to fetch stats for
@@ -520,36 +520,45 @@ class DatabaseService:
                 card_name = card_row[1]
 
                 # Build WHERE clause for stats query
-                where_conditions = ["cuf.card_id = :card_id"]
+                where_conditions = ["dc.card_id = :card_id"]
                 params: dict[str, Any] = {"card_id": card_id}
 
                 if season_id:
-                    where_conditions.append("cuf.season_id = :season_id")
+                    where_conditions.append("duf.season_id = :season_id")
                     params["season_id"] = season_id
 
                 if league:
-                    where_conditions.append("cuf.league = :league")
+                    where_conditions.append("duf.league = :league")
                     params["league"] = league
 
                 where_clause = "WHERE " + " AND ".join(where_conditions)
 
-                # Get total battles for usage rate calculation
+                # Get total card appearances for usage rate calculation
                 total_query_conditions = []
                 total_params: dict[str, Any] = {}
                 if season_id:
-                    total_query_conditions.append("season_id = :season_id")
+                    total_query_conditions.append("duf.season_id = :season_id")
                     total_params["season_id"] = season_id
                 if league:
-                    total_query_conditions.append("league = :league")
+                    total_query_conditions.append("duf.league = :league")
                     total_params["league"] = league
 
                 total_where = "WHERE " + " AND ".join(total_query_conditions) if total_query_conditions else ""
-                total_query = f"SELECT COUNT(*) FROM card_usage_facts {total_where}"
+                total_query = f"""
+                    SELECT COUNT(*)
+                    FROM deck_usage_facts duf
+                    JOIN deck_cards dc ON duf.deck_id = dc.deck_id
+                    {total_where}
+                """
                 total_result = await session.execute(text(total_query), total_params)
                 total_card_uses = total_result.scalar() or 1
 
                 # Get total distinct decks for deck appearance rate
-                total_decks_query = f"SELECT COUNT(DISTINCT deck_id) FROM card_usage_facts {total_where}"
+                total_decks_query = f"""
+                    SELECT COUNT(DISTINCT duf.deck_id)
+                    FROM deck_usage_facts duf
+                    {total_where}
+                """
                 total_decks_result = await session.execute(text(total_decks_query), total_params)
                 total_decks = total_decks_result.scalar() or 1
 
@@ -557,10 +566,11 @@ class DatabaseService:
                 stats_query = f"""
                     SELECT
                         COUNT(*) AS total_uses,
-                        SUM(CASE WHEN cuf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
-                        SUM(CASE WHEN cuf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
-                        COUNT(DISTINCT cuf.deck_id) AS deck_count
-                    FROM card_usage_facts cuf
+                        SUM(CASE WHEN duf.result = 'WIN' THEN 1 ELSE 0 END) AS wins,
+                        SUM(CASE WHEN duf.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+                        COUNT(DISTINCT duf.deck_id) AS deck_count
+                    FROM deck_usage_facts duf
+                    JOIN deck_cards dc ON duf.deck_id = dc.deck_id
                     {where_clause}
                 """
 

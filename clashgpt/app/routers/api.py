@@ -5,10 +5,13 @@ FastAPI router for database endpoints.
 Provides REST API access to cards, decks, and locations.
 """
 
+import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 
+from app.cache import get_cached_decks, make_deck_cache_key, set_cached_decks
 from app.models.models import (
     Card,
     CardList,
@@ -17,9 +20,17 @@ from app.models.models import (
     Locations,
     Rarity,
 )
+from app.rate_limit import limiter
 from app.services.database import get_database_service
 
 router = APIRouter(prefix="/api", tags=["api"])
+
+# Query complexity limits
+MAX_INCLUDE_CARDS = 8
+MAX_EXCLUDE_CARDS = 8
+
+# DB query timeout (seconds)
+DECK_SEARCH_TIMEOUT = 10.0
 
 CARD_ID_TO_NAME = {
     "26000072": "Archer Queen",
@@ -168,7 +179,8 @@ def _variant_from_evolution_level(evolution_level: int) -> str:
 # ===== ROOT ENDPOINT =====
 
 @router.get("/", response_model=dict)
-async def list_endpoints():
+@limiter.limit("60/minute")
+async def list_endpoints(request: Request):
     """
     List all available API endpoints.
 
@@ -236,7 +248,9 @@ async def list_endpoints():
 # ===== CARDS ENDPOINTS =====
 
 @router.get("/cards", response_model=CardList)
+@limiter.limit("60/minute")
 async def get_cards(
+    request: Request,
     rarity: Annotated[Rarity | None, Query(
         description="Filter by card rarity")] = None
 ):
@@ -258,7 +272,8 @@ async def get_cards(
 
 
 @router.get("/cards/{card_id}", response_model=Card)
-async def get_card_by_id(card_id: str):
+@limiter.limit("60/minute")
+async def get_card_by_id(request: Request, card_id: str):
     """
     Get a specific card by its ID.
 
@@ -283,7 +298,9 @@ async def get_card_by_id(card_id: str):
 
 
 @router.get("/cards/{card_id}/stats", response_model=CardStats)
+@limiter.limit("60/minute")
 async def get_card_stats(
+    request: Request,
     card_id: str,
     season_id: Annotated[int | None, Query(
         description="Filter by season (e.g., 202601)")] = None,
@@ -293,7 +310,7 @@ async def get_card_stats(
     """
     Get usage statistics for a specific card.
 
-    Returns win rate, usage rate, and total games from card_usage_facts.
+    Returns win rate, usage rate, and total games from deck_usage_facts.
 
     Args:
         card_id: The card ID to fetch stats for
@@ -324,7 +341,9 @@ async def get_card_stats(
 # ===== DECKS ENDPOINTS =====
 
 @router.get("/decks")
+@limiter.limit("5/second;30/minute;500/day")
 async def search_decks(
+    request: Request,
     include: Annotated[str | None, Query(
         description="Comma-separated card IDs that must be in deck")] = None,
     exclude: Annotated[str | None, Query(
@@ -361,6 +380,18 @@ async def search_decks(
         - /decks?include=26000012_1&exclude=26000010&sort_by=WINS&page=2&page_size=12
         - /decks?sort_by=GAMES_PLAYED&page=1
     """
+    # --- Check cache first ---
+    cache_key = make_deck_cache_key(
+        include, exclude, sort_by.value, min_games, page, page_size, include_cards
+    )
+    cached = get_cached_decks(cache_key)
+    if cached is not None:
+        response = JSONResponse(content=cached)
+        response.headers["X-Cache"] = "HIT"
+        response.headers["Cache-Control"] = "public, max-age=300"
+        return response
+
+    # --- Cache miss: query database ---
     db = get_database_service()
 
     include_card_ids = None
@@ -409,16 +440,37 @@ async def search_decks(
                     detail=f"Invalid exclude card id: {cid}. Use numeric card IDs (e.g. 26000024) or card_id_variant (e.g. 26000024_1)."
                 ) from exc
 
+    # Enforce query complexity limits
+    if include_card_ids and len(include_card_ids) > MAX_INCLUDE_CARDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot include more than {MAX_INCLUDE_CARDS} cards."
+        )
+    if exclude_card_ids and len(exclude_card_ids) > MAX_EXCLUDE_CARDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot exclude more than {MAX_EXCLUDE_CARDS} cards."
+        )
+
     offset = (page - 1) * page_size
 
-    decks, total = await db.search_decks_with_stats(
-        include_card_ids=include_card_ids,
-        exclude_card_ids=exclude_card_ids,
-        sort_by=sort_by,
-        min_games=min_games,
-        limit=page_size,
-        offset=offset
-    )
+    try:
+        decks, total = await asyncio.wait_for(
+            db.search_decks_with_stats(
+                include_card_ids=include_card_ids,
+                exclude_card_ids=exclude_card_ids,
+                sort_by=sort_by,
+                min_games=min_games,
+                limit=page_size,
+                offset=offset
+            ),
+            timeout=DECK_SEARCH_TIMEOUT
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="Search took too long. Try narrowing your filters."
+        ) from None
 
     deck_payloads = []
     for deck in decks:
@@ -451,21 +503,30 @@ async def search_decks(
     has_next = page < total_pages
     has_previous = page > 1
 
-    return {
+    result = {
         "decks": deck_payloads,
         "total": total,
         "page": page,
         "page_size": page_size,
         "total_pages": total_pages,
         "has_next": has_next,
-        "has_previous": has_previous
+        "has_previous": has_previous,
     }
+
+    # Store in cache for next time
+    set_cached_decks(cache_key, result)
+
+    response = JSONResponse(content=result)
+    response.headers["X-Cache"] = "MISS"
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return response
 
 
 # ===== LOCATIONS ENDPOINTS =====
 
 @router.get("/locations", response_model=Locations)
-async def get_locations():
+@limiter.limit("60/minute")
+async def get_locations(request: Request):
     """
     Get all locations.
 

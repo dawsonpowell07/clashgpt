@@ -332,7 +332,8 @@ class ClashRoyaleService:
                 name=card_data["name"],
                 elixir_cost=elixir_cost,
                 icon_urls=card_data.get("iconUrls", {}),
-                rarity=rarity
+                rarity=rarity,
+                evolution_level=int(card_data.get("evolutionLevel", 0))
             )
         except ClashRoyaleDataError:
             raise
@@ -353,7 +354,7 @@ class ClashRoyaleService:
                 raise ClashRoyaleDataError(f"Missing required leaderboard entry fields: {missing_fields}")
 
             clan = None
-            if "clan" in entry_data and entry_data["clan"]:
+            if entry_data.get("clan"):
                 try:
                     clan = ClashRoyaleService._map_clan(entry_data["clan"])
                 except Exception as e:
@@ -390,7 +391,7 @@ class ClashRoyaleService:
 
             # Map clan if present
             clan = None
-            if "clan" in player_data and player_data["clan"]:
+            if player_data.get("clan"):
                 try:
                     clan = ClashRoyaleService._map_clan(player_data["clan"])
                 except Exception as e:
@@ -398,7 +399,7 @@ class ClashRoyaleService:
 
             # Map arena if present
             arena = None
-            if "arena" in player_data and player_data["arena"]:
+            if player_data.get("arena"):
                 try:
                     arena = ClashRoyaleService._map_arena(player_data["arena"])
                 except Exception as e:
@@ -406,7 +407,7 @@ class ClashRoyaleService:
 
             # Map current favorite card if present
             current_favorite_card = None
-            if "currentFavouriteCard" in player_data and player_data["currentFavouriteCard"]:
+            if player_data.get("currentFavouriteCard"):
                 try:
                     current_favorite_card = ClashRoyaleService._map_card(
                         player_data["currentFavouriteCard"]

@@ -1,5 +1,5 @@
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Literal
 
@@ -29,20 +29,7 @@ class ProcessedBattle:
 
 @dataclass
 class DeckUsageFacts:
-    deck_id: str
-    result: Literal["WIN", "LOSS"]
-    league: str
-    battle_time: str  # timestamp
-    season_id: int
-
-    def model_dump_json(self, indent: int | None = None) -> str:
-        """Serialize to JSON string for compatibility with Pydantic API."""
-        return json.dumps(asdict(self), indent=indent)
-
-
-@dataclass
-class CardUsageFacts:
-    card_id: int
+    battle_id: str  # composite PK with deck_id
     deck_id: str
     result: Literal["WIN", "LOSS"]
     league: str
@@ -96,6 +83,7 @@ class Card:
     elixir_cost: int
     rarity: Rarity
     icon_urls: dict[str, str]
+    evolution_level: int = 0  # 0=normal, 1=evolution, 2=hero
 
     def model_dump_json(self, indent: int | None = None) -> str:
         """Serialize to JSON string for compatibility with Pydantic API."""
@@ -188,7 +176,7 @@ class CardList:
 @dataclass
 class CardStats:
     """
-    Aggregated statistics for a card, calculated from card_usage_facts.
+    Aggregated statistics for a card, derived from deck_usage_facts + deck_cards.
 
     This is computed on demand from fact tables, not stored in database.
     """
@@ -199,7 +187,8 @@ class CardStats:
     losses: int = 0
     win_rate: float | None = None  # Calculated: wins / total_uses
     usage_rate: float | None = None  # Percentage of all card slots
-    deck_appearance_rate: float | None = None  # Percentage of decks containing this card
+    # Percentage of decks containing this card
+    deck_appearance_rate: float | None = None
 
     def model_dump_json(self, indent: int | None = None) -> str:
         """Serialize to JSON string for compatibility with Pydantic API."""

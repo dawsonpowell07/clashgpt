@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { ChevronDown, ChevronUp, LayoutGrid } from "lucide-react";
 
 interface DeckCard {
   card_id: string;
@@ -32,21 +36,43 @@ export function DeckSearchResults({
   results,
   className,
 }: DeckSearchResultsProps) {
+  const [isOpen, setIsOpen] = useState(true);
+
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-foreground">Deck Results</h2>
-        <span className="text-sm text-muted-foreground">
-          {results.decks.length} deck{results.decks.length !== 1 ? "s" : ""}{" "}
-          found
-        </span>
+      <div 
+        className={cn(
+          "flex items-center justify-between bg-card border border-border p-4 rounded-xl cursor-pointer hover:bg-accent/50 transition-colors",
+          isOpen ? "rounded-b-none border-b-0" : "rounded-xl"
+        )}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-primary/10 rounded-lg">
+            <LayoutGrid className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Deck Results</h2>
+            <p className="text-xs text-muted-foreground">
+              {results.decks.length} deck{results.decks.length !== 1 ? "s" : ""} found
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 text-muted-foreground">
+          {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+        </div>
       </div>
 
-      <div className="grid gap-4">
-        {results.decks.map((deck) => (
-          <DeckCardComponent key={deck.deck_id} deck={deck} />
-        ))}
-      </div>
+      {isOpen && (
+        <div className="bg-card border border-t-0 border-border rounded-b-xl p-4 mt-0 animate-in slide-in-from-top-2 duration-200">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-2">
+            {results.decks.map((deck) => (
+              <DeckCardComponent key={deck.deck_id} deck={deck} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -141,6 +167,47 @@ function getKeyCards(cards: DeckCard[], avgElixir: number): string {
   return deckName;
 }
 
+// Sort cards by variant: evo cards first, then hero cards, then normal cards
+function sortCardsByVariant(cards: DeckCard[]): DeckCard[] {
+  // Separate cards by variant
+  const evoCards = cards.filter(card => card.variant === "evolved");
+  const heroCards = cards.filter(card => card.variant === "hero");
+  const normalCards = cards.filter(card => card.variant === "normal");
+
+  const sortedCards: DeckCard[] = [];
+
+  // First row positions 0-1: Evolution cards (up to 2)
+  sortedCards.push(...evoCards.slice(0, 2));
+
+  // Fill remaining first row evo slots with normals if needed
+  const evosNeeded = 2 - Math.min(evoCards.length, 2);
+  if (evosNeeded > 0) {
+    sortedCards.push(...normalCards.splice(0, evosNeeded));
+  }
+
+  // First row positions 2-3: Hero cards (up to 2)
+  sortedCards.push(...heroCards.slice(0, 2));
+
+  // Fill remaining first row hero slots with normals if needed
+  const heroesNeeded = 2 - Math.min(heroCards.length, 2);
+  if (heroesNeeded > 0) {
+    sortedCards.push(...normalCards.splice(0, heroesNeeded));
+  }
+
+  // Second row positions 4-7: Remaining normal cards
+  sortedCards.push(...normalCards);
+
+  // Add any extra evos/heroes that didn't fit in first row to second row
+  if (evoCards.length > 2) {
+    sortedCards.push(...evoCards.slice(2));
+  }
+  if (heroCards.length > 2) {
+    sortedCards.push(...heroCards.slice(2));
+  }
+
+  return sortedCards;
+}
+
 function DeckCardComponent({ deck }: DeckCardComponentProps) {
   const hasStats =
     deck.games_played !== undefined &&
@@ -152,37 +219,33 @@ function DeckCardComponent({ deck }: DeckCardComponentProps) {
       : null;
 
   const deckName = getKeyCards(deck.cards, deck.avg_elixir);
+  const sortedCards = sortCardsByVariant([...deck.cards]);
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
+    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all h-full flex flex-col">
       {/* Header */}
-      <div className="px-4 py-3 bg-muted/30 border-b border-border">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="text-sm font-semibold text-foreground">
+      <div className="px-3 py-2 bg-muted/30 border-b border-border">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-semibold text-foreground truncate" title={deckName}>
             {deckName}
           </div>
-          <div className="text-sm text-muted-foreground">
-            Avg Elixir:{" "}
-            <span className="font-semibold text-foreground">
-              {deck.avg_elixir.toFixed(1)}
-            </span>
+          <div className="text-xs text-muted-foreground whitespace-nowrap">
+            {deck.avg_elixir.toFixed(1)} Avg
           </div>
         </div>
       </div>
 
       {/* Stats Section (if available) */}
       {hasStats && (
-        <div className="px-4 py-3 bg-muted/10 border-b border-border">
-          <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="px-3 py-2 bg-muted/10 border-b border-border">
+          <div className="flex items-center justify-between text-xs">
             {/* Win Rate - Most prominent */}
             {winRate && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground uppercase">
-                  Win Rate
-                </span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium text-muted-foreground">WR:</span>
                 <span
                   className={cn(
-                    "text-lg font-bold",
+                    "font-bold",
                     parseFloat(winRate) >= 55
                       ? "text-green-500"
                       : parseFloat(winRate) >= 50
@@ -196,46 +259,28 @@ function DeckCardComponent({ deck }: DeckCardComponentProps) {
             )}
 
             {/* Games Played */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Games:</span>
-              <span className="text-sm font-semibold text-foreground">
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Games:</span>
+              <span className="font-semibold text-foreground">
                 {deck.games_played}
               </span>
             </div>
-
-            {/* W/L Record */}
-            {deck.wins !== undefined && deck.losses !== undefined && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Record:</span>
-                <span className="text-sm font-semibold text-green-500">
-                  {deck.wins}
-                </span>
-                <span className="text-xs text-muted-foreground">-</span>
-                <span className="text-sm font-semibold text-red-500">
-                  {deck.losses}
-                </span>
-              </div>
-            )}
-
-            {deck.last_seen && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">
-                  Last Seen:
-                </span>
-                <span className="text-sm font-semibold text-foreground">
-                  {formatLastSeen(deck.last_seen)}
-                </span>
-              </div>
-            )}
           </div>
         </div>
       )}
 
-      {/* Deck Cards */}
-      <div className="p-4">
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-          {deck.cards.map((card, index) => (
-            <CardDisplay key={index} card={card} />
+      {/* Deck Cards - using user specified layout */}
+      <div className="p-3">
+        <div className="grid grid-cols-4 gap-1.5">
+          {/* First row: Evos (0-1) + Heroes (2-3) */}
+          {sortedCards.slice(0, 4).map((card, index) => (
+            <CardDisplay key={`${deck.deck_id}-${index}`} card={card} />
+          ))}
+        </div>
+        <div className="grid grid-cols-4 gap-1.5 mt-1.5">
+          {/* Second row: Normals (4-7) */}
+          {sortedCards.slice(4, 8).map((card, index) => (
+            <CardDisplay key={`${deck.deck_id}-${index + 4}`} card={card} />
           ))}
         </div>
       </div>
@@ -257,9 +302,17 @@ function CardDisplay({ card }: CardDisplayProps) {
 
   // Determine the image suffix based on variant
   const imageSuffix = hasEvolution ? "_evolution" : isHero ? "_hero" : "";
+  
+  // Custom border colors for variants to match deck-grid-card style
+  const borderColor = hasEvolution ? 'border-purple-500/50' : isHero ? 'border-yellow-500/50' : 'border-border';
 
   return (
-    <div className="relative aspect-3/4 rounded-lg overflow-hidden border border-border bg-muted group hover:scale-105 transition-transform">
+    <div 
+      className={cn(
+        "relative aspect-3/4 rounded overflow-hidden border bg-muted group hover:scale-105 transition-transform",
+        borderColor
+      )}
+    >
       <Image
         src={`/cards/${cardFileName}/${cardFileName}${imageSuffix}.png`}
         alt={card.card_name}
@@ -269,19 +322,19 @@ function CardDisplay({ card }: CardDisplayProps) {
 
       {/* Variant badge */}
       {hasEvolution && (
-        <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-purple-500/90 text-white text-[8px] font-bold uppercase">
+        <div className="absolute top-0.5 left-0.5 px-1 py-px rounded bg-purple-500/90 text-white text-[6px] font-bold uppercase leading-none z-10">
           Evo
         </div>
       )}
       {isHero && (
-        <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-yellow-500/90 text-white text-[8px] font-bold uppercase">
+        <div className="absolute top-0.5 left-0.5 px-1 py-px rounded bg-yellow-500/90 text-white text-[6px] font-bold uppercase leading-none z-10">
           Hero
         </div>
       )}
 
       {/* Card name tooltip on hover */}
-      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/90 via-black/60 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        <p className="text-white text-[10px] font-medium text-center truncate">
+      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/90 via-black/60 to-transparent p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <p className="text-white text-[8px] font-medium text-center truncate leading-tight">
           {card.card_name}
         </p>
       </div>

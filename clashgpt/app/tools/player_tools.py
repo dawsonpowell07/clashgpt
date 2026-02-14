@@ -2,7 +2,6 @@ import logging
 
 from google.adk.tools.tool_context import ToolContext
 
-from app.tools.serialization import serialize_dataclass
 from app.services.clash_royale import (
     ClashRoyaleAPIError,
     ClashRoyaleAuthError,
@@ -13,6 +12,7 @@ from app.services.clash_royale import (
     ClashRoyaleService,
     ClashRoyaleTimeoutError,
 )
+from app.tools.serialization import serialize_dataclass
 
 """
 Player-related tools for the Clash Royale agent.
@@ -41,7 +41,7 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
             tool_context.state["current_player_info"] = player
             return serialize_dataclass(player)
 
-    except ClashRoyaleNotFoundError as e:
+    except ClashRoyaleNotFoundError:
         error_msg = f"Player not found: {player_tag}. Please verify the player tag is correct."
         logger.warning(f"Tool: get_player_info | {error_msg}")
         return {
@@ -59,7 +59,7 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
             "details": str(e)
         }
 
-    except ClashRoyaleRateLimitError as e:
+    except ClashRoyaleRateLimitError:
         error_msg = "Rate limit exceeded. Please try again in a few moments."
         logger.warning(f"Tool: get_player_info | {error_msg}")
         return {
@@ -68,7 +68,7 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
             "suggestion": "Please wait a moment before trying again."
         }
 
-    except ClashRoyaleTimeoutError as e:
+    except ClashRoyaleTimeoutError:
         error_msg = f"Request timed out while fetching player info for {player_tag}."
         logger.warning(f"Tool: get_player_info | {error_msg}")
         return {
@@ -134,7 +134,7 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
             battle_log = await service.get_player_battle_log(player_tag, limit=limit)
             return serialize_dataclass(battle_log)
 
-    except ClashRoyaleNotFoundError as e:
+    except ClashRoyaleNotFoundError:
         error_msg = f"Player not found: {player_tag}. Please verify the player tag is correct."
         logger.warning(f"Tool: get_player_battle_log | {error_msg}")
         return {
@@ -154,7 +154,7 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
             "battles": []
         }
 
-    except ClashRoyaleRateLimitError as e:
+    except ClashRoyaleRateLimitError:
         error_msg = "Rate limit exceeded. Please try again in a few moments."
         logger.warning(f"Tool: get_player_battle_log | {error_msg}")
         return {
@@ -164,7 +164,7 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
             "battles": []
         }
 
-    except ClashRoyaleTimeoutError as e:
+    except ClashRoyaleTimeoutError:
         error_msg = f"Request timed out while fetching battle log for {player_tag}."
         logger.warning(f"Tool: get_player_battle_log | {error_msg}")
         return {
@@ -249,7 +249,7 @@ async def get_top_players(location_id: int = 57000249, limit: int = 10) -> dict:
             leaderboard = await service.get_player_rankings(location_id, limit=limit)
             return serialize_dataclass(leaderboard)
 
-    except ClashRoyaleNotFoundError as e:
+    except ClashRoyaleNotFoundError:
         error_msg = f"Location not found: {location_id}. Please verify the location ID is valid."
         logger.warning(f"Tool: get_top_players | {error_msg}")
         return {
@@ -269,7 +269,7 @@ async def get_top_players(location_id: int = 57000249, limit: int = 10) -> dict:
             "entries": []
         }
 
-    except ClashRoyaleRateLimitError as e:
+    except ClashRoyaleRateLimitError:
         error_msg = "Rate limit exceeded. Please try again in a few moments."
         logger.warning(f"Tool: get_top_players | {error_msg}")
         return {
@@ -279,7 +279,7 @@ async def get_top_players(location_id: int = 57000249, limit: int = 10) -> dict:
             "entries": []
         }
 
-    except ClashRoyaleTimeoutError as e:
+    except ClashRoyaleTimeoutError:
         error_msg = f"Request timed out while fetching top players for location {location_id}."
         logger.warning(f"Tool: get_top_players | {error_msg}")
         return {

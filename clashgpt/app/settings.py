@@ -1,3 +1,5 @@
+from typing import Any
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,48 +13,38 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+    allow_origins: str | list[str] = "http://localhost:3000,http://localhost:8000"
+
+    @field_validator("allow_origins", mode="before")
+    @classmethod
+    def parse_allow_origins(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            return [o.strip() for o in v.split(",") if o.strip()]
+        return v
+
     # Clash Royale API
     clash_royale_api_token: str = ""
 
-    # Production Database
-    prod_db_user: str = "postgres"
-    prod_db_password: str | None = None
-    prod_db_name: str = "postgres"
-    prod_db_host: str = "localhost"
-    prod_db_port: int = 5432
-
-    # Local Database
-    local_db_user: str = "dawsonpowell"
-    local_db_name: str = "clashgpt"
-    local_db_host: str = "localhost"
+    # Local Database (dev mode — Supabase local)
+    local_db_user: str = "postgres"
+    local_db_password: str = "postgres"
+    local_db_name: str = "postgres"
+    local_db_host: str = "127.0.0.1"
     local_db_port: int = 5432
 
-    # Google Cloud
-    connection_name: str | None = None
+    # Supabase Database (production)
+    supabase_db_password: str
+    supabase_db_host: str
+    supabase_db_port: int
+    supabase_db_name: str
+    supabase_db_user: str
 
     # Application
     dev_mode: bool = False
+    backend_api_key: str = ""
 
-    # Google Cloud Storage
-    logs_bucket_name: str | None = None
-
-    # MongoDB
-    mongodb_uri: str = ""
-    mongodb_database: str = ""
-    mongodb_collection_documents: str = "documents"
-    mongodb_collection_chunks: str = "chunks"
-    mongodb_vector_index: str = "vector_index"
-    mongodb_text_index: str = "text_index"
-
-    # Embedding Configuration
-    embedding_api_key: str = ""
-    embedding_model: str = "text-embedding-3-small"
-    embedding_base_url: str = "https://api.openai.com/v1"
-    embedding_dimension: int = 1536
-
-    # RAG Search Configuration
-    default_match_count: int = 10
-    max_match_count: int = 50
+    # Telemetry
+    logs_bucket_name: str = ""
 
 
 # Create a global settings instance
