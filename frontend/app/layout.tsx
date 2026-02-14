@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Syne, DM_Sans } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next"
 
 const syne = Syne({
   variable: "--font-heading",
@@ -34,6 +35,7 @@ export default function RootLayout({
           suppressHydrationWarning
         >
           {children}
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>
