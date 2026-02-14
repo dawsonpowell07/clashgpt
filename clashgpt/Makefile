@@ -43,7 +43,7 @@ deploy:
 		--memory "4Gi" \
 		--project $$PROJECT_ID \
 		--region "us-east1" \
-		--no-allow-unauthenticated \
+		--allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "created-by=adk" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
