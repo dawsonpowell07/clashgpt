@@ -102,7 +102,7 @@ export default function ChatPage() {
         setTimeout(() => setCopilotError(null), 8000);
       }}
     >
-      <Chat setThreadId={setThreadId} copilotError={copilotError} onDismissError={() => setCopilotError(null)} />
+      <Chat setThreadId={setThreadId} copilotError={copilotError} onDismissError={() => setCopilotError(null)}  />
     </CopilotKit>
   );
 }

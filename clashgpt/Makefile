@@ -52,6 +52,26 @@ deploy:
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 
+# Deploy with env vars from .env file
+# Usage: make deploy-env [IAP=true] [PORT=8080]
+deploy-env:
+	@test -f .env || { echo "Error: .env file not found"; exit 1; }
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	ENV_VARS=$$(grep -v '^\s*#' .env | grep -v '^\s*$$' | sed 's/^[[:space:]]*//' | paste -sd ',' -) && \
+	gcloud beta run deploy clashgpt \
+		--source . \
+		--memory "4Gi" \
+		--project $$PROJECT_ID \
+		--region "us-east1" \
+		--allow-unauthenticated \
+		--no-cpu-throttling \
+		--labels "created-by=adk" \
+		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
+		--set-env-vars \
+		"COMMIT_SHA=$(shell git rev-parse HEAD),$$ENV_VARS" \
+		$(if $(IAP),--iap) \
+		$(if $(PORT),--port=$(PORT))
+
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
 
