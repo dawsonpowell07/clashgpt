@@ -53,7 +53,7 @@ export default function ChatPage() {
     }
   }, [isLoaded, isSignedIn, router]);
 
-  // Keep the auth token fresh
+  // Keep the auth token fresh — Clerk JWTs expire in ~60s
   useEffect(() => {
     if (!isSignedIn) {
       setAuthHeaders({});
@@ -69,6 +69,8 @@ export default function ChatPage() {
       }
     };
     updateToken();
+    const interval = setInterval(updateToken, 50_000); // refresh before 60s expiry
+    return () => clearInterval(interval);
   }, [isSignedIn, getToken, userId]);
 
   // Use lazy initialization to get or create threadId from sessionStorage
@@ -117,7 +119,7 @@ export default function ChatPage() {
         setTimeout(() => setCopilotError(null), 8000);
       }}
     >
-      <Chat setThreadId={setThreadId} copilotError={copilotError} onDismissError={() => setCopilotError(null)} />
+      <Chat setThreadId={setThreadId} copilotError={copilotError} onDismissError={() => setCopilotError(null)}  />
     </CopilotKit>
   );
 }

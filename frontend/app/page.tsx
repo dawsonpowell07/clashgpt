@@ -166,10 +166,6 @@ export default function Home() {
             </span>
           </h1>
 
-          <p className="text-xl md:text-2xl lg:text-3xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-[family-name:var(--font-heading)] font-medium tracking-tight">
-            Deck Intelligence, <span className="text-primary">Reimagined</span>
-          </p>
-
           <p className="text-base md:text-lg text-muted-foreground/80 max-w-xl mx-auto leading-relaxed">
             Real-time meta analytics, AI-powered strategy, and live tournament
             data — all in one assistant.

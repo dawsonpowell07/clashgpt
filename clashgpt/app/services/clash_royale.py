@@ -84,7 +84,7 @@ class ClashRoyaleService:
     All methods are async and return parsed JSON responses.
     """
 
-    BASE_URL = "https://api.clashroyale.com/v1"
+    BASE_URL = "https://proxy.royaleapi.dev/v1"
 
     def __init__(self, api_token: str | None = None):
         """

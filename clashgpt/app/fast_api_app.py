@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hmac
 import logging
 import os
 import time
@@ -125,8 +126,17 @@ async def log_and_protect_requests(request: Request, call_next):
         api_key = request.headers.get("x-api-key")
         expected_key = settings.backend_api_key
 
-        # In dev mode, skip check if no key is configured
-        if expected_key and api_key != expected_key:
+        if not expected_key and not settings.dev_mode:
+            app_logger.error(
+                "BACKEND_API_KEY is not set in production — rejecting request"
+            )
+            from starlette.responses import JSONResponse
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Server misconfiguration"},
+            )
+
+        if expected_key and not hmac.compare_digest(api_key or "", expected_key):
             app_logger.warning(
                 f"Rejected request to {request.url.path}: invalid or missing API key"
             )
