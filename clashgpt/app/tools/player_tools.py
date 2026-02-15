@@ -216,11 +216,12 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
         }
 
 
-async def get_top_players(location_id: int = 57000249, limit: int = 10) -> dict:
+async def get_top_players(location_id: int | str = 57000249, limit: int = 10) -> dict:
     """
-    Get the top Path of Legend players for a specific location.
+    Get the top Path of Legend players for a specific location. use global as the loactionid for global rankings
 
     Args:
+    
         location_id: The location ID to get rankings for. Defaults to 57000249 (United States).
             Common location IDs:
             - 57000249: United States
@@ -234,6 +235,7 @@ async def get_top_players(location_id: int = 57000249, limit: int = 10) -> dict:
             - 57000151: Russia
             - 57000088: Hong Kong
             - 57000227: United Kingdom
+            - global: Global
         limit: Number of top players to return (default: 10, max: 50).
 
     Returns:

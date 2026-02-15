@@ -66,6 +66,7 @@ TOOL USAGE EXAMPLES
 • “Show player #ABC123” → get_player_info(player_tag="#ABC123")
 • “My last 20 battles” → get_player_battle_log(player_tag="<tag>", limit=20)
 • “Top players in USA” → get_top_players(location_id="<usa_id>", limit=50)
+• “Top players in the world” → get_top_players(location_id="global", limit=50)
 
 ### Clan Data
 • “Show clan #QPY2CU0Y” → get_clan_info(clan_tag="#QPY2CU0Y")

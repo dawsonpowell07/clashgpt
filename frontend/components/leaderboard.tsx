@@ -21,9 +21,14 @@ interface LeaderboardData {
 interface LeaderboardProps {
   leaderboard: LeaderboardData;
   className?: string;
+  location?: string;
 }
 
-export function Leaderboard({ leaderboard, className }: LeaderboardProps) {
+export function Leaderboard({
+  leaderboard,
+  className,
+  location,
+}: LeaderboardProps) {
   const topThree = leaderboard.entries.slice(0, 3);
   const remaining = leaderboard.entries.slice(3);
 
@@ -33,7 +38,7 @@ export function Leaderboard({ leaderboard, className }: LeaderboardProps) {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
           <Trophy className="w-5 h-5 text-yellow-500" />
-          Top Players Leaderboard
+          {location ? `${location} Top Players` : "Top Players Leaderboard"}
         </h2>
         <span className="text-sm text-muted-foreground">
           {leaderboard.entries.length} player

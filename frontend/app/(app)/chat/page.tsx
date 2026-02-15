@@ -25,6 +25,21 @@ import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
+const LOCATION_MAP: Record<string, string> = {
+  "57000249": "US",
+  "57000007": "BR",
+  "57000038": "CN",
+  "57000070": "FR",
+  "57000074": "DE",
+  "57000094": "IN",
+  "57000095": "ID",
+  "57000097": "IR",
+  "57000151": "RU",
+  "57000088": "HK",
+  "57000227": "UK",
+  global: "Global",
+};
+
 export default function ChatPage() {
   const { getToken, isSignedIn, isLoaded, userId } = useAuth();
   const router = useRouter();
@@ -421,8 +436,18 @@ function Chat({ setThreadId, copilotError, onDismissError }: ChatProps) {
         );
       }
 
+      // Get location name to display
+      const locationId = args.location_id?.toString() || "57000249";
+      const locationName = LOCATION_MAP[locationId] || (locationId === "global" ? "Global" : locationId);
+
       // Show leaderboard with podium
-      return <Leaderboard leaderboard={result} className="my-4" />;
+      return (
+        <Leaderboard
+          leaderboard={result}
+          location={locationName}
+          className="my-4"
+        />
+      );
     },
   });
 

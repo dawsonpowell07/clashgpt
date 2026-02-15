@@ -930,7 +930,7 @@ class ClashRoyaleService:
 
     async def get_player_rankings(
         self,
-        location_id: int,
+        location_id: int | str,
         limit: int = 10
     ) -> Leaderboard:
         """
@@ -946,8 +946,8 @@ class ClashRoyaleService:
         Raises:
             ClashRoyaleAPIError: If location_id is invalid or API request fails
         """
-        if not isinstance(location_id, int):
-            raise ClashRoyaleAPIError("Location ID must be an integer")
+        if not isinstance(location_id, (int, str)):
+            raise ClashRoyaleAPIError("Location ID must be an integer or string")
 
         if not isinstance(limit, int) or limit <= 0:
             raise ClashRoyaleAPIError("Limit must be a positive integer")
