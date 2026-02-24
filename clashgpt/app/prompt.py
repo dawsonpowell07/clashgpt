@@ -76,7 +76,7 @@ TOOL USAGE EXAMPLES
 ### Card Stats (Meta Analysis)
 • "How good is Knight right now?" → get_card_stats(card_id=26000000)
 • "Is Mega Knight meta?" → get_card_stats(card_id=26000055)
-• "Hog Rider win rate in Champion league" → get_card_stats(card_id=26000021, league="7")
+• "Hog Rider win rate this season" → get_card_stats(card_id=26000021, season_id=202602)
 • "Check if Goblin Barrel is viable" → get_card_stats(card_id=28000004)
 
 ### Deck Queries (Performance-Aware)

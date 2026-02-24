@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 async def get_card_stats(
     card_id: int,
     season_id: int | None = None,
-    league: str | None = None
 ) -> dict:
     """
     Get performance statistics for a specific card including win rate, usage rate,
@@ -37,10 +36,6 @@ async def get_card_stats(
             Format: YYYYMM (e.g., 202601 for January 2026).
             If not provided, returns stats across all available data.
 
-        league: Optional league tier filter (e.g., "7" for Champion league).
-            Use this to see how a card performs at specific skill levels.
-            If not provided, returns stats across all leagues.
-
     Returns:
         Dictionary containing card statistics:
         - card_id: The card's numeric ID
@@ -56,22 +51,19 @@ async def get_card_stats(
         - win_rate: How often decks with this card win. Above 0.50 = above average.
         - deck_appearance_rate: Meta popularity. Higher = more commonly used.
           A card with 20% appearance rate is in 1 of every 5 decks.
-        - usage_rate: Raw frequency in card slots (less intuitive than deck_appearance_rate).
+        - usage_rate: Raw frequency in card slots.
 
     Examples:
         # Get Knight's overall performance
         await get_card_stats(card_id=26000000)
 
-        # Get Hog Rider stats for current season in Champion league
-        await get_card_stats(card_id=26000021, season_id=202601, league="7")
+        # Get Hog Rider stats for current season
+        await get_card_stats(card_id=26000021, season_id=202601)
 
-        # Check if a card is meta-viable
-        await get_card_stats(card_id=26000055)  # Mega Knight
+        # Check if Mega Knight is meta-viable
+        await get_card_stats(card_id=26000055)
     """
-    logger.info(
-        f"Tool: get_card_stats | card_id={card_id}, "
-        f"season_id={season_id}, league={league}"
-    )
+    logger.info(f"Tool: get_card_stats | card_id={card_id}, season_id={season_id}")
     try:
         if not isinstance(card_id, int) or card_id <= 0:
             return {
@@ -84,7 +76,6 @@ async def get_card_stats(
         stats = await db.get_card_stats_by_id(
             card_id=card_id,
             season_id=season_id,
-            league=league
         )
 
         if stats is None:

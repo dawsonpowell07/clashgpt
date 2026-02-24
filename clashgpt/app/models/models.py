@@ -13,45 +13,12 @@ class Rarity(Enum):
 
 
 @dataclass
-class ProcessedBattle:
-    battle_id: str  # unique -> player_a|player_b|timestamp|game_mode_id
-    player_a_tag: str
-    player_b_tag: str
-    battle_time: str  # timestamp -> ex: 20260112T002608.000Z
-    processed_at: str  # timestamp -> generated
-    season_id: int
-    game_mode: str
-
-    def model_dump_json(self, indent: int | None = None) -> str:
-        """Serialize to JSON string for compatibility with Pydantic API."""
-        return json.dumps(asdict(self), indent=indent)
-
-
-@dataclass
-class DeckUsageFacts:
-    battle_id: str  # composite PK with deck_id
-    deck_id: str
-    result: Literal["WIN", "LOSS"]
-    league: str
-    battle_time: str  # timestamp
-    season_id: int
-
-    def model_dump_json(self, indent: int | None = None) -> str:
-        """Serialize to JSON string for compatibility with Pydantic API."""
-        return json.dumps(asdict(self), indent=indent)
-
-
-@dataclass
 class Deck:
-    """
-    Dimension table for unique deck compositions.
-
-    deck_id format: "26000000_0|26000001_0|26000002_1|..."
-    where each part is card_id_variant (variant: 0=normal, 1=evolution, 2=hero)
-    Cards are sorted and pipe-delimited for deterministic IDs.
-    """
-    deck_id: str  # plaintext composition: card_id_variant|card_id_variant|...
-    avg_elixir: float
+    """Dimension table for unique deck compositions. deck_id is a SHA-256 hash."""
+    deck_id: str
+    avg_elixir: float | None = None
+    tower_troop_id: int | None = None
+    created_at: str | None = None
 
     def model_dump_json(self, indent: int | None = None) -> str:
         """Serialize to JSON string for compatibility with Pydantic API."""
@@ -59,17 +26,16 @@ class Deck:
 
 
 @dataclass
-class DeckCards:
+class DeckCardConfig:
     """
-    Bridge table mapping cards to decks (many-to-many relationship).
-
-    Composite primary key: (deck_id, card_id, evolution_level)
-    Each deck has exactly 8 rows in this table.
+    Bridge table mapping cards to decks with variant and slot tracking.
+    Composite primary key: (deck_id, card_id, variant)
     """
     deck_id: str
     card_id: int
-    evolution_level: int  # 0=normal, 1=evolution, 2=hero
-    is_support_card: bool
+    variant: str  # 'normal', 'evolution', or 'heroic'
+    slot_index: int | None = None
+    card_name: str | None = None  # Populated via JOIN with dim_cards
 
     def model_dump_json(self, indent: int | None = None) -> str:
         """Serialize to JSON string for compatibility with Pydantic API."""
@@ -80,16 +46,19 @@ class DeckCards:
 class Card:
     card_id: int
     name: str
-    elixir_cost: int
-    rarity: Rarity
-    icon_urls: dict[str, str]
-    evolution_level: int = 0  # 0=normal, 1=evolution, 2=hero
+    elixir_cost: int | None
+    rarity: Rarity | None
+    icon_urls: dict[str, str] | None
+    card_type: str | None = None      # e.g., 'Troop', 'Tower Troop'
+    can_evolve: bool = False
+    can_be_heroic: bool = False
+    evolution_level: int = 0  # Preserved for API-sourced cards (battle/player data)
 
     def model_dump_json(self, indent: int | None = None) -> str:
         """Serialize to JSON string for compatibility with Pydantic API."""
         data = asdict(self)
         # Convert Enum to value for JSON serialization
-        data['rarity'] = self.rarity.value
+        data['rarity'] = self.rarity.value if self.rarity else None
         return json.dumps(data, indent=indent)
 
 
@@ -110,9 +79,9 @@ class FreeToPlayLevel(str, Enum):
 
 
 class CardVariant(str, Enum):
-    NORMAL = "NORMAL"
-    EVOLUTION = "EVOLUTION"
-    HERO = "HERO"
+    NORMAL = "normal"
+    EVOLUTION = "evolution"
+    HEROIC = "heroic"
 
 
 @dataclass
@@ -166,17 +135,18 @@ class CardList:
     def model_dump_json(self, indent: int | None = None) -> str:
         """Serialize to JSON string for compatibility with Pydantic API."""
         data = {'cards': [asdict(c) for c in self.cards]}
-        # Convert Rarity enum to value for each card
         for card_data in data['cards']:
             if 'rarity' in card_data and isinstance(card_data['rarity'], Rarity):
                 card_data['rarity'] = card_data['rarity'].value
+            elif 'rarity' in card_data and card_data['rarity'] is None:
+                card_data['rarity'] = None
         return json.dumps(data, indent=indent)
 
 
 @dataclass
 class CardStats:
     """
-    Aggregated statistics for a card, derived from deck_usage_facts + deck_cards.
+    Aggregated statistics for a card, derived from fact_battle_participants + deck_card_config.
 
     This is computed on demand from fact tables, not stored in database.
     """
@@ -210,7 +180,7 @@ class CardStatsFilters:
 @dataclass
 class DeckStats:
     """
-    Aggregated statistics for a deck, calculated from deck_usage_facts.
+    Aggregated statistics for a deck, calculated from fact_battle_participants.
 
     This is not a database table - it's computed on demand from fact tables.
     """
@@ -238,31 +208,32 @@ class DeckStatsFilters:
 
 
 class DeckSortBy(str, Enum):
-    # Most recently used (MAX battle_time from deck_usage_facts)
+    # Most recently seen (MAX battle_time from processed_battles)
     RECENT = "RECENT"
-    # Most games played (COUNT from deck_usage_facts)
+    # Most games played (COUNT from fact_battle_participants)
     GAMES_PLAYED = "GAMES_PLAYED"
-    # Highest win rate (wins / games from deck_usage_facts)
+    # Highest win rate (SUM(is_win) / COUNT from fact_battle_participants)
     WIN_RATE = "WIN_RATE"
-    WINS = "WINS"  # Most wins (COUNT WHERE result='WIN' from deck_usage_facts)
+    # Most wins (SUM(is_win) from fact_battle_participants)
+    WINS = "WINS"
 
 
 @dataclass
 class DeckWithStats:
-    """1
-    Deck with aggregated statistics calculated from deck_usage_facts.
+    """
+    Deck with aggregated statistics calculated from fact_battle_participants.
 
-    Combines deck dimension data with computed statistics.
+    Combines dim_decks dimension data with computed statistics.
     """
     deck_id: str
-    avg_elixir: float
-    # Optional: joined from deck_cards bridge table
-    cards: list[DeckCards] | None = None
+    avg_elixir: float | None = None
+    # Optional: joined from deck_card_config bridge table
+    cards: list[DeckCardConfig] | None = None
     games_played: int | None = None
     wins: int | None = None
     losses: int | None = None
     win_rate: float | None = None  # Calculated: wins / games_played
-    last_seen: str | None = None  # MAX(battle_time) from deck_usage_facts
+    last_seen: str | None = None  # MAX(battle_time) from processed_battles
 
     def model_dump_json(self, indent: int | None = None) -> str:
         """Serialize to JSON string for compatibility with Pydantic API."""
@@ -453,7 +424,8 @@ class Player:
     def model_dump_json(self, indent: int | None = None) -> str:
         """Serialize to JSON string for compatibility with Pydantic API."""
         data = asdict(self)
-        # Convert nested Card enum
-        if self.current_favorite_card and 'rarity' in data.get('current_favorite_card', {}):
-            data['current_favorite_card']['rarity'] = self.current_favorite_card.rarity.value
+        # Convert nested Card rarity enum
+        if self.current_favorite_card:
+            rarity = self.current_favorite_card.rarity
+            data['current_favorite_card']['rarity'] = rarity.value if rarity else None
         return json.dumps(data, indent=indent)
