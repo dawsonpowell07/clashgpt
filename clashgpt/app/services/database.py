@@ -116,7 +116,15 @@ class DatabaseService:
         import json as _json
         rarity = Rarity(row[3].lower()) if row[3] else None
         icon_urls_raw = row[7]
-        icon_urls = _json.loads(icon_urls_raw) if isinstance(icon_urls_raw, str) else icon_urls_raw
+        if isinstance(icon_urls_raw, dict):
+            icon_urls = icon_urls_raw
+        elif isinstance(icon_urls_raw, str) and icon_urls_raw.strip():
+            try:
+                icon_urls = _json.loads(icon_urls_raw)
+            except _json.JSONDecodeError:
+                icon_urls = None
+        else:
+            icon_urls = None
         return Card(
             card_id=row[0],
             name=row[1],
@@ -846,7 +854,7 @@ class DatabaseService:
                             deck_conditions.append(
                                 f"EXISTS (SELECT 1 FROM deck_card_config "
                                 f"WHERE deck_id = d.deck_id AND card_id = :include_id_{i} "
-                                f"AND variant = :include_variant_{i}::card_variant)"
+                                f"AND variant::text = :include_variant_{i})"
                             )
                             params[f"include_id_{i}"] = int(card_id_str)
                             params[f"include_variant_{i}"] = variant.lower()
@@ -864,7 +872,7 @@ class DatabaseService:
                             deck_conditions.append(
                                 f"NOT EXISTS (SELECT 1 FROM deck_card_config "
                                 f"WHERE deck_id = d.deck_id AND card_id = :exclude_id_{i} "
-                                f"AND variant = :exclude_variant_{i}::card_variant)"
+                                f"AND variant::text = :exclude_variant_{i})"
                             )
                             params[f"exclude_id_{i}"] = int(card_id_str)
                             params[f"exclude_variant_{i}"] = variant.lower()

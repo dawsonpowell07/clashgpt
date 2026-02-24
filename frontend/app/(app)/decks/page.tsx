@@ -70,6 +70,15 @@ export default function DecksPage() {
     fetchCards();
   }, [fetchCards]);
 
+  // Translate internal selector ID ("26000000_1") to API param ("26000000:evolution")
+  const variantIdToApiParam = (id: string): string => {
+    const [cardIdStr, variantStr] = id.split("_");
+    const variant = parseInt(variantStr);
+    if (variant === 1) return `${cardIdStr}:evolution`;
+    if (variant === 2) return `${cardIdStr}:heroic`;
+    return cardIdStr; // Normal = bare card ID (matches any variant)
+  };
+
   // 2. Search Function with debounce guard and 429 handling
   const fetchDecks = useCallback(async (pageNum: number) => {
     // Debounce: skip if less than 500ms since last search
@@ -81,8 +90,8 @@ export default function DecksPage() {
     setRateLimitError(null);
     setSearchError(null);
     try {
-      const includeParam = Array.from(includedVariants).join(",");
-      const excludeParam = Array.from(excludedVariants).join(",");
+      const includeParam = Array.from(includedVariants).map(variantIdToApiParam).join(",");
+      const excludeParam = Array.from(excludedVariants).map(variantIdToApiParam).join(",");
 
       const queryParams = new URLSearchParams({
         page: pageNum.toString(),

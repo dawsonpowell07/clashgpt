@@ -13,7 +13,7 @@ import {
 
 import { Card } from "@/lib/types";
 
-// Define the variant types matching backend: 0=Normal, 1=Evo, 2=Hero
+// Internal variant enum for selector UI state (translated to API format on submission)
 export enum CardVariantType {
   NORMAL = 0,
   EVOLUTION = 1,
@@ -39,8 +39,6 @@ interface CardSelectorProps {
   className?: string;
 }
 
-const HERO_CARDS = ["Giant", "Mini P.E.K.K.A", "Knight", "Musketeer", "Wizard", "Goblins"];
-
 export function CardSelector({
   cards,
   selectedIndices,
@@ -51,29 +49,6 @@ export function CardSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(true);
 
-  // Helper to parse icon_urls which comes as a Python string like "{'medium': '...'}"
-  const parseIconUrls = (iconUrls: any): { medium?: string; evolutionMedium?: string } => {
-    if (typeof iconUrls === "object" && iconUrls !== null) return iconUrls;
-    if (typeof iconUrls === "string") {
-      try {
-        // Replace single quotes with double quotes for valid JSON, but be careful of URLs
-        // Simple heuristic: keys are quoted with single quotes, values start/end with single quotes
-        // This is a rough parser for the specific format seen: "{'key': 'value'}"
-        const standardized = iconUrls.replace(/'/g, '"');
-        return JSON.parse(standardized);
-      } catch (e) {
-        // Fallback or regex extraction if JSON parse fails due to complex URLs
-        const mediumMatch = iconUrls.match(/'medium':\s*'([^']+)'/);
-        const evoMatch = iconUrls.match(/'evolutionMedium':\s*'([^']+)'/);
-        return {
-          medium: mediumMatch ? mediumMatch[1] : undefined,
-          evolutionMedium: evoMatch ? evoMatch[1] : undefined,
-        };
-      }
-    }
-    return {};
-  };
-
   // Process raw cards into displayable variant items
   const variantItems = useMemo(() => {
     const items: CardVariantItem[] = [];
@@ -83,8 +58,6 @@ export function CardSelector({
         .toLowerCase()
         .replace(/ /g, "_")
         .replace(/\./g, "");
-      
-      const icons = parseIconUrls(card.icon_urls);
 
       // 1. Normal Variant (Always exists)
       items.push({
@@ -93,33 +66,33 @@ export function CardSelector({
         name: card.name,
         variant: CardVariantType.NORMAL,
         imageUrl: `/cards/${cardFileName}/${cardFileName}.png`,
-        elixir: card.elixir_cost,
-        rarity: card.rarity,
+        elixir: card.elixir_cost ?? 0,
+        rarity: card.rarity ?? "",
       });
 
-      // 2. Evolution Variant
-      if (icons.evolutionMedium) {
+      // 2. Evolution Variant (from dim_cards.can_evolve)
+      if (card.can_evolve) {
         items.push({
           id: `${card.card_id}_${CardVariantType.EVOLUTION}`,
           cardId: card.card_id,
           name: card.name,
           variant: CardVariantType.EVOLUTION,
           imageUrl: `/cards/${cardFileName}/${cardFileName}_evolution.png`,
-          elixir: card.elixir_cost,
-          rarity: card.rarity,
+          elixir: card.elixir_cost ?? 0,
+          rarity: card.rarity ?? "",
         });
       }
 
-      // 3. Hero Variant
-      if (HERO_CARDS.includes(card.name)) {
+      // 3. Hero Variant (from dim_cards.can_be_heroic)
+      if (card.can_be_heroic) {
         items.push({
           id: `${card.card_id}_${CardVariantType.HERO}`,
           cardId: card.card_id,
           name: card.name,
           variant: CardVariantType.HERO,
           imageUrl: `/cards/${cardFileName}/${cardFileName}_hero.png`,
-          elixir: card.elixir_cost,
-          rarity: card.rarity,
+          elixir: card.elixir_cost ?? 0,
+          rarity: card.rarity ?? "",
         });
       }
     });
@@ -237,7 +210,7 @@ export function CardSelector({
           
           {filteredItems.length === 0 && (
             <div className="col-span-full py-8 text-center text-muted-foreground text-sm">
-              No cards found matching "{searchQuery}"
+              No cards found matching &quot;{searchQuery}&quot;
             </div>
           )}
         </div>
