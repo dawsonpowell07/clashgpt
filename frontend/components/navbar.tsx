@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, LayoutGrid, LogIn } from "lucide-react";
+import { MessageSquare, LayoutGrid, LogIn, Users } from "lucide-react";
 import {
   SignInButton,
   SignedIn,
@@ -79,6 +79,22 @@ export function Navbar() {
             >
               <LayoutGrid className="w-4 h-4" />
               <span className="hidden sm:inline">Decks</span>
+            </Link>
+
+            <Link
+              href="/profiles"
+              className={`
+                group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
+                transition-all duration-200
+                ${
+                  isActive("/profiles")
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }
+              `}
+            >
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Profiles</span>
             </Link>
 
             {/* Auth: Sign In or User Profile */}

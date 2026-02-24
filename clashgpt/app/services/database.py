@@ -951,6 +951,229 @@ class DatabaseService:
                 f"Unexpected error while searching deck stats: {e!s}"
             ) from e
 
+    # ===== PLAYER ENDPOINTS =====
+
+    async def search_players_by_name(
+        self,
+        name: str,
+        limit: int = 10,
+    ) -> list[dict]:
+        """
+        Search players by name from dim_players, returning aggregated stats.
+
+        Args:
+            name: Partial name to search (case-insensitive LIKE)
+            limit: Maximum results (default: 10)
+
+        Returns:
+            List of dicts with player_tag, name, last_seen, total_games,
+            wins, win_rate, avg_crowns, avg_elixir_leaked
+        """
+        logger.info(f"DB query: search_players_by_name | name={name!r}, limit={limit}")
+        try:
+            async with self.async_session() as session:
+                query = text("""
+                    SELECT
+                        p.player_tag,
+                        p.name,
+                        p.last_seen,
+                        COUNT(*)                                                        AS total_games,
+                        COALESCE(SUM(fbp.is_win), 0)                                   AS wins,
+                        ROUND(
+                            COALESCE(SUM(fbp.is_win), 0)::numeric / NULLIF(COUNT(*), 0) * 100,
+                            1
+                        )                                                               AS win_rate,
+                        ROUND(AVG(fbp.crowns)::numeric, 2)                             AS avg_crowns,
+                        ROUND(AVG(fbp.elixir_leaked)::numeric, 2)                      AS avg_elixir_leaked
+                    FROM dim_players p
+                    JOIN fact_battle_participants fbp ON p.player_tag = fbp.player_tag
+                    WHERE LOWER(p.name) LIKE LOWER(:search)
+                    GROUP BY p.player_tag, p.name, p.last_seen
+                    ORDER BY total_games DESC
+                    LIMIT :limit
+                """)
+                result = await session.execute(query, {"search": f"%{name}%", "limit": limit})
+                rows = result.fetchall()
+                players = []
+                for row in rows:
+                    players.append({
+                        "player_tag": row[0],
+                        "name": row[1],
+                        "last_seen": row[2].isoformat() if hasattr(row[2], "isoformat") else (str(row[2]) if row[2] else None),
+                        "total_games": int(row[3]),
+                        "wins": int(row[4]),
+                        "win_rate": float(row[5]) if row[5] is not None else None,
+                        "avg_crowns": float(row[6]) if row[6] is not None else None,
+                        "avg_elixir_leaked": float(row[7]) if row[7] is not None else None,
+                    })
+                logger.info(f"DB result: search_players_by_name returned {len(players)} players")
+                return players
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: search_players_by_name")
+            raise DatabaseQueryError(
+                f"Database query failed while searching players: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("Unexpected error in search_players_by_name")
+            raise DatabaseServiceError(
+                f"Unexpected error while searching players: {e!s}"
+            ) from e
+
+    async def get_player_top_decks(
+        self,
+        player_tag: str,
+        limit: int = 5,
+    ) -> list[dict]:
+        """
+        Get top decks used by a player, ordered by games played, with card details.
+
+        Returns:
+            List of dicts with deck_id, games, wins, win_rate, avg_elixir, cards
+            where cards is a list of {name, variant}
+        """
+        logger.info(f"DB query: get_player_top_decks | player_tag={player_tag}, limit={limit}")
+        try:
+            async with self.async_session() as session:
+                decks_query = text("""
+                    SELECT
+                        fbp.deck_id,
+                        COUNT(*)                                                    AS games,
+                        COALESCE(SUM(fbp.is_win), 0)                               AS wins,
+                        ROUND(
+                            COALESCE(SUM(fbp.is_win), 0)::numeric / NULLIF(COUNT(*), 0) * 100,
+                            1
+                        )                                                           AS win_rate,
+                        ROUND(dd.avg_elixir::numeric, 2)                           AS avg_elixir
+                    FROM fact_battle_participants fbp
+                    JOIN dim_decks dd ON fbp.deck_id = dd.deck_id
+                    WHERE fbp.player_tag = :tag
+                    GROUP BY fbp.deck_id, dd.avg_elixir
+                    ORDER BY games DESC
+                    LIMIT :limit
+                """)
+                decks_result = await session.execute(decks_query, {"tag": player_tag, "limit": limit})
+                deck_rows = decks_result.fetchall()
+
+                if not deck_rows:
+                    return []
+
+                deck_ids = [row[0] for row in deck_rows]
+                id_params = {f"did_{i}": did for i, did in enumerate(deck_ids)}
+                in_clause = ", ".join(f":did_{i}" for i in range(len(deck_ids)))
+
+                cards_query = text(f"""
+                    SELECT dcc.deck_id, dc.name, dcc.variant::text
+                    FROM deck_card_config dcc
+                    JOIN dim_cards dc ON dcc.card_id = dc.card_id
+                    WHERE dcc.deck_id IN ({in_clause})
+                    ORDER BY dcc.deck_id, dcc.slot_index
+                """)
+                cards_result = await session.execute(cards_query, id_params)
+                cards_rows = cards_result.fetchall()
+
+                cards_by_deck: dict[str, list[dict]] = {}
+                for crow in cards_rows:
+                    did = crow[0]
+                    if did not in cards_by_deck:
+                        cards_by_deck[did] = []
+                    cards_by_deck[did].append({"name": crow[1], "variant": crow[2]})
+
+                decks = []
+                for row in deck_rows:
+                    deck_id = row[0]
+                    games = int(row[1])
+                    wins = int(row[2])
+                    decks.append({
+                        "deck_id": deck_id,
+                        "games": games,
+                        "wins": wins,
+                        "win_rate": float(row[3]) if row[3] is not None else None,
+                        "avg_elixir": float(row[4]) if row[4] is not None else None,
+                        "cards": cards_by_deck.get(deck_id, []),
+                    })
+
+                logger.info(f"DB result: get_player_top_decks returned {len(decks)} decks")
+                return decks
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_player_top_decks")
+            raise DatabaseQueryError(
+                f"Database query failed while fetching player top decks: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_player_top_decks")
+            raise DatabaseServiceError(
+                f"Unexpected error while fetching player top decks: {e!s}"
+            ) from e
+
+    async def get_player_recent_battles(
+        self,
+        player_tag: str,
+        limit: int = 20,
+    ) -> list[dict]:
+        """
+        Get recent battles for a player.
+
+        Returns:
+            List of dicts with battle_time, game_mode, result, crowns,
+            elixir_leaked, opponent (name or None)
+        """
+        logger.info(f"DB query: get_player_recent_battles | player_tag={player_tag}, limit={limit}")
+        try:
+            async with self.async_session() as session:
+                query = text("""
+                    SELECT
+                        pb.battle_time,
+                        pb.game_mode,
+                        CASE WHEN fbp.is_win = 1 THEN 'Win' ELSE 'Loss' END  AS result,
+                        fbp.crowns,
+                        fbp.elixir_leaked,
+                        opp.name                                               AS opponent
+                    FROM fact_battle_participants fbp
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                    LEFT JOIN dim_players opp
+                        ON opp.player_tag = (
+                            SELECT player_tag FROM fact_battle_participants
+                            WHERE battle_id = fbp.battle_id
+                              AND player_tag != fbp.player_tag
+                            LIMIT 1
+                        )
+                    WHERE fbp.player_tag = :tag
+                    ORDER BY pb.battle_time DESC
+                    LIMIT :limit
+                """)
+                result = await session.execute(query, {"tag": player_tag, "limit": limit})
+                rows = result.fetchall()
+
+                battles = []
+                for row in rows:
+                    battles.append({
+                        "battle_time": row[0].isoformat() if hasattr(row[0], "isoformat") else (str(row[0]) if row[0] else None),
+                        "game_mode": row[1],
+                        "result": row[2],
+                        "crowns": int(row[3]) if row[3] is not None else None,
+                        "elixir_leaked": float(row[4]) if row[4] is not None else None,
+                        "opponent": row[5],
+                    })
+
+                logger.info(f"DB result: get_player_recent_battles returned {len(battles)} battles")
+                return battles
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_player_recent_battles")
+            raise DatabaseQueryError(
+                f"Database query failed while fetching player battles: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_player_recent_battles")
+            raise DatabaseServiceError(
+                f"Unexpected error while fetching player battles: {e!s}"
+            ) from e
+
     # ===== LOCATIONS ENDPOINTS =====
 
     async def get_all_locations(self) -> Locations:

@@ -500,6 +500,75 @@ def _parse_card_filter_param(
     return result or None
 
 
+# ===== PLAYERS ENDPOINTS =====
+
+@router.get("/players")
+@limiter.limit("30/minute")
+async def search_players(
+    request: Request,
+    name: Annotated[str, Query(min_length=1, description="Player name to search (partial match)")],
+):
+    """
+    Search players by name from dim_players (top ranked battle participants).
+
+    Returns up to 10 matching players with aggregated stats:
+    total_games, wins, win_rate, avg_crowns, avg_elixir_leaked.
+    """
+    db = get_database_service()
+    players = await db.search_players_by_name(name=name, limit=10)
+    return {"players": players}
+
+
+@router.get("/players/{player_tag}/info")
+@limiter.limit("30/minute")
+async def get_player_cr_info(request: Request, player_tag: str):
+    """
+    Get live player info from the Clash Royale API.
+
+    Returns trophies, Path of Legends data, wins/losses, clan, arena,
+    favorite card, donations, and challenge stats.
+    """
+    from app.services.clash_royale import (
+        ClashRoyaleNotFoundError,
+        ClashRoyaleRateLimitError,
+        ClashRoyaleService,
+    )
+    from app.tools.serialization import serialize_dataclass
+
+    try:
+        async with ClashRoyaleService() as service:
+            player = await service.get_player(player_tag)
+            return serialize_dataclass(player)
+    except ClashRoyaleNotFoundError:
+        raise HTTPException(status_code=404, detail="Player not found in Clash Royale API")
+    except ClashRoyaleRateLimitError:
+        raise HTTPException(status_code=429, detail="Clash Royale API rate limit exceeded")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Clash Royale API error: {e!s}")
+
+
+@router.get("/players/{player_tag}/decks")
+@limiter.limit("30/minute")
+async def get_player_top_decks(request: Request, player_tag: str):
+    """
+    Get the top 5 most-used decks for a player, with card details.
+    """
+    db = get_database_service()
+    decks = await db.get_player_top_decks(player_tag=player_tag, limit=5)
+    return {"decks": decks}
+
+
+@router.get("/players/{player_tag}/battles")
+@limiter.limit("30/minute")
+async def get_player_recent_battles(request: Request, player_tag: str):
+    """
+    Get the 20 most recent battles for a player.
+    """
+    db = get_database_service()
+    battles = await db.get_player_recent_battles(player_tag=player_tag, limit=20)
+    return {"battles": battles}
+
+
 # ===== LOCATIONS ENDPOINTS =====
 
 @router.get("/locations", response_model=Locations)
