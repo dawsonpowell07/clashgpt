@@ -8,7 +8,7 @@ Provides REST API access to cards, decks, and locations.
 import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.cache import get_cached_decks, make_deck_cache_key, set_cached_decks
@@ -664,6 +664,155 @@ async def get_deck_matchups(
         "deck_cards": result["deck_cards"],
         "stats": result["stats"],
         "matchups": result["matchups"],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
+    }
+
+
+
+# ===== TRACKER ENDPOINTS =====
+
+
+def _get_current_user_id_dep():
+    """Lazy import to avoid circular imports at module load time."""
+    from app.app_utils.clerk_auth import get_current_user_id
+    return get_current_user_id
+
+
+@router.post("/tracker/register")
+@limiter.limit("10/minute")
+async def register_tracker(
+    request: Request,
+    player_tag: Annotated[str, Query(description="Your Clash Royale player tag (e.g. #2PP)")],
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Link a Clash Royale player tag to the authenticated user's account.
+
+    Validates the tag against the Clash Royale API, then upserts it
+    into tracked_players so the ETL pipeline will scan battles for this tag.
+    """
+    from app.services.clash_royale import (
+        ClashRoyaleNotFoundError,
+        ClashRoyaleRateLimitError,
+        ClashRoyaleService,
+    )
+
+    # Normalise tag
+    normalised = player_tag.strip().upper()
+    if not normalised.startswith("#"):
+        normalised = f"#{normalised}"
+
+    # Validate tag against CR API and get player name
+    try:
+        async with ClashRoyaleService() as service:
+            player = await service.get_player(normalised)
+            player_name = player.name
+    except ClashRoyaleNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Player tag '{normalised}' not found in Clash Royale. Check the tag and try again.")
+    except ClashRoyaleRateLimitError:
+        raise HTTPException(status_code=429, detail="Clash Royale API rate limit hit. Please try again in a moment.")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not verify player tag: {e!s}")
+
+    db = get_database_service()
+    tracked = await db.register_tracked_player(
+        user_id=user_id,
+        player_tag=normalised,
+        player_name=player_name,
+    )
+    return {
+        "message": "Player tag registered successfully. Your battles will be scanned on the next ETL run.",
+        "tracked_player": tracked,
+    }
+
+
+@router.get("/tracker/me")
+@limiter.limit("30/minute")
+async def get_tracker_me(
+    request: Request,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get the tracked player linked to the authenticated user's account.
+    Returns 404 if no tag is linked yet.
+    """
+    db = get_database_service()
+    tracked = await db.get_tracked_player(user_id=user_id)
+    if tracked is None:
+        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+    return {"tracked_player": tracked}
+
+
+@router.get("/tracker/me/stats")
+@limiter.limit("30/minute")
+async def get_tracker_stats(
+    request: Request,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get aggregate battle stats from the database for the authenticated user's linked player.
+    """
+    db = get_database_service()
+    tracked = await db.get_tracked_player(user_id=user_id)
+    if tracked is None:
+        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+
+    stats = await db.get_tracker_stats(player_tag=tracked["player_tag"])
+    return {"player_tag": tracked["player_tag"], "player_name": tracked["player_name"], "stats": stats}
+
+
+@router.get("/tracker/me/decks")
+@limiter.limit("30/minute")
+async def get_tracker_decks(
+    request: Request,
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get the top decks used by the authenticated user's linked player.
+    """
+    db = get_database_service()
+    tracked = await db.get_tracked_player(user_id=user_id)
+    if tracked is None:
+        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+
+    decks = await db.get_tracker_deck_breakdown(player_tag=tracked["player_tag"], limit=limit)
+    return {"player_tag": tracked["player_tag"], "player_name": tracked["player_name"], "decks": decks}
+
+
+@router.get("/tracker/me/battles")
+@limiter.limit("30/minute")
+async def get_tracker_battles(
+    request: Request,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=50)] = 20,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get paginated battle history for the authenticated user's linked player.
+    """
+    db = get_database_service()
+    tracked = await db.get_tracked_player(user_id=user_id)
+    if tracked is None:
+        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+
+    offset = (page - 1) * page_size
+    result = await db.get_tracker_battles(
+        player_tag=tracked["player_tag"],
+        limit=page_size,
+        offset=offset,
+    )
+    total = result["total"]
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+    return {
+        "player_tag": tracked["player_tag"],
+        "player_name": tracked["player_name"],
+        "battles": result["battles"],
         "total": total,
         "page": page,
         "page_size": page_size,

@@ -1385,6 +1385,346 @@ class DatabaseService:
                 f"Unexpected error while fetching deck matchups: {e!s}"
             ) from e
 
+    # ===== TRACKER ENDPOINTS =====
+
+    async def register_tracked_player(
+        self,
+        user_id: str,
+        player_tag: str,
+        player_name: str,
+    ) -> dict:
+        """
+        Upsert a player tag into tracked_players for the given Clerk user_id.
+
+        Args:
+            user_id: Clerk user ID (primary key).
+            player_tag: Clash Royale player tag (e.g. '#2PP').
+            player_name: Player's display name (fetched from CR API by caller).
+
+        Returns:
+            The upserted row as a dict.
+        """
+        logger.info(f"DB query: register_tracked_player | user_id={user_id}, player_tag={player_tag}")
+        normalised_tag = player_tag.upper().lstrip("#")
+        normalised_tag = f"#{normalised_tag}"
+        try:
+            async with self.async_session() as session:
+                stmt = text("""
+                    INSERT INTO tracked_players (user_id, player_tag, player_name, tracked_since, is_active)
+                    VALUES (:user_id, :player_tag, :player_name, NOW(), TRUE)
+                    ON CONFLICT (user_id)
+                    DO UPDATE SET
+                        player_tag    = EXCLUDED.player_tag,
+                        player_name   = EXCLUDED.player_name,
+                        tracked_since = NOW(),
+                        is_active     = TRUE
+                    RETURNING user_id, player_tag, player_name, tracked_since, is_active
+                """)
+                result = await session.execute(stmt, {
+                    "user_id": user_id,
+                    "player_tag": normalised_tag,
+                    "player_name": player_name,
+                })
+                row = result.fetchone()
+                await session.commit()
+                if row:
+                    return {
+                        "user_id": row[0],
+                        "player_tag": row[1],
+                        "player_name": row[2],
+                        "tracked_since": row[3].isoformat() if hasattr(row[3], "isoformat") else str(row[3]),
+                        "is_active": row[4],
+                    }
+                raise DatabaseQueryError("Failed to upsert tracked player — no row returned.")
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: register_tracked_player")
+            raise DatabaseQueryError(f"Failed to register tracked player: {e!s}") from e
+        except Exception as e:
+            logger.exception("Unexpected error in register_tracked_player")
+            raise DatabaseServiceError(f"Unexpected error in register_tracked_player: {e!s}") from e
+
+    async def get_tracked_player(self, user_id: str) -> dict | None:
+        """
+        Get the tracked player row for a given Clerk user_id, or None if not found.
+        """
+        logger.info(f"DB query: get_tracked_player | user_id={user_id}")
+        try:
+            async with self.async_session() as session:
+                stmt = text("""
+                    SELECT user_id, player_tag, player_name, tracked_since, is_active
+                    FROM tracked_players
+                    WHERE user_id = :user_id AND is_active = TRUE
+                """)
+                result = await session.execute(stmt, {"user_id": user_id})
+                row = result.fetchone()
+                if row:
+                    return {
+                        "user_id": row[0],
+                        "player_tag": row[1],
+                        "player_name": row[2],
+                        "tracked_since": row[3].isoformat() if hasattr(row[3], "isoformat") else str(row[3]),
+                        "is_active": row[4],
+                    }
+                return None
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_tracked_player")
+            raise DatabaseQueryError(f"Failed to fetch tracked player: {e!s}") from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_tracked_player")
+            raise DatabaseServiceError(f"Unexpected error in get_tracked_player: {e!s}") from e
+
+    async def get_tracker_stats(self, player_tag: str) -> dict:
+        """
+        Get aggregate stats for a tracked player from fact_battle_participants.
+
+        Returns total_games, wins, losses, win_rate, avg_crowns,
+        avg_elixir_leaked, and last_seen.
+        """
+        logger.info(f"DB query: get_tracker_stats | player_tag={player_tag}")
+        try:
+            async with self.async_session() as session:
+                stmt = text("""
+                    SELECT
+                        COUNT(*)                                                  AS total_games,
+                        COALESCE(SUM(fbp.is_win), 0)                            AS wins,
+                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses,
+                        ROUND(
+                            COALESCE(SUM(fbp.is_win), 0)::numeric
+                            / NULLIF(COUNT(*), 0) * 100, 1
+                        )                                                         AS win_rate_pct,
+                        ROUND(AVG(fbp.crowns)::numeric, 2)                      AS avg_crowns,
+                        ROUND(AVG(fbp.elixir_leaked)::numeric, 2)               AS avg_elixir_leaked,
+                        MAX(pb.battle_time)                                      AS last_seen
+                    FROM fact_battle_participants fbp
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                    WHERE fbp.player_tag = :tag
+                """)
+                result = await session.execute(stmt, {"tag": player_tag})
+                row = result.fetchone()
+                if row and row[0]:
+                    games = int(row[0])
+                    wins = int(row[1])
+                    losses = int(row[2])
+                    last_seen = row[6]
+                    return {
+                        "total_games": games,
+                        "wins": wins,
+                        "losses": losses,
+                        "win_rate": float(row[3]) if row[3] is not None else None,
+                        "avg_crowns": float(row[4]) if row[4] is not None else None,
+                        "avg_elixir_leaked": float(row[5]) if row[5] is not None else None,
+                        "last_seen": last_seen.isoformat() if hasattr(last_seen, "isoformat") else (str(last_seen) if last_seen else None),
+                    }
+                return {
+                    "total_games": 0,
+                    "wins": 0,
+                    "losses": 0,
+                    "win_rate": None,
+                    "avg_crowns": None,
+                    "avg_elixir_leaked": None,
+                    "last_seen": None,
+                }
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_tracker_stats")
+            raise DatabaseQueryError(f"Failed to fetch tracker stats: {e!s}") from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_tracker_stats")
+            raise DatabaseServiceError(f"Unexpected error in get_tracker_stats: {e!s}") from e
+
+    async def get_tracker_deck_breakdown(
+        self,
+        player_tag: str,
+        limit: int = 10,
+    ) -> list[dict]:
+        """
+        Get top decks used by a tracked player with win rate details.
+
+        Returns a list of dicts: deck_id, games, wins, win_rate, avg_elixir, cards.
+        """
+        logger.info(f"DB query: get_tracker_deck_breakdown | player_tag={player_tag}, limit={limit}")
+        try:
+            async with self.async_session() as session:
+                decks_query = text("""
+                    SELECT
+                        fbp.deck_id,
+                        COUNT(*)                                                    AS games,
+                        COALESCE(SUM(fbp.is_win), 0)                               AS wins,
+                        ROUND(
+                            COALESCE(SUM(fbp.is_win), 0)::numeric / NULLIF(COUNT(*), 0) * 100,
+                            1
+                        )                                                           AS win_rate,
+                        ROUND(dd.avg_elixir::numeric, 2)                           AS avg_elixir
+                    FROM fact_battle_participants fbp
+                    JOIN dim_decks dd ON fbp.deck_id = dd.deck_id
+                    WHERE fbp.player_tag = :tag
+                    GROUP BY fbp.deck_id, dd.avg_elixir
+                    ORDER BY games DESC
+                    LIMIT :limit
+                """)
+                decks_result = await session.execute(decks_query, {"tag": player_tag, "limit": limit})
+                deck_rows = decks_result.fetchall()
+
+                if not deck_rows:
+                    return []
+
+                deck_ids = [row[0] for row in deck_rows]
+                id_params = {f"did_{i}": did for i, did in enumerate(deck_ids)}
+                in_clause = ", ".join(f":did_{i}" for i in range(len(deck_ids)))
+
+                cards_query = text(f"""
+                    SELECT dcc.deck_id, dc.name, dcc.variant::text, dcc.slot_index, dc.card_id
+                    FROM deck_card_config dcc
+                    JOIN dim_cards dc ON dcc.card_id = dc.card_id
+                    WHERE dcc.deck_id IN ({in_clause})
+                    ORDER BY dcc.deck_id, dcc.slot_index
+                """)
+                cards_result = await session.execute(cards_query, id_params)
+                cards_rows = cards_result.fetchall()
+
+                cards_by_deck: dict[str, list[dict]] = {}
+                for crow in cards_rows:
+                    did = crow[0]
+                    if did not in cards_by_deck:
+                        cards_by_deck[did] = []
+                    cards_by_deck[did].append({
+                        "name": crow[1],
+                        "variant": crow[2],
+                        "slot_index": crow[3],
+                        "card_id": crow[4],
+                    })
+
+                decks = []
+                for row in deck_rows:
+                    deck_id = row[0]
+                    games = int(row[1])
+                    wins = int(row[2])
+                    decks.append({
+                        "deck_id": deck_id,
+                        "games": games,
+                        "wins": wins,
+                        "losses": games - wins,
+                        "win_rate": float(row[3]) if row[3] is not None else None,
+                        "avg_elixir": float(row[4]) if row[4] is not None else None,
+                        "cards": cards_by_deck.get(deck_id, []),
+                    })
+
+                logger.info(f"DB result: get_tracker_deck_breakdown returned {len(decks)} decks")
+                return decks
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_tracker_deck_breakdown")
+            raise DatabaseQueryError(f"Failed to fetch tracker deck breakdown: {e!s}") from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_tracker_deck_breakdown")
+            raise DatabaseServiceError(f"Unexpected error in get_tracker_deck_breakdown: {e!s}") from e
+
+    async def get_tracker_battles(
+        self,
+        player_tag: str,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> dict:
+        """
+        Get paginated battle history for a tracked player.
+
+        Returns: { total, battles: [{battle_time, game_mode, result, crowns,
+                                     elixir_leaked, opponent, opponent_deck}] }
+        """
+        logger.info(
+            f"DB query: get_tracker_battles | player_tag={player_tag}, "
+            f"limit={limit}, offset={offset}"
+        )
+        try:
+            async with self.async_session() as session:
+                count_stmt = text("""
+                    SELECT COUNT(*)
+                    FROM fact_battle_participants fbp
+                    WHERE fbp.player_tag = :tag
+                """)
+                count_result = await session.execute(count_stmt, {"tag": player_tag})
+                total = int(count_result.scalar() or 0)
+
+                query = text("""
+                    SELECT
+                        pb.battle_time,
+                        pb.game_mode,
+                        CASE WHEN fbp.is_win = 1 THEN 'Win' ELSE 'Loss' END  AS result,
+                        fbp.crowns,
+                        fbp.elixir_leaked,
+                        opp.name                                               AS opponent_name,
+                        fbp.opponent_deck_id
+                    FROM fact_battle_participants fbp
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                    LEFT JOIN dim_players opp
+                        ON opp.player_tag = (
+                            SELECT player_tag FROM fact_battle_participants
+                            WHERE battle_id = fbp.battle_id
+                              AND player_tag != fbp.player_tag
+                            LIMIT 1
+                        )
+                    WHERE fbp.player_tag = :tag
+                    ORDER BY pb.battle_time DESC
+                    LIMIT :limit OFFSET :offset
+                """)
+                result = await session.execute(query, {"tag": player_tag, "limit": limit, "offset": offset})
+                rows = result.fetchall()
+
+                # Batch-fetch opponent deck cards
+                opponent_deck_ids = [r[6] for r in rows if r[6] is not None]
+                opp_cards_by_deck: dict[str, list[dict]] = {}
+                if opponent_deck_ids:
+                    id_params = {f"odid_{i}": did for i, did in enumerate(opponent_deck_ids)}
+                    in_clause = ", ".join(f":odid_{i}" for i in range(len(opponent_deck_ids)))
+                    opp_cards_query = f"""
+                        SELECT dcc.deck_id, dcc.card_id, dc.name, dcc.variant::text, dcc.slot_index
+                        FROM deck_card_config dcc
+                        JOIN dim_cards dc ON dcc.card_id = dc.card_id
+                        WHERE dcc.deck_id IN ({in_clause})
+                        ORDER BY dcc.deck_id, dcc.slot_index
+                    """
+                    opp_cards_result = await session.execute(text(opp_cards_query), id_params)
+                    for r in opp_cards_result.fetchall():
+                        did = r[0]
+                        if did not in opp_cards_by_deck:
+                            opp_cards_by_deck[did] = []
+                        opp_cards_by_deck[did].append({
+                            "card_id": r[1],
+                            "card_name": r[2],
+                            "variant": r[3],
+                            "slot_index": r[4],
+                        })
+
+                battles = []
+                for row in rows:
+                    battles.append({
+                        "battle_time": row[0].isoformat() if hasattr(row[0], "isoformat") else (str(row[0]) if row[0] else None),
+                        "game_mode": row[1],
+                        "result": row[2],
+                        "crowns": int(row[3]) if row[3] is not None else None,
+                        "elixir_leaked": float(row[4]) if row[4] is not None else None,
+                        "opponent": row[5],
+                        "opponent_deck_id": row[6],
+                        "opponent_cards": opp_cards_by_deck.get(row[6], []) if row[6] else [],
+                    })
+
+                logger.info(f"DB result: get_tracker_battles returned {len(battles)} battles (total={total})")
+                return {"total": total, "battles": battles}
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_tracker_battles")
+            raise DatabaseQueryError(f"Failed to fetch tracker battles: {e!s}") from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_tracker_battles")
+            raise DatabaseServiceError(f"Unexpected error in get_tracker_battles: {e!s}") from e
+
     # ===== LOCATIONS ENDPOINTS =====
 
     async def get_all_locations(self) -> Locations:

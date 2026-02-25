@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     dev_mode: bool = False
     backend_api_key: str = ""
 
+    # Clerk
+    clerk_jwks_url: str = ""  # e.g. https://<clerk-domain>/.well-known/jwks.json
+
     # Telemetry
     logs_bucket_name: str = ""
 
