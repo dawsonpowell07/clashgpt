@@ -24,8 +24,14 @@ export function Navbar() {
   const pathname = usePathname();
   const { isSignedIn } = useAuth();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [authDialogFeature, setAuthDialogFeature] = useState({ name: "", redirectUrl: "/" });
 
   const isActive = (path: string) => pathname === path;
+
+  const openAuthDialog = (name: string, redirectUrl: string) => {
+    setAuthDialogFeature({ name, redirectUrl });
+    setShowAuthDialog(true);
+  };
 
   const chatLinkClasses = `
     group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
@@ -81,9 +87,8 @@ export function Navbar() {
               <span className="hidden sm:inline">Decks</span>
             </Link>
 
-            <Link
-              href="/profiles"
-              className={`
+            {isSignedIn ? (
+              <Link href="/profiles" className={`
                 group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 ${
@@ -91,15 +96,23 @@ export function Navbar() {
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }
-              `}
-            >
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Profiles</span>
-            </Link>
+              `}>
+                <Users className="w-4 h-4" />
+                <span className="hidden sm:inline">Profiles</span>
+              </Link>
+            ) : (
+              <button onClick={() => openAuthDialog("Player Profiles", "/profiles")} className={`
+                group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
+                transition-all duration-200
+                text-muted-foreground hover:bg-muted hover:text-foreground
+              `}>
+                <Users className="w-4 h-4" />
+                <span className="hidden sm:inline">Profiles</span>
+              </button>
+            )}
 
-            <Link
-              href="/matchups"
-              className={`
+            {isSignedIn ? (
+              <Link href="/matchups" className={`
                 group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 ${
@@ -107,15 +120,23 @@ export function Navbar() {
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }
-              `}
-            >
-              <Swords className="w-4 h-4" />
-              <span className="hidden sm:inline">Matchups</span>
-            </Link>
+              `}>
+                <Swords className="w-4 h-4" />
+                <span className="hidden sm:inline">Matchups</span>
+              </Link>
+            ) : (
+              <button onClick={() => openAuthDialog("Deck Matchups", "/matchups")} className={`
+                group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
+                transition-all duration-200
+                text-muted-foreground hover:bg-muted hover:text-foreground
+              `}>
+                <Swords className="w-4 h-4" />
+                <span className="hidden sm:inline">Matchups</span>
+              </button>
+            )}
 
-            <Link
-              href="/tracker"
-              className={`
+            {isSignedIn ? (
+              <Link href="/tracker" className={`
                 group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 ${
@@ -123,11 +144,20 @@ export function Navbar() {
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }
-              `}
-            >
-              <BarChart2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Tracker</span>
-            </Link>
+              `}>
+                <BarChart2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Tracker</span>
+              </Link>
+            ) : (
+              <button onClick={() => openAuthDialog("Player Tracker", "/tracker")} className={`
+                group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
+                transition-all duration-200
+                text-muted-foreground hover:bg-muted hover:text-foreground
+              `}>
+                <BarChart2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Tracker</span>
+              </button>
+            )}
 
             {/* Auth: Sign In or User Profile */}
             <SignedOut>
@@ -158,13 +188,13 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* Auth required dialog for Chat */}
+      {/* Auth required dialog */}
       <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Sign in required</DialogTitle>
             <DialogDescription>
-              You need an account to use the AI chat assistant. Sign in or create an account to get started.
+              You need an account to access {authDialogFeature.name}. Sign in or create an account to get started.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -174,7 +204,7 @@ export function Navbar() {
             >
               Cancel
             </button>
-            <SignInButton mode="modal" forceRedirectUrl="/chat">
+            <SignInButton mode="modal" forceRedirectUrl={authDialogFeature.redirectUrl}>
               <button
                 onClick={() => setShowAuthDialog(false)}
                 className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"

@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useAuth, useUser } from "@clerk/nextjs";
+import { AuthGateDialog } from "@/components/auth-gate-dialog";
 import {
   Search,
   Loader2,
@@ -25,6 +27,15 @@ import { SectionHeading } from "@/components/profiles/SectionHeading";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function ProfilesPage() {
+  const { getToken } = useAuth();
+  const { isSignedIn, isLoaded } = useUser();
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      setShowAuthDialog(true);
+    }
+  }, [isLoaded, isSignedIn]);
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -56,8 +67,10 @@ export default function ProfilesPage() {
     setDetailsError(null);
 
     try {
+      const token = await getToken();
       const res = await fetch(
-        `${API_BASE_URL}/api/players?name=${encodeURIComponent(trimmed)}`
+        `${API_BASE_URL}/api/players?name=${encodeURIComponent(trimmed)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const data = await res.json();
@@ -69,7 +82,7 @@ export default function ProfilesPage() {
     } finally {
       setIsSearching(false);
     }
-  }, [query]);
+  }, [query, getToken]);
 
   const selectPlayer = useCallback(async (player: PlayerSearchResult) => {
     setSelectedPlayer(player);
@@ -80,11 +93,13 @@ export default function ProfilesPage() {
     setIsLoadingDetails(true);
 
     try {
+      const token = await getToken();
+      const authHeader = { Authorization: `Bearer ${token}` };
       const tag = encodeURIComponent(player.player_tag);
       const [crRes, decksRes, battlesRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/players/${tag}/info`),
-        fetch(`${API_BASE_URL}/api/players/${tag}/decks`),
-        fetch(`${API_BASE_URL}/api/players/${tag}/battles`),
+        fetch(`${API_BASE_URL}/api/players/${tag}/info`, { headers: authHeader }),
+        fetch(`${API_BASE_URL}/api/players/${tag}/decks`, { headers: authHeader }),
+        fetch(`${API_BASE_URL}/api/players/${tag}/battles`, { headers: authHeader }),
       ]);
       if (!decksRes.ok || !battlesRes.ok) throw new Error("Failed to fetch player details");
       const [decksData, battlesData] = await Promise.all([decksRes.json(), battlesRes.json()]);
@@ -96,10 +111,16 @@ export default function ProfilesPage() {
     } finally {
       setIsLoadingDetails(false);
     }
-  }, []);
+  }, [getToken]);
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24 relative overflow-hidden">
+      <AuthGateDialog
+        open={showAuthDialog}
+        onOpenChange={setShowAuthDialog}
+        featureName="Player Profiles"
+        redirectUrl="/profiles"
+      />
       {/* Background */}
       <div className="fixed inset-0 hexagon-pattern opacity-[0.025] pointer-events-none" />
       <div className="fixed top-[-10%] right-[-5%] w-[500px] h-[500px] bg-primary/8 rounded-full blur-[120px] pointer-events-none" />

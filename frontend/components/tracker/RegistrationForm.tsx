@@ -208,7 +208,7 @@ export function RegistrationForm({ onRegistered }: RegistrationFormProps) {
       </div>
 
       <p className="text-center text-xs text-muted-foreground/60">
-        Your tag will be added to the ETL pipeline. Battle data will appear after the next scan.
+        Your tag will be added to our tracker. Battle data will appear after the next scan.
       </p>
     </div>
   );

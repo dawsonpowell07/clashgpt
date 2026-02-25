@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, Suspense } from "react";
+import { useAuth, useUser } from "@clerk/nextjs";
+import { AuthGateDialog } from "@/components/auth-gate-dialog";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
@@ -413,6 +415,15 @@ function MatchRecord({ matchup, index }: { matchup: OpponentMatchup; index: numb
 
 function MatchupsPageInner() {
   const searchParams = useSearchParams();
+  const { getToken } = useAuth();
+  const { isSignedIn, isLoaded } = useUser();
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      setShowAuthDialog(true);
+    }
+  }, [isLoaded, isSignedIn]);
 
   const [cards, setCards] = useState<Card[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
@@ -476,8 +487,11 @@ function MatchupsPageInner() {
     setIsSearching(true);
     setSearchError(null);
     try {
+      const token = await getToken();
       const params = new URLSearchParams({ deck: deckParam, page: pageNum.toString(), page_size: "20" });
-      const res = await fetch(`${API_BASE_URL}/api/matchups?${params}`);
+      const res = await fetch(`${API_BASE_URL}/api/matchups?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.status === 429) { setSearchError("Too many requests — please wait before searching again."); return; }
       if (!res.ok) { const b = await res.json().catch(() => ({})); setSearchError(b.detail || "Failed to search matchups."); return; }
       setMatchupData(await res.json());
@@ -486,7 +500,7 @@ function MatchupsPageInner() {
     } finally {
       setIsSearching(false);
     }
-  }, [selectedVariants]);
+  }, [selectedVariants, getToken]);
 
   // Auto-search once when selectedVariants is populated from URL param
   useEffect(() => {
@@ -519,6 +533,12 @@ function MatchupsPageInner() {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24 relative overflow-hidden">
+      <AuthGateDialog
+        open={showAuthDialog}
+        onOpenChange={setShowAuthDialog}
+        featureName="Deck Matchups"
+        redirectUrl="/matchups"
+      />
       {/* Ambient background */}
       <div className="fixed inset-0 hexagon-pattern opacity-[0.025] pointer-events-none" />
       <div className="fixed top-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none"

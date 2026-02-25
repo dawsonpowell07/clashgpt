@@ -500,6 +500,14 @@ def _parse_card_filter_param(
     return result or None
 
 
+# ===== AUTH DEPENDENCY =====
+
+def _get_current_user_id_dep():
+    """Lazy import to avoid circular imports at module load time."""
+    from app.app_utils.clerk_auth import get_current_user_id
+    return get_current_user_id
+
+
 # ===== PLAYERS ENDPOINTS =====
 
 @router.get("/players")
@@ -507,6 +515,7 @@ def _parse_card_filter_param(
 async def search_players(
     request: Request,
     name: Annotated[str, Query(min_length=1, description="Player name to search (partial match)")],
+    user_id: str = Depends(_get_current_user_id_dep()),
 ):
     """
     Search players by name from dim_players (top ranked battle participants).
@@ -521,7 +530,11 @@ async def search_players(
 
 @router.get("/players/{player_tag}/info")
 @limiter.limit("30/minute")
-async def get_player_cr_info(request: Request, player_tag: str):
+async def get_player_cr_info(
+    request: Request,
+    player_tag: str,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
     """
     Get live player info from the Clash Royale API.
 
@@ -549,7 +562,11 @@ async def get_player_cr_info(request: Request, player_tag: str):
 
 @router.get("/players/{player_tag}/decks")
 @limiter.limit("30/minute")
-async def get_player_top_decks(request: Request, player_tag: str):
+async def get_player_top_decks(
+    request: Request,
+    player_tag: str,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
     """
     Get the top 5 most-used decks for a player, with card details.
     """
@@ -560,7 +577,11 @@ async def get_player_top_decks(request: Request, player_tag: str):
 
 @router.get("/players/{player_tag}/battles")
 @limiter.limit("30/minute")
-async def get_player_recent_battles(request: Request, player_tag: str):
+async def get_player_recent_battles(
+    request: Request,
+    player_tag: str,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
     """
     Get the 20 most recent battles for a player.
     """
@@ -585,6 +606,7 @@ async def get_deck_matchups(
     )],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    user_id: str = Depends(_get_current_user_id_dep()),
 ):
     """
     Find recent battles for an exact 8-card deck (with variants).
@@ -673,14 +695,7 @@ async def get_deck_matchups(
     }
 
 
-
 # ===== TRACKER ENDPOINTS =====
-
-
-def _get_current_user_id_dep():
-    """Lazy import to avoid circular imports at module load time."""
-    from app.app_utils.clerk_auth import get_current_user_id
-    return get_current_user_id
 
 
 @router.post("/tracker/register")
