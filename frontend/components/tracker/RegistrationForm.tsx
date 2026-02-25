@@ -41,8 +41,11 @@ export function RegistrationForm({ onRegistered }: RegistrationFormProps) {
 
     setIsPreviewing(true);
     try {
+      const token = await getToken();
       const encodedTag = encodeURIComponent(tag);
-      const res = await fetch(`${API_URL}/api/players/${encodedTag}/info`);
+      const res = await fetch(`${API_URL}/api/players/${encodedTag}/info`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.status === 404) {
         setError(`Player tag ${tag} not found. Double-check the tag.`);
         return;
