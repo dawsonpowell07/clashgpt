@@ -126,7 +126,7 @@ export default function ProfilesPage() {
       <div className="fixed top-[-10%] right-[-5%] w-[500px] h-[500px] bg-primary/8 rounded-full blur-[120px] pointer-events-none" />
       <div className="fixed bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-accent/6 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8 relative z-10">
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 relative z-10">
 
         {/* ── Header ── */}
         <div className="space-y-2 pb-6 border-b border-border/40 relative">

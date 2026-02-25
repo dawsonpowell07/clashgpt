@@ -32,6 +32,31 @@ from app.settings import settings
 
 logger = logging.getLogger(__name__)
 
+# List of card IDs that constitute win conditions for identifying worst matchups
+WIN_CONDITION_CARD_IDS = [
+    27000002, # Mortar
+    26000024, # Royal Giant
+    26000067, # Elixir Golem
+    26000036, # Battle Ram
+    26000021, # Hog Rider
+    26000003, # Giant
+    26000059, # Royal Hogs
+    26000058, # Wall Breakers
+    28000004, # Goblin Barrel
+    27000013, # Goblin Drill
+    26000006, # Balloon
+    26000060, # Goblin Giant
+    26000085, # Electro Giant
+    27000008, # X-Bow
+    26000009, # Golem
+    26000032, # Miner
+    26000051, # Ram Rider
+    28000010, # Graveyard
+    26000029, # Lava Hound
+    26000028, # Three Musketeers
+    28000003, # Rocket
+    26000056  # Skeleton Barrel
+]
 
 class DatabaseServiceError(Exception):
     """Base exception for database service errors."""
@@ -1624,6 +1649,72 @@ class DatabaseService:
         except Exception as e:
             logger.exception("Unexpected error in get_tracker_deck_breakdown")
             raise DatabaseServiceError(f"Unexpected error in get_tracker_deck_breakdown: {e!s}") from e
+
+    async def get_tracker_worst_matchups(
+        self,
+        player_tag: str,
+        limit: int = 5,
+        min_games: int = 3,
+    ) -> list[dict]:
+        """
+        Get worst opponent win conditions for a tracked player.
+        """
+        logger.info(f"DB query: get_tracker_worst_matchups | player_tag={player_tag}, limit={limit}")
+        try:
+            async with self.async_session() as session:
+                in_clause = ", ".join(map(str, WIN_CONDITION_CARD_IDS))
+                query = text(f"""
+                    WITH opponent_win_conditions AS (
+                        SELECT 
+                            fbp.battle_id,
+                            fbp.is_win,
+                            dcc.card_id AS win_con_card_id,
+                            dc.name AS win_con_name
+                        FROM fact_battle_participants fbp
+                        JOIN deck_card_config dcc ON fbp.opponent_deck_id = dcc.deck_id
+                        JOIN dim_cards dc ON dcc.card_id = dc.card_id
+                        WHERE fbp.player_tag = :tag
+                          AND dcc.card_id IN ({in_clause})
+                    )
+                    SELECT 
+                        win_con_card_id,
+                        win_con_name,
+                        COUNT(*) AS games,
+                        COALESCE(SUM(is_win), 0) AS wins,
+                        ROUND(
+                            COALESCE(SUM(is_win), 0)::numeric / NULLIF(COUNT(*), 0) * 100,
+                            1
+                        ) AS win_rate
+                    FROM opponent_win_conditions
+                    GROUP BY win_con_card_id, win_con_name
+                    HAVING COUNT(*) >= :min_games
+                    ORDER BY win_rate ASC, games DESC
+                    LIMIT :limit
+                """)
+                rows = await session.execute(query, {"tag": player_tag, "min_games": min_games, "limit": limit})
+                result = []
+                for row in rows.fetchall():
+                    games = int(row[2])
+                    wins = int(row[3])
+                    result.append({
+                        "card_id": row[0],
+                        "card_name": row[1],
+                        "games": games,
+                        "wins": wins,
+                        "losses": games - wins,
+                        "win_rate": float(row[4]) if row[4] is not None else None,
+                    })
+                
+                logger.info(f"DB result: get_tracker_worst_matchups returned {len(result)} win conditions")
+                return result
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_tracker_worst_matchups")
+            raise DatabaseQueryError(f"Failed to fetch tracker worst matchups: {e!s}") from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_tracker_worst_matchups")
+            raise DatabaseServiceError(f"Unexpected error in get_tracker_worst_matchups: {e!s}") from e
 
     async def get_tracker_battles(
         self,

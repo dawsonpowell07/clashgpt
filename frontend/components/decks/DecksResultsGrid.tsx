@@ -35,7 +35,7 @@ export function DecksResultsGrid({ decksData, isSearching }: DecksResultsGridPro
 
       {/* Deck Grid */}
       {isSearching ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {[...Array(6)].map((_, i) => (
             <div
               key={i}
@@ -44,7 +44,7 @@ export function DecksResultsGrid({ decksData, isSearching }: DecksResultsGridPro
           ))}
         </div>
       ) : decksData.decks.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {decksData.decks.map((deck) => (
             <DeckGridCard key={deck.deck_id} deck={deck} />
           ))}

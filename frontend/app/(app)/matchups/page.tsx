@@ -546,7 +546,7 @@ function MatchupsPageInner() {
       <div className="fixed bottom-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none"
         style={{ background: "radial-gradient(circle, rgba(59,94,168,0.06) 0%, transparent 70%)" }} />
 
-      <div className="w-1/2 mx-auto px-4 py-10 relative z-10 space-y-10">
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10 space-y-10">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="relative">
@@ -764,7 +764,7 @@ function MatchupsPageInner() {
                       <p className="text-sm text-muted-foreground">No matchup data found for this deck.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-2.5">
                       {matchupData.matchups.map((matchup, i) => (
                         <MatchRecord
                           key={`${matchup.opponent_deck_id}-${i}`}
