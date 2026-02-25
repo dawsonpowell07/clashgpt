@@ -19,7 +19,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
-import { Navbar } from "@/components/navbar";
 
 const SAMPLE_DECKS = [
   {
@@ -119,8 +118,6 @@ const SAMPLE_DECKS = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Navbar />
-
       {/* Grid Background */}
       <div
         className="fixed inset-0 pointer-events-none"

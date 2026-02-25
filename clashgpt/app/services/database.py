@@ -83,7 +83,7 @@ class DatabaseService:
     def _build_database_url(self) -> str:
         try:
             if settings.dev_mode:
-                return "postgresql+asyncpg://postgres:postgres@127.0.0.1:54322/postgres"
+                return "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres"
 
             encoded_pass = quote(settings.supabase_db_password or "", safe="")
             return (
