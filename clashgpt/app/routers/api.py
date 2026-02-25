@@ -569,6 +569,110 @@ async def get_player_recent_battles(request: Request, player_tag: str):
     return {"battles": battles}
 
 
+# ===== MATCHUPS ENDPOINT =====
+
+# Per-request timeout (seconds)
+MATCHUP_SEARCH_TIMEOUT = 10.0
+
+
+@router.get("/matchups")
+@limiter.limit("30/minute")
+async def get_deck_matchups(
+    request: Request,
+    deck: Annotated[str, Query(
+        description="Comma-separated card specs: card_id:variant for each of 8 cards. "
+                    "Variant must be one of: normal, evolution, heroic."
+    )],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+):
+    """
+    Find recent battles for an exact 8-card deck (with variants).
+
+    The deck parameter must contain exactly 8 comma-separated card specs in the
+    format ``card_id:variant`` where variant is ``normal``, ``evolution``, or
+    ``heroic``.  The lookup matches the database record that has **exactly** these
+    8 (card_id, variant) pairs – no more, no fewer.
+
+    Returns aggregate win/loss stats and paginated recent battles with each
+    opponent's deck cards.
+
+    Example:
+        /api/matchups?deck=26000021:normal,26000000:normal,26000038:normal,26000030:normal,26000002:normal,26000005:normal,28000000:normal,28000009:normal
+    """
+    if not deck:
+        raise HTTPException(status_code=400, detail="deck parameter is required.")
+
+    raw_specs = [s.strip() for s in deck.split(",") if s.strip()]
+    if len(raw_specs) != 8:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Exactly 8 card specs are required; got {len(raw_specs)}."
+        )
+
+    card_specs: list[tuple[int, str]] = []
+    for raw in raw_specs:
+        if ":" not in raw:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Invalid card spec '{raw}'. "
+                    "Use card_id:variant format (e.g. 26000021:normal)."
+                )
+            )
+        card_id_str, variant = raw.split(":", 1)
+        variant = variant.lower()
+        if variant not in VALID_VARIANTS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Invalid variant '{variant}' in '{raw}'. "
+                    f"Valid variants: {', '.join(sorted(VALID_VARIANTS))}."
+                )
+            )
+        try:
+            card_specs.append((int(card_id_str), variant))
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid card_id '{card_id_str}' — must be a numeric ID."
+            )
+
+    db = get_database_service()
+    offset = (page - 1) * page_size
+
+    try:
+        result = await asyncio.wait_for(
+            db.get_deck_matchups(
+                card_specs=card_specs,
+                limit=page_size,
+                offset=offset,
+            ),
+            timeout=MATCHUP_SEARCH_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="Matchup search timed out. Try again shortly."
+        ) from None
+
+    total = result["total_matchups"]
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+
+    return {
+        "deck_id": result["deck_id"],
+        "deck_cards": result["deck_cards"],
+        "stats": result["stats"],
+        "matchups": result["matchups"],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
+    }
+
+
 # ===== LOCATIONS ENDPOINTS =====
 
 @router.get("/locations", response_model=Locations)

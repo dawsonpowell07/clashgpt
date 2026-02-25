@@ -1174,6 +1174,217 @@ class DatabaseService:
                 f"Unexpected error while fetching player battles: {e!s}"
             ) from e
 
+    # ===== MATCHUP ENDPOINTS =====
+
+    async def get_deck_matchups(
+        self,
+        card_specs: list[tuple[int, str]],
+        limit: int = 20,
+        offset: int = 0,
+    ) -> dict:
+        """
+        Find a deck by its exact 8-card composition and return aggregated matchups
+        grouped by opponent deck.
+
+        The lookup matches decks that have exactly the provided (card_id, variant)
+        pairs — no more, no fewer.
+
+        Args:
+            card_specs: List of (card_id, variant) tuples for the 8-card deck.
+            limit: Maximum number of opponent deck matchups to return.
+            offset: Pagination offset.
+
+        Returns:
+            dict with:
+              deck_id: str | None
+              deck_cards: list of {card_id, card_name, variant, slot_index}
+              stats: {games_played, wins, losses, win_rate}
+              total_matchups: int
+              matchups: list of {opponent_deck_id, games_played, wins, losses, win_rate, opponent_cards}
+        """
+        logger.info(
+            f"DB query: get_deck_matchups | card_specs={card_specs}, "
+            f"limit={limit}, offset={offset}"
+        )
+        if len(card_specs) != 8:
+            raise DatabaseQueryError("Exactly 8 card specs are required.")
+
+        try:
+            async with self.async_session() as session:
+                # ── 1. Find the deck_id that matches exactly these 8 (card_id, variant) pairs ──
+                in_conditions = " OR ".join(
+                    f"(dcc.card_id = :cid_{i} AND dcc.variant::text = :cvar_{i})"
+                    for i in range(8)
+                )
+                card_params: dict[str, Any] = {}
+                for i, (cid, cvar) in enumerate(card_specs):
+                    card_params[f"cid_{i}"] = cid
+                    card_params[f"cvar_{i}"] = cvar.lower()
+
+                deck_lookup_query = f"""
+                    WITH candidate_decks AS (
+                        SELECT dcc.deck_id, COUNT(*) AS match_count
+                        FROM deck_card_config dcc
+                        WHERE {in_conditions}
+                        GROUP BY dcc.deck_id
+                        HAVING COUNT(*) = 8
+                    )
+                    SELECT cd.deck_id
+                    FROM candidate_decks cd
+                    WHERE (
+                        SELECT COUNT(*) FROM deck_card_config WHERE deck_id = cd.deck_id
+                    ) = 8
+                    LIMIT 1
+                """
+                deck_result = await session.execute(text(deck_lookup_query), card_params)
+                deck_row = deck_result.fetchone()
+
+                if not deck_row:
+                    logger.info("DB result: get_deck_matchups - deck not found")
+                    return {
+                        "deck_id": None,
+                        "deck_cards": [],
+                        "stats": None,
+                        "total_battles": 0,
+                        "battles": [],
+                    }
+
+                deck_id = deck_row[0]
+
+                # ── 2. Fetch deck cards with names ──
+                deck_cards_query = text("""
+                    SELECT dcc.card_id, dc.name, dcc.variant::text, dcc.slot_index
+                    FROM deck_card_config dcc
+                    JOIN dim_cards dc ON dcc.card_id = dc.card_id
+                    WHERE dcc.deck_id = :deck_id
+                    ORDER BY dcc.slot_index
+                """)
+                deck_cards_result = await session.execute(deck_cards_query, {"deck_id": deck_id})
+                deck_cards = [
+                    {
+                        "card_id": r[0],
+                        "card_name": r[1],
+                        "variant": r[2],
+                        "slot_index": r[3],
+                    }
+                    for r in deck_cards_result.fetchall()
+                ]
+
+                # ── 3. Aggregate stats ──
+                stats_query = text("""
+                    SELECT
+                        COUNT(*) AS games_played,
+                        COALESCE(SUM(fbp.is_win), 0) AS wins,
+                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses
+                    FROM fact_battle_participants fbp
+                    WHERE fbp.deck_id = :deck_id
+                """)
+                stats_result = await session.execute(stats_query, {"deck_id": deck_id})
+                stats_row = stats_result.fetchone()
+                games = int(stats_row[0]) if stats_row and stats_row[0] else 0
+                wins = int(stats_row[1]) if stats_row and stats_row[1] else 0
+                losses = int(stats_row[2]) if stats_row and stats_row[2] else 0
+                stats = {
+                    "games_played": games,
+                    "wins": wins,
+                    "losses": losses,
+                    "win_rate": round(wins / games, 4) if games > 0 else None,
+                }
+
+                # ── 4. Count total distinct opponent decks for pagination ──
+                count_query = text("""
+                    SELECT COUNT(DISTINCT opponent_deck_id)
+                    FROM fact_battle_participants
+                    WHERE deck_id = :deck_id AND opponent_deck_id IS NOT NULL
+                """)
+                count_result = await session.execute(count_query, {"deck_id": deck_id})
+                total_matchups = int(count_result.scalar() or 0)
+
+                # ── 5. Aggregate matchups by opponent deck ──
+                matchups_query = text("""
+                    SELECT
+                        fbp.opponent_deck_id,
+                        COUNT(*) AS games_played,
+                        COALESCE(SUM(fbp.is_win), 0) AS wins,
+                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses
+                    FROM fact_battle_participants fbp
+                    WHERE fbp.deck_id = :deck_id
+                      AND fbp.opponent_deck_id IS NOT NULL
+                    GROUP BY fbp.opponent_deck_id
+                    ORDER BY games_played DESC
+                    LIMIT :limit OFFSET :offset
+                """)
+                matchups_result = await session.execute(
+                    matchups_query,
+                    {"deck_id": deck_id, "limit": limit, "offset": offset},
+                )
+                matchup_rows = matchups_result.fetchall()
+
+                # ── 6. Batch-fetch opponent deck cards ──
+                opponent_deck_ids = [r[0] for r in matchup_rows if r[0] is not None]
+                opp_cards_by_deck: dict[str, list[dict]] = {}
+
+                if opponent_deck_ids:
+                    id_params = {f"odid_{i}": did for i, did in enumerate(opponent_deck_ids)}
+                    in_clause = ", ".join(f":odid_{i}" for i in range(len(opponent_deck_ids)))
+                    opp_cards_query = f"""
+                        SELECT dcc.deck_id, dcc.card_id, dc.name, dcc.variant::text, dcc.slot_index
+                        FROM deck_card_config dcc
+                        JOIN dim_cards dc ON dcc.card_id = dc.card_id
+                        WHERE dcc.deck_id IN ({in_clause})
+                        ORDER BY dcc.deck_id, dcc.slot_index
+                    """
+                    opp_cards_result = await session.execute(text(opp_cards_query), id_params)
+                    for r in opp_cards_result.fetchall():
+                        did = r[0]
+                        if did not in opp_cards_by_deck:
+                            opp_cards_by_deck[did] = []
+                        opp_cards_by_deck[did].append({
+                            "card_id": r[1],
+                            "card_name": r[2],
+                            "variant": r[3],
+                            "slot_index": r[4],
+                        })
+
+                matchups = []
+                for r in matchup_rows:
+                    opp_deck_id = r[0]
+                    games = int(r[1])
+                    wins = int(r[2])
+                    losses = int(r[3])
+                    matchups.append({
+                        "opponent_deck_id": opp_deck_id,
+                        "games_played": games,
+                        "wins": wins,
+                        "losses": losses,
+                        "win_rate": round(wins / games, 4) if games > 0 else None,
+                        "opponent_cards": opp_cards_by_deck.get(opp_deck_id, []) if opp_deck_id else [],
+                    })
+
+                logger.info(
+                    f"DB result: get_deck_matchups deck={deck_id} | "
+                    f"stats={stats}, matchups={len(matchups)}, total_matchups={total_matchups}"
+                )
+                return {
+                    "deck_id": deck_id,
+                    "deck_cards": deck_cards,
+                    "stats": stats,
+                    "total_matchups": total_matchups,
+                    "matchups": matchups,
+                }
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_deck_matchups")
+            raise DatabaseQueryError(
+                f"Database query failed while fetching deck matchups: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_deck_matchups")
+            raise DatabaseServiceError(
+                f"Unexpected error while fetching deck matchups: {e!s}"
+            ) from e
+
     # ===== LOCATIONS ENDPOINTS =====
 
     async def get_all_locations(self) -> Locations:

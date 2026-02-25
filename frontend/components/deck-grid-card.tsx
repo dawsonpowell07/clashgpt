@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Trophy, Swords, Target, Clock, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Orbitron } from "next/font/google";
@@ -170,6 +171,7 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
     : null;
 
   const deckName = getKeyCards(deck.cards, deck.avg_elixir);
+  const matchupsHref = `/matchups?deck=${deck.cards.map(c => `${c.card_id}:${c.variant}`).join(",")}`;
 
   // Determine win rate tier for styling
   const winRateValue = winRate ? parseFloat(winRate) : 0;
@@ -279,6 +281,17 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
             <CardDisplay key={`${deck.deck_id}-${index + 4}`} card={card} />
           ))}
         </div>
+      </div>
+
+      {/* Matchups link */}
+      <div className="px-5 pb-4">
+        <Link
+          href={matchupsHref}
+          className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 transition-all"
+        >
+          <Swords className="w-3.5 h-3.5" />
+          View Matchups
+        </Link>
       </div>
     </div>
   );

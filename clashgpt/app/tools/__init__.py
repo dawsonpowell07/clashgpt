@@ -5,6 +5,7 @@ Agent tools for Clash Royale information.
 from app.tools.card_tools import get_card_stats
 from app.tools.clan_tools import get_clan_info, search_clans
 from app.tools.deck_tools import search_decks
+from app.tools.matchup_tools import get_deck_matchups
 from app.tools.player_tools import (
     get_player_battle_log,
     get_player_info,
@@ -14,10 +15,10 @@ from app.tools.player_tools import (
 __all__ = [
     "get_card_stats",
     "get_clan_info",
+    "get_deck_matchups",
     "get_player_battle_log",
     "get_player_info",
     "get_top_players",
     "search_clans",
     "search_decks",
-
 ]

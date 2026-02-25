@@ -8,6 +8,7 @@ import { ClanInfo } from "@/components/clan-info";
 import { ClanSearchResults } from "@/components/clan-search-results";
 import { Leaderboard } from "@/components/leaderboard";
 import { CardStats } from "@/components/card-stats";
+import { DeckMatchupResults } from "@/components/deck-matchup-results";
 
 const LOCATION_MAP: Record<string, string> = {
   "57000249": "US",
@@ -32,6 +33,7 @@ const HANDLED_TOOLS = [
   "search_decks",
   "get_top_players",
   "get_card_stats",
+  "get_deck_matchups",
 ];
 
 function ToolLoading({ label }: { label: string }) {
@@ -152,6 +154,18 @@ export function ChatToolRenderers() {
       if (!result || !result.card_name)
         return <ToolError label="Could not fetch card statistics" />;
       return <CardStats stats={result} className="my-4" />;
+    },
+  });
+
+  useRenderToolCall({
+    name: "get_deck_matchups",
+    render: ({ args, result, status }) => {
+      if (status !== "complete")
+        return <ToolLoading label={`Analysing matchups for deck...`} />;
+      if (hasToolError(result)) return <ToolError label="Error loading matchup data" />;
+      if (!result)
+        return <ToolError label="Could not load matchup data" />;
+      return <DeckMatchupResults results={result} className="my-4" />;
     },
   });
 
