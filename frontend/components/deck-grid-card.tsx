@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Trophy, Swords, Target, Clock, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Orbitron } from "next/font/google";
@@ -9,10 +10,10 @@ const orbitron = Orbitron({
 });
 
 interface DeckCard {
-  card_id: string;
+  card_id: number;
   card_name: string;
-  evolution_level: number;
-  variant: string;
+  slot_index: number | null;
+  variant: string; // 'normal', 'evolution', or 'heroic'
 }
 
 interface Deck {
@@ -31,17 +32,16 @@ interface DeckGridCardProps {
   className?: string;
 }
 
-// Helper function to format timestamp to readable format
+// Helper function to format ISO timestamp to readable relative time
 function formatLastSeen(timestamp: string): string {
   try {
-    const year = parseInt(timestamp.substring(0, 4));
-    const month = parseInt(timestamp.substring(4, 6)) - 1;
-    const day = parseInt(timestamp.substring(6, 8));
-    const hour = parseInt(timestamp.substring(9, 11));
-    const minute = parseInt(timestamp.substring(11, 13));
-    const second = parseInt(timestamp.substring(13, 15));
-
-    const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+    // Backend sends ISO format: "2026-01-12T17:34:23" or "2026-01-12T17:34:23.000000"
+    // Append Z to treat as UTC if no timezone offset is present
+    const isoString =
+      timestamp.includes("+") || timestamp.endsWith("Z")
+        ? timestamp
+        : timestamp + "Z";
+    const date = new Date(isoString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -91,8 +91,8 @@ function getKeyCards(cards: DeckCard[], avgElixir: number): string {
 }
 
 function CardDisplay({ card }: { card: DeckCard }) {
-  const hasEvolution = card.variant === "evolved";
-  const isHero = card.variant === "hero";
+  const hasEvolution = card.variant === "evolution";
+  const isHero = card.variant === "heroic";
   const cardFileName = (card.card_name || "unknown")
     .toLowerCase()
     .replace(/ /g, "_")
@@ -126,8 +126,8 @@ function CardDisplay({ card }: { card: DeckCard }) {
 // Sort cards by variant: evo cards first, then hero cards, then normal cards
 function sortCardsByVariant(cards: DeckCard[]): DeckCard[] {
   // Separate cards by variant
-  const evoCards = cards.filter(card => card.variant === "evolved");
-  const heroCards = cards.filter(card => card.variant === "hero");
+  const evoCards = cards.filter(card => card.variant === "evolution");
+  const heroCards = cards.filter(card => card.variant === "heroic");
   const normalCards = cards.filter(card => card.variant === "normal");
 
   const sortedCards: DeckCard[] = [];
@@ -171,6 +171,7 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
     : null;
 
   const deckName = getKeyCards(deck.cards, deck.avg_elixir);
+  const matchupsHref = `/matchups?deck=${deck.cards.map(c => `${c.card_id}:${c.variant}`).join(",")}`;
 
   // Determine win rate tier for styling
   const winRateValue = winRate ? parseFloat(winRate) : 0;
@@ -280,6 +281,17 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
             <CardDisplay key={`${deck.deck_id}-${index + 4}`} card={card} />
           ))}
         </div>
+      </div>
+
+      {/* Matchups link */}
+      <div className="px-5 pb-4">
+        <Link
+          href={matchupsHref}
+          className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 transition-all"
+        >
+          <Swords className="w-3.5 h-3.5" />
+          View Matchups
+        </Link>
       </div>
     </div>
   );

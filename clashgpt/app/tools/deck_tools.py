@@ -17,148 +17,7 @@ from app.services.database import (
 
 logger = logging.getLogger(__name__)
 
-CARD_ID_TO_NAME = {
-    "26000072": "Archer Queen",
-    "26000001": "Archers",
-    "28000001": "Arrows",
-    "26000015": "Baby Dragon",
-    "26000006": "Balloon",
-    "26000046": "Bandit",
-    "28000015": "Barbarian Barrel",
-    "27000005": "Barbarian Hut",
-    "26000008": "Barbarians",
-    "26000049": "Bats",
-    "26000068": "Battle Healer",
-    "26000036": "Battle Ram",
-    "26000102": "Berserker",
-    "27000004": "Bomb Tower",
-    "26000013": "Bomber",
-    "26000103": "Boss Bandit",
-    "26000034": "Bowler",
-    "27000000": "Cannon",
-    "26000054": "Cannon Cart",
-    "28000013": "Clone",
-    "26000027": "Dark Prince",
-    "26000040": "Dart Goblin",
-    "28000014": "Earthquake",
-    "26000063": "Electro Dragon",
-    "26000085": "Electro Giant",
-    "26000084": "Electro Spirit",
-    "26000042": "Electro Wizard",
-    "26000043": "Elite Barbarians",
-    "27000007": "Elixir Collector",
-    "26000067": "Elixir Golem",
-    "26000045": "Executioner",
-    "26000031": "Fire Spirit",
-    "28000000": "Fireball",
-    "26000064": "Firecracker",
-    "26000061": "Fisherman",
-    "26000057": "Flying Machine",
-    "28000005": "Freeze",
-    "27000010": "Furnace",
-    "26000003": "Giant",
-    "26000020": "Giant Skeleton",
-    "28000017": "Giant Snowball",
-    "28000004": "Goblin Barrel",
-    "27000012": "Goblin Cage",
-    "28000024": "Goblin Curse",
-    "26000095": "Goblin Demolisher",
-    "27000013": "Goblin Drill",
-    "26000041": "Goblin Gang",
-    "26000060": "Goblin Giant",
-    "27000001": "Goblin Hut",
-    "26000096": "Goblin Machine",
-    "26000002": "Goblins",
-    "26000099": "Goblinstein",
-    "26000074": "Golden Knight",
-    "26000009": "Golem",
-    "28000010": "Graveyard",
-    "26000025": "Guards",
-    "28000016": "Heal Spirit",
-    "26000021": "Hog Rider",
-    "26000044": "Hunter",
-    "26000038": "Ice Golem",
-    "26000030": "Ice Spirit",
-    "26000023": "Ice Wizard",
-    "26000037": "Inferno Dragon",
-    "27000003": "Inferno Tower",
-    "26000000": "Knight",
-    "26000029": "Lava Hound",
-    "28000007": "Lightning",
-    "26000093": "Little Prince",
-    "26000035": "Lumberjack",
-    "26000062": "Magic Archer",
-    "26000055": "Mega Knight",
-    "26000039": "Mega Minion",
-    "26000065": "Mighty Miner",
-    "26000032": "Miner",
-    "26000018": "Mini P.E.K.K.A",
-    "26000022": "Minion Horde",
-    "26000005": "Minions",
-    "28000006": "Mirror",
-    "26000077": "Monk",
-    "27000002": "Mortar",
-    "26000083": "Mother Witch",
-    "26000014": "Musketeer",
-    "26000048": "Night Witch",
-    "26000004": "P.E.K.K.A",
-    "26000087": "Phoenix",
-    "28000009": "Poison",
-    "26000016": "Prince",
-    "26000026": "Princess",
-    "28000002": "Rage",
-    "26000051": "Ram Rider",
-    "26000053": "Rascals",
-    "28000003": "Rocket",
-    "28000018": "Royal Delivery",
-    "26000050": "Royal Ghost",
-    "26000024": "Royal Giant",
-    "26000059": "Royal Hogs",
-    "26000047": "Royal Recruits",
-    "26000101": "Rune Giant",
-    "26000012": "Skeleton Army",
-    "26000056": "Skeleton Barrel",
-    "26000080": "Skeleton Dragons",
-    "26000069": "Skeleton King",
-    "26000010": "Skeletons",
-    "26000033": "Sparky",
-    "26000019": "Spear Goblins",
-    "28000025": "Spirit Empress",
-    "26000097": "Suspicious Bush",
-    "27000006": "Tesla",
-    "28000011": "The Log",
-    "26000028": "Three Musketeers",
-    "27000009": "Tombstone",
-    "28000012": "Tornado",
-    "26000011": "Valkyrie",
-    "28000026": "Vines",
-    "28000023": "Void",
-    "26000058": "Wall Breakers",
-    "26000007": "Witch",
-    "26000017": "Wizard",
-    "27000008": "X-Bow",
-    "28000008": "Zap",
-    "26000052": "Zappies",
-}
-
-
-def _parse_deck_id(deck_id: str) -> list[tuple[str, int]]:
-    cards = []
-    for entry in deck_id.split("|"):
-        try:
-            card_id, evo_level = entry.split("_", 1)
-            cards.append((card_id, int(evo_level)))
-        except ValueError:
-            continue
-    return cards
-
-
-def _variant_from_evolution_level(evolution_level: int) -> str:
-    if evolution_level == 1:
-        return "evolved"
-    if evolution_level == 2:
-        return "hero"
-    return "normal"
+VALID_VARIANTS = {"normal", "evolution", "heroic"}
 
 
 async def search_decks(
@@ -170,64 +29,56 @@ async def search_decks(
 ) -> dict:
     """
     Search for decks with filters, performance stats, and custom sorting.
-    Card details are always included based on the deck_id.
 
     Args:
         include_cards: Comma-separated list of card IDs that MUST be in the deck.
             Use this to find decks built around specific cards or combinations.
             Example: "26000000,26000001" to find decks with both Knight and Archers.
-            Supports card variants: "26000004_1" for evolved cards, "26000004_2" for hero cards.
-            Format: "card_id_evolution_level" where evolution_level is 0 (normal), 1 (evolved), or 2 (hero).
-            Omit evolution_level to match any variant (e.g., "26000004" matches all Goblin Barrel variants).
+            Supports card variants: "26000004:evolution" for evolved cards,
+            "26000004:heroic" for heroic cards, "26000004:normal" for base cards.
+            Omit variant to match any variant (e.g., "26000004" matches all variants).
 
         exclude_cards: Comma-separated list of card IDs that MUST NOT be in the deck.
-            Use this to avoid certain cards or find alternative decks.
-            Example: "26000010" to exclude decks with Fireball.
+            Example: "26000010" to exclude decks with Skeletons.
+            Same variant format as include_cards.
 
         sort_by: How to sort the results (default: "RECENT").
-            Valid sorting options:
+            Valid options:
             - "RECENT": Most recently seen in high-level play
-            - "WIN_RATE": Highest win rate percentage (best performing)
-            - "GAMES_PLAYED": Most games played (most popular/tested)
-            - "WINS": Most total wins (proven winners)
+            - "WIN_RATE": Highest win rate percentage
+            - "GAMES_PLAYED": Most games played (most popular)
+            - "WINS": Most total wins
 
         min_games: Minimum number of games played to include a deck (default: 0).
-            Use higher values (e.g., 10-20) to filter out decks with insufficient data.
-            Highly recommended when sorting by WIN_RATE to ensure statistical reliability.
+            Use higher values (e.g., 10-20) for statistical reliability with WIN_RATE.
 
         limit: Maximum number of results to return (default: 10, max: 200).
 
     Returns:
-        Dictionary with a "decks" list matching your search criteria. Each deck contains:
-        - deck_id: Unique deck identifier
-        - cards: List of 8 cards with their IDs, names, and variants
+        Dictionary with a "decks" list. Each deck contains:
+        - deck_id: Unique deck identifier (SHA-256 hash)
+        - cards: List of up to 8 cards with card_id, card_name, slot_index, variant
         - avg_elixir: Average elixir cost
-        - games_played: Total number of games tracked
-        - wins: Total number of wins
-        - losses: Total number of losses
+        - games_played: Total games tracked
+        - wins: Total wins
+        - losses: Total losses
         - win_rate: Win rate as a decimal (e.g., 0.65 = 65%), null if no games
         - last_seen: Most recent battle time for this deck
 
     Examples:
-        # Find Hog Rider decks with best win rates (min 15 games for reliability)
-        await search_decks(
-            include_cards="26000020",
-            sort_by="WIN_RATE",
-            min_games=15,
-            limit=10
-        )
+        # Find Hog Rider decks with best win rates
+        await search_decks(include_cards="26000021", sort_by="WIN_RATE", min_games=15)
 
-        # Find high win-rate decks with Miner and Poison, no Goblin Drill
-        await search_decks(
-            include_cards="26000016,26000047",
-            exclude_cards="26000080",
-            sort_by="WIN_RATE",
-            min_games=20,
-            limit=10
-        )
+        # Find evolved Skeleton Army decks
+        await search_decks(include_cards="26000012:evolution", sort_by="WIN_RATE")
 
-        # Find popular decks by games played
-        await search_decks(sort_by="GAMES_PLAYED", limit=20)
+        # Find Miner + Poison decks, no Goblin Drill
+        await search_decks(
+            include_cards="26000032,28000009",
+            exclude_cards="27000013",
+            sort_by="WIN_RATE",
+            min_games=20
+        )
     """
     logger.info(
         f"Tool: search_decks | "
@@ -250,62 +101,19 @@ async def search_decks(
 
         db = get_database_service()
 
-        # Parse card IDs (supports both "card_id" and "card_id_evolution_level" format)
-        include_card_ids = None
-        if include_cards:
-            include_card_ids = []
-            for cid in include_cards.split(","):
-                cid = cid.strip()
-                if not cid:
-                    continue
-                try:
-                    if "_" in cid:
-                        # Validate format: card_id_evolution_level (e.g., "26000012_1")
-                        card_id, evo_level = cid.split("_", 1)
-                        int(card_id)  # Validate card_id is numeric
-                        int(evo_level)  # Validate evolution_level is numeric
-                        include_card_ids.append(cid)  # Keep as string "26000012_1"
-                    else:
-                        # Backward compatible: just card_id (any variant)
-                        include_card_ids.append(int(cid))
-                except ValueError:
-                    return {
-                        "error": f"Invalid card id: {cid}.",
-                        "error_type": "validation",
-                        "suggestion": "Use numeric card IDs (e.g. 26000024) or card_id_variant (e.g. 26000024_1)."
-                    }
+        include_card_ids = _parse_card_filter(include_cards)
+        if isinstance(include_card_ids, dict):  # error dict
+            return include_card_ids
 
-        exclude_card_ids = None
-        if exclude_cards:
-            exclude_card_ids = []
-            for cid in exclude_cards.split(","):
-                cid = cid.strip()
-                if not cid:
-                    continue
-                try:
-                    if "_" in cid:
-                        # Validate format: card_id_evolution_level (e.g., "26000012_1")
-                        card_id, evo_level = cid.split("_", 1)
-                        int(card_id)  # Validate card_id is numeric
-                        int(evo_level)  # Validate evolution_level is numeric
-                        exclude_card_ids.append(cid)  # Keep as string "26000012_1"
-                    else:
-                        # Backward compatible: just card_id (any variant)
-                        exclude_card_ids.append(int(cid))
-                except ValueError:
-                    return {
-                        "error": f"Invalid card id: {cid}.",
-                        "error_type": "validation",
-                        "suggestion": "Use numeric card IDs (e.g. 26000024) or card_id_variant (e.g. 26000024_1)."
-                    }
+        exclude_card_ids = _parse_card_filter(exclude_cards)
+        if isinstance(exclude_card_ids, dict):  # error dict
+            return exclude_card_ids
 
-        # Convert string sort_by to enum
-        sort_by_enum = DeckSortBy.RECENT  # Default
+        sort_by_enum = DeckSortBy.RECENT
         if sort_by:
             try:
                 sort_by_enum = DeckSortBy[sort_by.upper()]
             except KeyError:
-                logger.warning(f"Invalid sort_by: {sort_by}, using RECENT")
                 return {
                     "error": f"Invalid sort_by: {sort_by}.",
                     "error_type": "validation",
@@ -317,21 +125,21 @@ async def search_decks(
             exclude_card_ids=exclude_card_ids,
             sort_by=sort_by_enum,
             min_games=min_games,
-            limit=limit
+            limit=limit,
+            include_cards=True,
         )
 
         payloads = []
         for deck in decks:
-            cards = []
-            for card_id, evolution_level in _parse_deck_id(deck.deck_id):
-                if card_id.startswith("159"):
-                    continue
-                cards.append({
-                    "card_id": card_id,
-                    "card_name": CARD_ID_TO_NAME.get(card_id),
-                    "evolution_level": evolution_level,
-                    "variant": _variant_from_evolution_level(evolution_level),
-                })
+            cards = [
+                {
+                    "card_id": c.card_id,
+                    "card_name": c.card_name,
+                    "slot_index": c.slot_index,
+                    "variant": c.variant,
+                }
+                for c in (deck.cards or [])
+            ]
             payloads.append({
                 "deck_id": deck.deck_id,
                 "avg_elixir": deck.avg_elixir,
@@ -376,3 +184,44 @@ async def search_decks(
             "error_type": "unexpected",
             "details": str(e)
         }
+
+
+def _parse_card_filter(cards_str: str | None) -> list[str | int] | dict:
+    """
+    Parse a comma-separated card filter string into a list of card specs.
+
+    Accepts:
+    - "26000012" → int (any variant)
+    - "26000012:evolution" → str (specific variant)
+
+    Returns a list of (int | str) specs, or an error dict on invalid input.
+    """
+    if not cards_str:
+        return None  # type: ignore[return-value]
+
+    result = []
+    for raw in cards_str.split(","):
+        cid = raw.strip()
+        if not cid:
+            continue
+        try:
+            if ":" in cid:
+                card_id_str, variant = cid.split(":", 1)
+                int(card_id_str)  # validate numeric
+                variant = variant.lower()
+                if variant not in VALID_VARIANTS:
+                    return {
+                        "error": f"Invalid variant '{variant}' in '{cid}'.",
+                        "error_type": "validation",
+                        "suggestion": f"Valid variants: {', '.join(sorted(VALID_VARIANTS))}."
+                    }
+                result.append(cid.lower())  # e.g. "26000012:evolution"
+            else:
+                result.append(int(cid))
+        except ValueError:
+            return {
+                "error": f"Invalid card id: '{cid}'.",
+                "error_type": "validation",
+                "suggestion": "Use numeric card IDs (e.g. 26000000) or card_id:variant (e.g. 26000000:evolution)."
+            }
+    return result or None  # type: ignore[return-value]

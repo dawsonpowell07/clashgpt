@@ -8,7 +8,7 @@ Provides REST API access to cards, decks, and locations.
 import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.cache import get_cached_decks, make_deck_cache_key, set_cached_decks
@@ -20,6 +20,8 @@ from app.models.models import (
     Locations,
     Rarity,
 )
+
+VALID_VARIANTS = {"normal", "evolution", "heroic"}
 from app.rate_limit import limiter
 from app.services.database import get_database_service
 
@@ -157,25 +159,6 @@ CARD_ID_TO_NAME = {
 }
 
 
-def _parse_deck_id(deck_id: str) -> list[tuple[str, int]]:
-    cards = []
-    for entry in deck_id.split("|"):
-        try:
-            card_id, evo_level = entry.split("_", 1)
-            cards.append((card_id, int(evo_level)))
-        except ValueError:
-            continue
-    return cards
-
-
-def _variant_from_evolution_level(evolution_level: int) -> str:
-    if evolution_level == 1:
-        return "evolved"
-    if evolution_level == 2:
-        return "hero"
-    return "normal"
-
-
 # ===== ROOT ENDPOINT =====
 
 @router.get("/", response_model=dict)
@@ -205,11 +188,10 @@ async def list_endpoints(request: Request):
                     "example": "/api/cards/26000000"
                 },
                 "GET /api/cards/{card_id}/stats": {
-                    "description": "Get usage statistics for a specific card (win rate, usage rate, games played)",
+                    "description": "Get usage statistics for a specific card (win rate, usage rate, deck appearance rate)",
                     "parameters": {
                         "card_id": "Required - The card ID to fetch stats for",
-                        "season_id": "Optional - Filter by season (e.g., 202601)",
-                        "league": "Optional - Filter by league tier (e.g., '7')"
+                        "season_id": "Optional - Filter by season (e.g., 202601)"
                     },
                     "example": "/api/cards/26000000/stats?season_id=202601"
                 }
@@ -218,15 +200,15 @@ async def list_endpoints(request: Request):
                 "GET /api/decks": {
                     "description": "Search and filter decks with stats (paginated)",
                     "parameters": {
-                        "include": "Optional - Comma-separated card IDs that must be in deck. Supports variants: card_id_evolution_level (e.g., 26000012_1 for evolved)",
-                        "exclude": "Optional - Comma-separated card IDs that must not be in deck. Same format as include",
+                        "include": "Optional - Comma-separated card IDs that must be in deck. Supports variants: card_id:variant (e.g., 26000012:evolution). Valid variants: normal, evolution, heroic.",
+                        "exclude": "Optional - Comma-separated card IDs that must not be in deck. Same format as include.",
                         "sort_by": "Optional - Sort by (RECENT, GAMES_PLAYED, WIN_RATE, WINS, default: RECENT)",
                         "min_games": "Optional - Minimum games played (default: 0)",
                         "page": "Optional - Page number (1-indexed, default: 1)",
                         "page_size": "Optional - Results per page (1-200, default: 24)",
                         "include_cards": "Optional - Include card details and variants for each deck (default: false)"
                     },
-                    "example": "/api/decks?include=26000000,26000012_1&sort_by=WIN_RATE&min_games=20&include_cards=true&page=1&page_size=24"
+                    "example": "/api/decks?include=26000000,26000012:evolution&sort_by=WIN_RATE&min_games=20&include_cards=true&page=1&page_size=24"
                 }
             },
             "locations": {
@@ -304,18 +286,15 @@ async def get_card_stats(
     card_id: str,
     season_id: Annotated[int | None, Query(
         description="Filter by season (e.g., 202601)")] = None,
-    league: Annotated[str | None, Query(
-        description="Filter by league tier (e.g., '7')")] = None
 ):
     """
     Get usage statistics for a specific card.
 
-    Returns win rate, usage rate, and total games from deck_usage_facts.
+    Returns win rate, usage rate, and deck appearance rate from fact_battle_participants.
 
     Args:
         card_id: The card ID to fetch stats for
         season_id: Optional season filter (e.g., 202601)
-        league: Optional league filter (e.g., "7")
 
     Returns:
         CardStats object with usage statistics
@@ -328,7 +307,6 @@ async def get_card_stats(
     stats = await db.get_card_stats_by_id(
         card_id=card_id_int,
         season_id=season_id,
-        league=league
     )
 
     if stats is None:
@@ -361,24 +339,22 @@ async def search_decks(
     Search for decks with stats and filters (paginated).
 
     Args:
-        include: Comma-separated list of card IDs that must be in the deck.
-            Supports variant filtering: use "card_id_evolution_level" format (e.g., "26000012_1" for evolved Skeleton Army).
-            Evolution levels: 0 (normal), 1 (evolved), 2 (hero).
-            Omit evolution_level to match any variant (e.g., "26000012" matches all Skeleton Army variants).
-        exclude: Comma-separated list of card IDs that must not be in the deck (same format as include)
-        sort_by: How to sort results (RECENT, GAMES_PLAYED, WIN_RATE, WINS, default: RECENT)
-        min_games: Minimum number of games played (default: 0)
-        page: Page number (1-indexed, default: 1)
-        page_size: Results per page (1-200, default: 24)
-        include_cards: Include card details and variants for each deck (default: false)
-
-    Returns:
-        Paginated response with decks matching the search criteria and pagination metadata
+        include: Comma-separated card IDs that must be in the deck.
+            Supports variant filtering: "card_id:variant"
+            (e.g., "26000012:evolution" for evolved Skeleton Army).
+            Valid variants: normal, evolution, heroic.
+            Omit variant to match any (e.g., "26000012" matches all variants).
+        exclude: Same format as include — card IDs that must NOT be in the deck.
+        sort_by: RECENT | GAMES_PLAYED | WIN_RATE | WINS (default: RECENT)
+        min_games: Minimum games played (default: 0)
+        page: Page number 1-indexed (default: 1)
+        page_size: Results per page 1-200 (default: 24)
+        include_cards: Include card details for each deck (default: false)
 
     Examples:
-        - /decks?include=26000000,26000001&sort_by=WIN_RATE&min_games=20&include_cards=true&page=1&page_size=24
-        - /decks?include=26000012_1&exclude=26000010&sort_by=WINS&page=2&page_size=12
-        - /decks?sort_by=GAMES_PLAYED&page=1
+        - /decks?include=26000000,26000001&sort_by=WIN_RATE&min_games=20&include_cards=true
+        - /decks?include=26000012:evolution&exclude=26000010&sort_by=WINS
+        - /decks?sort_by=GAMES_PLAYED
     """
     # --- Check cache first ---
     cache_key = make_deck_cache_key(
@@ -394,53 +370,14 @@ async def search_decks(
     # --- Cache miss: query database ---
     db = get_database_service()
 
-    include_card_ids = None
-    if include:
-        include_card_ids = []
-        for cid in include.split(","):
-            cid = cid.strip()
-            if not cid:
-                continue
-            try:
-                if "_" in cid:
-                    # Validate format: card_id_evolution_level (e.g., "26000012_1")
-                    card_id, evo_level = cid.split("_", 1)
-                    int(card_id)  # Validate card_id is numeric
-                    int(evo_level)  # Validate evolution_level is numeric
-                    include_card_ids.append(cid)  # Keep as string "26000012_1"
-                else:
-                    # Backward compatible: just card_id (any variant)
-                    include_card_ids.append(int(cid))
-            except ValueError as exc:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid include card id: {cid}. Use numeric card IDs (e.g. 26000024) or card_id_variant (e.g. 26000024_1)."
-                ) from exc
+    include_card_ids = _parse_card_filter_param(include, "include")
+    if isinstance(include_card_ids, HTTPException):
+        raise include_card_ids
 
-    exclude_card_ids = None
-    if exclude:
-        exclude_card_ids = []
-        for cid in exclude.split(","):
-            cid = cid.strip()
-            if not cid:
-                continue
-            try:
-                if "_" in cid:
-                    # Validate format: card_id_evolution_level (e.g., "26000012_1")
-                    card_id, evo_level = cid.split("_", 1)
-                    int(card_id)  # Validate card_id is numeric
-                    int(evo_level)  # Validate evolution_level is numeric
-                    exclude_card_ids.append(cid)  # Keep as string "26000012_1"
-                else:
-                    # Backward compatible: just card_id (any variant)
-                    exclude_card_ids.append(int(cid))
-            except ValueError as exc:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid exclude card id: {cid}. Use numeric card IDs (e.g. 26000024) or card_id_variant (e.g. 26000024_1)."
-                ) from exc
+    exclude_card_ids = _parse_card_filter_param(exclude, "exclude")
+    if isinstance(exclude_card_ids, HTTPException):
+        raise exclude_card_ids
 
-    # Enforce query complexity limits
     if include_card_ids and len(include_card_ids) > MAX_INCLUDE_CARDS:
         raise HTTPException(
             status_code=400,
@@ -462,7 +399,8 @@ async def search_decks(
                 sort_by=sort_by,
                 min_games=min_games,
                 limit=page_size,
-                offset=offset
+                offset=offset,
+                include_cards=include_cards,
             ),
             timeout=DECK_SEARCH_TIMEOUT
         )
@@ -474,7 +412,7 @@ async def search_decks(
 
     deck_payloads = []
     for deck in decks:
-        payload = {
+        payload: dict = {
             "deck_id": deck.deck_id,
             "avg_elixir": deck.avg_elixir,
             "games_played": deck.games_played,
@@ -485,17 +423,15 @@ async def search_decks(
         }
 
         if include_cards:
-            cards = []
-            for card_id, evolution_level in _parse_deck_id(deck.deck_id):
-                card_name = CARD_ID_TO_NAME.get(card_id)
-                if card_name:
-                    cards.append({
-                        "card_id": card_id,
-                        "card_name": card_name,
-                        "evolution_level": evolution_level,
-                        "variant": _variant_from_evolution_level(evolution_level),
-                    })
-            payload["cards"] = cards
+            payload["cards"] = [
+                {
+                    "card_id": c.card_id,
+                    "card_name": c.card_name,
+                    "slot_index": c.slot_index,
+                    "variant": c.variant,
+                }
+                for c in (deck.cards or [])
+            ]
 
         deck_payloads.append(payload)
 
@@ -513,13 +449,392 @@ async def search_decks(
         "has_previous": has_previous,
     }
 
-    # Store in cache for next time
     set_cached_decks(cache_key, result)
 
     response = JSONResponse(content=result)
     response.headers["X-Cache"] = "MISS"
     response.headers["Cache-Control"] = "public, max-age=300"
     return response
+
+
+def _parse_card_filter_param(
+    cards_str: str | None,
+    param_name: str,
+) -> list[str | int] | None | HTTPException:
+    """
+    Parse a comma-separated card filter query param into a list of card specs.
+    Accepts "card_id" (int, any variant) or "card_id:variant" (str, specific variant).
+    Returns None if empty, list of specs if valid, HTTPException on bad input.
+    """
+    if not cards_str:
+        return None
+    result = []
+    for raw in cards_str.split(","):
+        cid = raw.strip()
+        if not cid:
+            continue
+        try:
+            if ":" in cid:
+                card_id_str, variant = cid.split(":", 1)
+                int(card_id_str)
+                variant = variant.lower()
+                if variant not in VALID_VARIANTS:
+                    return HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Invalid variant '{variant}' in {param_name}='{cid}'. "
+                            f"Valid variants: {', '.join(sorted(VALID_VARIANTS))}."
+                        )
+                    )
+                result.append(f"{card_id_str}:{variant}")
+            else:
+                result.append(int(cid))
+        except ValueError:
+            return HTTPException(
+                status_code=400,
+                detail=(
+                    f"Invalid card id '{cid}' in {param_name}. "
+                    "Use numeric IDs (e.g. 26000024) or card_id:variant (e.g. 26000024:evolution)."
+                )
+            )
+    return result or None
+
+
+# ===== AUTH DEPENDENCY =====
+
+def _get_current_user_id_dep():
+    """Lazy import to avoid circular imports at module load time."""
+    from app.app_utils.clerk_auth import get_current_user_id
+    return get_current_user_id
+
+
+# ===== PLAYERS ENDPOINTS =====
+
+@router.get("/players")
+@limiter.limit("30/minute")
+async def search_players(
+    request: Request,
+    name: Annotated[str, Query(min_length=1, description="Player name to search (partial match)")],
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Search players by name from dim_players (top ranked battle participants).
+
+    Returns up to 10 matching players with aggregated stats:
+    total_games, wins, win_rate, avg_crowns, avg_elixir_leaked.
+    """
+    db = get_database_service()
+    players = await db.search_players_by_name(name=name, limit=10)
+    return {"players": players}
+
+
+@router.get("/players/{player_tag}/info")
+@limiter.limit("30/minute")
+async def get_player_cr_info(
+    request: Request,
+    player_tag: str,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get live player info from the Clash Royale API.
+
+    Returns trophies, Path of Legends data, wins/losses, clan, arena,
+    favorite card, donations, and challenge stats.
+    """
+    from app.services.clash_royale import (
+        ClashRoyaleNotFoundError,
+        ClashRoyaleRateLimitError,
+        ClashRoyaleService,
+    )
+    from app.tools.serialization import serialize_dataclass
+
+    try:
+        async with ClashRoyaleService() as service:
+            player = await service.get_player(player_tag)
+            return serialize_dataclass(player)
+    except ClashRoyaleNotFoundError:
+        raise HTTPException(status_code=404, detail="Player not found in Clash Royale API")
+    except ClashRoyaleRateLimitError:
+        raise HTTPException(status_code=429, detail="Clash Royale API rate limit exceeded")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Clash Royale API error: {e!s}")
+
+
+@router.get("/players/{player_tag}/decks")
+@limiter.limit("30/minute")
+async def get_player_top_decks(
+    request: Request,
+    player_tag: str,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get the top 5 most-used decks for a player, with card details.
+    """
+    db = get_database_service()
+    decks = await db.get_player_top_decks(player_tag=player_tag, limit=5)
+    return {"decks": decks}
+
+
+@router.get("/players/{player_tag}/battles")
+@limiter.limit("30/minute")
+async def get_player_recent_battles(
+    request: Request,
+    player_tag: str,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get the 20 most recent battles for a player.
+    """
+    db = get_database_service()
+    battles = await db.get_player_recent_battles(player_tag=player_tag, limit=20)
+    return {"battles": battles}
+
+
+# ===== MATCHUPS ENDPOINT =====
+
+# Per-request timeout (seconds)
+MATCHUP_SEARCH_TIMEOUT = 10.0
+
+
+@router.get("/matchups")
+@limiter.limit("30/minute")
+async def get_deck_matchups(
+    request: Request,
+    deck: Annotated[str, Query(
+        description="Comma-separated card specs: card_id:variant for each of 8 cards. "
+                    "Variant must be one of: normal, evolution, heroic."
+    )],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Find recent battles for an exact 8-card deck (with variants).
+
+    The deck parameter must contain exactly 8 comma-separated card specs in the
+    format ``card_id:variant`` where variant is ``normal``, ``evolution``, or
+    ``heroic``.  The lookup matches the database record that has **exactly** these
+    8 (card_id, variant) pairs – no more, no fewer.
+
+    Returns aggregate win/loss stats and paginated recent battles with each
+    opponent's deck cards.
+
+    Example:
+        /api/matchups?deck=26000021:normal,26000000:normal,26000038:normal,26000030:normal,26000002:normal,26000005:normal,28000000:normal,28000009:normal
+    """
+    if not deck:
+        raise HTTPException(status_code=400, detail="deck parameter is required.")
+
+    raw_specs = [s.strip() for s in deck.split(",") if s.strip()]
+    if len(raw_specs) != 8:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Exactly 8 card specs are required; got {len(raw_specs)}."
+        )
+
+    card_specs: list[tuple[int, str]] = []
+    for raw in raw_specs:
+        if ":" not in raw:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Invalid card spec '{raw}'. "
+                    "Use card_id:variant format (e.g. 26000021:normal)."
+                )
+            )
+        card_id_str, variant = raw.split(":", 1)
+        variant = variant.lower()
+        if variant not in VALID_VARIANTS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Invalid variant '{variant}' in '{raw}'. "
+                    f"Valid variants: {', '.join(sorted(VALID_VARIANTS))}."
+                )
+            )
+        try:
+            card_specs.append((int(card_id_str), variant))
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid card_id '{card_id_str}' — must be a numeric ID."
+            )
+
+    db = get_database_service()
+    offset = (page - 1) * page_size
+
+    try:
+        result = await asyncio.wait_for(
+            db.get_deck_matchups(
+                card_specs=card_specs,
+                limit=page_size,
+                offset=offset,
+            ),
+            timeout=MATCHUP_SEARCH_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="Matchup search timed out. Try again shortly."
+        ) from None
+
+    total = result["total_matchups"]
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+
+    return {
+        "deck_id": result["deck_id"],
+        "deck_cards": result["deck_cards"],
+        "stats": result["stats"],
+        "matchups": result["matchups"],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
+    }
+
+
+# ===== TRACKER ENDPOINTS =====
+
+
+@router.post("/tracker/register")
+@limiter.limit("10/minute")
+async def register_tracker(
+    request: Request,
+    player_tag: Annotated[str, Query(description="Your Clash Royale player tag (e.g. #2PP)")],
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Link a Clash Royale player tag to the authenticated user's account.
+
+    Validates the tag against the Clash Royale API, then upserts it
+    into tracked_players so the ETL pipeline will scan battles for this tag.
+    """
+    from app.services.clash_royale import (
+        ClashRoyaleNotFoundError,
+        ClashRoyaleRateLimitError,
+        ClashRoyaleService,
+    )
+
+    # Normalise tag
+    normalised = player_tag.strip().upper()
+    if not normalised.startswith("#"):
+        normalised = f"#{normalised}"
+
+    # Validate tag against CR API and get player name
+    try:
+        async with ClashRoyaleService() as service:
+            player = await service.get_player(normalised)
+            player_name = player.name
+    except ClashRoyaleNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Player tag '{normalised}' not found in Clash Royale. Check the tag and try again.")
+    except ClashRoyaleRateLimitError:
+        raise HTTPException(status_code=429, detail="Clash Royale API rate limit hit. Please try again in a moment.")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not verify player tag: {e!s}")
+
+    db = get_database_service()
+    tracked = await db.register_tracked_player(
+        user_id=user_id,
+        player_tag=normalised,
+        player_name=player_name,
+    )
+    return {
+        "message": "Player tag registered successfully. Your battles will be scanned on the next ETL run.",
+        "tracked_player": tracked,
+    }
+
+
+@router.get("/tracker/me")
+@limiter.limit("30/minute")
+async def get_tracker_me(
+    request: Request,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get the tracked player linked to the authenticated user's account.
+    Returns 404 if no tag is linked yet.
+    """
+    db = get_database_service()
+    tracked = await db.get_tracked_player(user_id=user_id)
+    if tracked is None:
+        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+    return {"tracked_player": tracked}
+
+
+@router.get("/tracker/me/stats")
+@limiter.limit("30/minute")
+async def get_tracker_stats(
+    request: Request,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get aggregate battle stats from the database for the authenticated user's linked player.
+    """
+    db = get_database_service()
+    tracked = await db.get_tracked_player(user_id=user_id)
+    if tracked is None:
+        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+
+    stats = await db.get_tracker_stats(player_tag=tracked["player_tag"])
+    return {"player_tag": tracked["player_tag"], "player_name": tracked["player_name"], "stats": stats}
+
+
+@router.get("/tracker/me/decks")
+@limiter.limit("30/minute")
+async def get_tracker_decks(
+    request: Request,
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get the top decks used by the authenticated user's linked player.
+    """
+    db = get_database_service()
+    tracked = await db.get_tracked_player(user_id=user_id)
+    if tracked is None:
+        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+
+    decks = await db.get_tracker_deck_breakdown(player_tag=tracked["player_tag"], limit=limit)
+    return {"player_tag": tracked["player_tag"], "player_name": tracked["player_name"], "decks": decks}
+
+
+@router.get("/tracker/me/battles")
+@limiter.limit("30/minute")
+async def get_tracker_battles(
+    request: Request,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=50)] = 20,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get paginated battle history for the authenticated user's linked player.
+    """
+    db = get_database_service()
+    tracked = await db.get_tracked_player(user_id=user_id)
+    if tracked is None:
+        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+
+    offset = (page - 1) * page_size
+    result = await db.get_tracker_battles(
+        player_tag=tracked["player_tag"],
+        limit=page_size,
+        offset=offset,
+    )
+    total = result["total"]
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+    return {
+        "player_tag": tracked["player_tag"],
+        "player_name": tracked["player_name"],
+        "battles": result["battles"],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
+    }
 
 
 # ===== LOCATIONS ENDPOINTS =====

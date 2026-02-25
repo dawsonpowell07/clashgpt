@@ -31,6 +31,7 @@ import google.auth
 from app.tools import (
     get_card_stats,
     get_clan_info,
+    get_deck_matchups,
     get_player_battle_log,
     get_player_info,
     get_top_players,
@@ -60,6 +61,7 @@ root_agent = Agent(
     tools=[
         get_card_stats,
         get_clan_info,
+        get_deck_matchups,
         get_player_info,
         get_player_battle_log,
         get_top_players,

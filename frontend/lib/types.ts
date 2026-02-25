@@ -1,12 +1,15 @@
 export interface Card {
   card_id: number;
   name: string;
-  elixir_cost: number;
-  rarity: string;
+  elixir_cost: number | null;
+  rarity: string | null;
   icon_urls: {
     medium: string;
     evolutionMedium?: string;
-  };
+  } | null;
+  card_type: string | null;
+  can_evolve: boolean;
+  can_be_heroic: boolean;
 }
 
 export interface CardList {
@@ -14,10 +17,10 @@ export interface CardList {
 }
 
 export interface DeckCard {
-  card_id: string; // The ID in the deck string, might be "id" or "id_variant"
+  card_id: number;
   card_name: string;
-  evolution_level: number;
-  variant: string;
+  slot_index: number | null;
+  variant: string; // 'normal', 'evolution', or 'heroic'
 }
 
 export interface Deck {

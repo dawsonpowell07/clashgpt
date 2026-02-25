@@ -167,8 +167,8 @@ export default function Home() {
           </h1>
 
           <p className="text-base md:text-lg text-muted-foreground/80 max-w-xl mx-auto leading-relaxed">
-            Real-time meta analytics, AI-powered strategy, and live tournament
-            data — all in one assistant.
+            Real-time meta analytics, AI-powered strategy, and elite ranked
+            battle data — all in one assistant.
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -219,7 +219,7 @@ export default function Home() {
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Win rates, W/L records, games played, and card variant data from
-              top ladder and tournament play.
+              top 1000 ranked battles.
             </p>
           </div>
 

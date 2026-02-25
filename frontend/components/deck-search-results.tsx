@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, LayoutGrid } from "lucide-react";
 
 interface DeckCard {
-  card_id: string;
+  card_id: number;
   card_name: string;
-  evolution_level: number;
-  variant: string;
+  slot_index: number | null;
+  variant: string; // 'normal', 'evolution', or 'heroic'
 }
 
 interface Deck {
@@ -81,46 +81,6 @@ interface DeckCardComponentProps {
   deck: Deck;
 }
 
-// Helper function to format timestamp to readable format
-function formatLastSeen(timestamp: string): string {
-  try {
-    // Parse format: 20260112T173423.000Z
-    const year = parseInt(timestamp.substring(0, 4));
-    const month = parseInt(timestamp.substring(4, 6)) - 1; // 0-indexed
-    const day = parseInt(timestamp.substring(6, 8));
-    const hour = parseInt(timestamp.substring(9, 11));
-    const minute = parseInt(timestamp.substring(11, 13));
-    const second = parseInt(timestamp.substring(13, 15));
-
-    const date = new Date(Date.UTC(year, month, day, hour, minute, second));
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-    // Return relative time for recent dates
-    if (diffMinutes < 1) {
-      return "Just now";
-    } else if (diffMinutes < 60) {
-      return `${diffMinutes}m ago`;
-    } else if (diffHours < 24) {
-      return `${diffHours}h ago`;
-    } else if (diffDays < 7) {
-      return `${diffDays}d ago`;
-    } else {
-      // Return formatted date for older entries
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-      });
-    }
-  } catch (error) {
-    return timestamp; // Fallback to original if parsing fails
-  }
-}
-
 // Helper function to extract key cards for deck naming
 function getKeyCards(cards: DeckCard[], avgElixir: number): string {
   const keyCardNames = [
@@ -170,8 +130,8 @@ function getKeyCards(cards: DeckCard[], avgElixir: number): string {
 // Sort cards by variant: evo cards first, then hero cards, then normal cards
 function sortCardsByVariant(cards: DeckCard[]): DeckCard[] {
   // Separate cards by variant
-  const evoCards = cards.filter(card => card.variant === "evolved");
-  const heroCards = cards.filter(card => card.variant === "hero");
+  const evoCards = cards.filter(card => card.variant === "evolution");
+  const heroCards = cards.filter(card => card.variant === "heroic");
   const normalCards = cards.filter(card => card.variant === "normal");
 
   const sortedCards: DeckCard[] = [];
@@ -293,8 +253,8 @@ interface CardDisplayProps {
 }
 
 function CardDisplay({ card }: CardDisplayProps) {
-  const hasEvolution = card.variant === "evolved";
-  const isHero = card.variant === "hero";
+  const hasEvolution = card.variant === "evolution";
+  const isHero = card.variant === "heroic";
   const cardFileName = (card.card_name || "unknown")
     .toLowerCase()
     .replace(/ /g, "_")
