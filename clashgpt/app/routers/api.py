@@ -837,6 +837,31 @@ async def get_tracker_battles(
     }
 
 
+@router.get("/tracker/me/worst-matchups")
+@limiter.limit("30/minute")
+async def get_tracker_worst_matchups(
+    request: Request,
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
+    min_games: Annotated[int, Query(ge=1)] = 3,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get the opposing win conditions the authenticated user's linked player has the worst win rate against.
+    """
+    db = get_database_service()
+    tracked = await db.get_tracked_player(user_id=user_id)
+    if tracked is None:
+        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+
+    matchups = await db.get_tracker_worst_matchups(
+        player_tag=tracked["player_tag"],
+        limit=limit,
+        min_games=min_games,
+    )
+    return {"player_tag": tracked["player_tag"], "player_name": tracked["player_name"], "worst_matchups": matchups}
+
+
+
 # ===== LOCATIONS ENDPOINTS =====
 
 @router.get("/locations", response_model=Locations)

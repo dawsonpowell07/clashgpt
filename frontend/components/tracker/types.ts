@@ -57,3 +57,18 @@ export interface TrackerBattlesResponse {
   has_next: boolean;
   has_previous: boolean;
 }
+
+export interface TrackerWorstMatchup {
+  card_id: number;
+  card_name: string;
+  games: number;
+  wins: number;
+  losses: number;
+  win_rate: number | null;
+}
+
+export interface TrackerWorstMatchupsResponse {
+  player_tag: string;
+  player_name: string;
+  worst_matchups: TrackerWorstMatchup[];
+}

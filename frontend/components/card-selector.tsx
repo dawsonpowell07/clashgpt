@@ -48,6 +48,8 @@ export function CardSelector({
 }: CardSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(true);
+  const [variantFilter, setVariantFilter] = useState<CardVariantType | "All">("All");
+  const [rarityFilter, setRarityFilter] = useState<string>("All");
 
   // Process raw cards into displayable variant items
   const variantItems = useMemo(() => {
@@ -106,14 +108,24 @@ export function CardSelector({
     });
   }, [cards]);
 
-  // Filter items based on search query
+  // Filter items based on search query, variant filter, and rarity filter
   const filteredItems = useMemo(() => {
-    if (!searchQuery.trim()) return variantItems;
+    let items = variantItems;
+    
+    if (variantFilter !== "All") {
+      items = items.filter((item) => item.variant === variantFilter);
+    }
+
+    if (rarityFilter !== "All") {
+      items = items.filter((item) => item.rarity.toLowerCase() === rarityFilter.toLowerCase());
+    }
+
+    if (!searchQuery.trim()) return items;
     const lowerQuery = searchQuery.toLowerCase();
-    return variantItems.filter((item) =>
+    return items.filter((item) =>
       item.name.toLowerCase().includes(lowerQuery)
     );
-  }, [variantItems, searchQuery]);
+  }, [variantItems, searchQuery, variantFilter, rarityFilter]);
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
@@ -147,8 +159,86 @@ export function CardSelector({
         </Button>
       </div>
 
+      {/* Filters - Natural Layout */}
       {isOpen && (
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 overflow-y-auto max-h-[300px] p-1 custom-scrollbar">
+        <div className="flex flex-row flex-wrap items-center gap-x-6 gap-y-3 pb-2 border-b border-border/50 mb-1">
+          {/* Variant Filter mb-0 for mobile wrap */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</span>
+            <div className="flex items-center border rounded-md overflow-hidden bg-muted/20 shadow-sm">
+              <button
+                onClick={() => setVariantFilter("All")}
+                className={cn(
+                  "px-3 text-xs h-8 font-medium transition-colors border-r",
+                  variantFilter === "All"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted/50"
+                )}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setVariantFilter(CardVariantType.HERO)}
+                className={cn(
+                  "px-3 text-xs h-8 font-medium transition-colors border-r",
+                  variantFilter === CardVariantType.HERO
+                    ? "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20"
+                    : "text-muted-foreground hover:bg-muted/50"
+                )}
+              >
+                Heroes
+              </button>
+              <button
+                onClick={() => setVariantFilter(CardVariantType.EVOLUTION)}
+                className={cn(
+                  "px-3 text-xs h-8 font-medium transition-colors border-r",
+                  variantFilter === CardVariantType.EVOLUTION
+                    ? "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20"
+                    : "text-muted-foreground hover:bg-muted/50"
+                )}
+              >
+                Evolutions
+              </button>
+              <button
+                onClick={() => setVariantFilter(CardVariantType.NORMAL)}
+                className={cn(
+                  "px-3 text-xs h-8 font-medium transition-colors",
+                  variantFilter === CardVariantType.NORMAL
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted/50"
+                )}
+              >
+                Base
+              </button>
+            </div>
+          </div>
+
+          {/* Rarity Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rarity</span>
+            <div className="flex flex-wrap items-center border rounded-md overflow-hidden bg-muted/20 shadow-sm">
+              {["All", "Common", "Rare", "Epic", "Legendary", "Champion"].map((rarity, index) => (
+                <button
+                  key={rarity}
+                  onClick={() => setRarityFilter(rarity)}
+                  className={cn(
+                    "px-3 text-xs h-8 font-medium transition-colors",
+                    index !== 5 && "border-r",
+                    rarityFilter === rarity
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted/50"
+                  )}
+                >
+                  {rarity}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isOpen && (
+        <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-14 gap-1.5 overflow-y-auto max-h-[196px] p-1 custom-scrollbar">
           {filteredItems.map((item) => {
             const isSelected = selectedIndices.has(item.id);
             
