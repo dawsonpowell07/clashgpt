@@ -39,7 +39,7 @@ export function DecksResultsGrid({ decksData, isSearching }: DecksResultsGridPro
           {[...Array(6)].map((_, i) => (
             <div
               key={i}
-              className="h-[401px] bg-gradient-to-br from-muted/50 to-muted/30 border border-border/30 rounded-2xl animate-pulse"
+              className="aspect-[3/4] bg-gradient-to-br from-muted/50 to-muted/30 border border-border/30 rounded-2xl animate-pulse"
             />
           ))}
         </div>

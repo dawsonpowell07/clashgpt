@@ -84,9 +84,9 @@ function CardTile({ card, size = "md" }: { card: MatchupCard; size?: "sm" | "md"
   const imageSuffix = isEvo ? "_evolution" : isHero ? "_hero" : "";
 
   const sizeClass =
-    size === "lg" ? "w-28 h-[8.5rem]" :
-    size === "md" ? "w-24 h-[7.25rem]" :
-    "w-18 h-[5.5rem]";
+    size === "lg" ? "w-20 sm:w-24 lg:w-28 aspect-[3/4]" :
+    size === "md" ? "w-16 sm:w-20 lg:w-24 aspect-[3/4]" :
+    "w-12 sm:w-14 lg:w-16 aspect-[3/4]";
 
   const glowColor =
     isEvo ? "shadow-purple-500/40" :
@@ -198,7 +198,7 @@ function DeckSlotPreview({
           ) : (
             <div
               key={`empty-r1-${i}`}
-              className="w-24 h-[7.25rem] rounded-xl border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
+              className="w-16 sm:w-20 lg:w-24 aspect-[3/4] rounded-xl border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
             >
               <span className="text-muted-foreground/20 text-xl font-bold">{i + 1}</span>
             </div>
@@ -212,7 +212,7 @@ function DeckSlotPreview({
           ) : (
             <div
               key={`empty-r2-${i}`}
-              className="w-24 h-[7.25rem] rounded-xl border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
+              className="w-16 sm:w-20 lg:w-24 aspect-[3/4] rounded-xl border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
             >
               <span className="text-muted-foreground/20 text-xl font-bold">{i + 5}</span>
             </div>
@@ -488,7 +488,7 @@ function MatchupsPageInner() {
     setSearchError(null);
     try {
       const token = await getToken();
-      const params = new URLSearchParams({ deck: deckParam, page: pageNum.toString(), page_size: "20" });
+      const params = new URLSearchParams({ deck: deckParam, page: pageNum.toString(), page_size: "21" });
       const res = await fetch(`${API_BASE_URL}/api/matchups?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -583,7 +583,7 @@ function MatchupsPageInner() {
           <div className="h-0.5 bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
           {/* Panel header */}
-          <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border/30">
+          <div className="flex flex-wrap items-start sm:items-center justify-between gap-3 px-4 sm:px-6 pt-5 pb-4 border-b border-border/30">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Swords className="w-4 h-4 text-primary" />
@@ -764,7 +764,7 @@ function MatchupsPageInner() {
                       <p className="text-sm text-muted-foreground">No matchup data found for this deck.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-2.5">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2.5">
                       {matchupData.matchups.map((matchup, i) => (
                         <MatchRecord
                           key={`${matchup.opponent_deck_id}-${i}`}

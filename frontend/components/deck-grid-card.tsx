@@ -185,8 +185,8 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
       "group relative bg-card border border-border/50 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1",
       className
     )}>
-      {/* Header Section with fixed height */}
-      <div className="relative px-5 py-4 bg-muted/20 border-b border-border/30 h-[64px] flex items-center">
+      {/* Header Section */}
+      <div className="relative px-4 sm:px-5 py-3 sm:py-4 bg-muted/20 border-b border-border/30 flex items-center min-h-[52px]">
         <div className="flex items-center justify-between gap-3 w-full">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <Layers className="w-4 h-4 text-primary shrink-0" />
@@ -204,7 +204,7 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
       </div>
 
       {/* Stats Bar - Always rendered for consistent height */}
-      <div className="relative px-5 py-3 bg-muted/10 border-b border-border/20 h-[96px] flex items-center overflow-hidden">
+      <div className="relative px-4 sm:px-5 py-3 bg-muted/10 border-b border-border/20 min-h-[72px] flex items-center overflow-hidden">
         {hasStats && winRate ? (
           <div className="flex items-center justify-between gap-4 flex-wrap w-full">
             {/* Win Rate - Prominent */}
@@ -267,15 +267,15 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
         )}
       </div>
 
-      {/* Cards Grid - 2 rows of 4 with fixed height */}
-      <div className="relative p-5 h-[240px] overflow-hidden">
-        <div className="grid grid-cols-4 gap-2.5 h-[100px]">
+      {/* Cards Grid - 2 rows of 4 */}
+      <div className="relative p-3 sm:p-4 overflow-hidden">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
           {/* First row: Evos (0-1) + Heroes (2-3) */}
           {sortedCards.slice(0, 4).map((card, index) => (
             <CardDisplay key={`${deck.deck_id}-${index}`} card={card} />
           ))}
         </div>
-        <div className="grid grid-cols-4 gap-2.5 mt-2.5 h-[100px]">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mt-1.5 sm:mt-2">
           {/* Second row: Normals (4-7) */}
           {sortedCards.slice(4, 8).map((card, index) => (
             <CardDisplay key={`${deck.deck_id}-${index + 4}`} card={card} />
@@ -284,7 +284,7 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
       </div>
 
       {/* Matchups link */}
-      <div className="px-5 pb-4">
+      <div className="px-3 sm:px-5 pb-3 sm:pb-4">
         <Link
           href={matchupsHref}
           className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 transition-all"

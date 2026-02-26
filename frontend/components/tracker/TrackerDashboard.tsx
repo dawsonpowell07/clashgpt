@@ -199,10 +199,10 @@ function WorstMatchupRow({ matchup, rank }: { matchup: TrackerWorstMatchup; rank
     wr >= 55 ? "text-emerald-400" : wr >= 50 ? "text-amber-400" : "text-red-400";
 
   return (
-    <div className="relative flex flex-col gap-6 p-6 rounded-3xl border border-border/40 bg-card/60 hover:bg-card/80 hover:border-border/60 transition-all shrink-0 w-[240px] h-full group overflow-hidden">
+    <div className="relative flex flex-col gap-4 p-5 rounded-3xl border border-border/40 bg-card/60 hover:bg-card/80 hover:border-border/60 transition-all shrink-0 w-[200px] sm:w-[220px] h-full group overflow-hidden">
 
 
-      <div className="relative w-32 aspect-[3/4] mx-auto shrink-0 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300 z-10 filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
+      <div className="relative w-24 sm:w-28 aspect-[3/4] mx-auto shrink-0 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300 z-10 filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
         <Image
           src={cardImagePath(matchup.card_name, null)}
           alt={matchup.card_name}
@@ -467,8 +467,8 @@ export function TrackerDashboard({
         </section>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <div className="xl:col-span-8 flex flex-col gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 flex flex-col gap-6">
           {/* Deck breakdown */}
           {(hasData || loadingDecks) && (
             <section className="bg-card/40 border border-border/50 rounded-2xl p-5 sm:p-6 flex flex-col gap-4 shadow-sm">
@@ -506,7 +506,7 @@ export function TrackerDashboard({
                   ))}
                 </div>
               ) : worstMatchups.length > 0 ? (
-                <div className="flex overflow-x-auto gap-4 pb-2 snap-x scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                <div className="flex overflow-x-auto gap-3 sm:gap-4 pb-2 snap-x scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent h-[320px]">
                   {worstMatchups.map((matchup, i) => (
                     <div key={matchup.card_id} className="snap-start shrink-0 h-full">
                       <WorstMatchupRow matchup={matchup} rank={i + 1} />
@@ -522,7 +522,7 @@ export function TrackerDashboard({
           )}
         </div>
 
-        <div className="xl:col-span-4 flex flex-col">
+        <div className="lg:col-span-4 flex flex-col">
           {/* Battle history */}
           {(hasData || loadingBattles) && (
             <section className="bg-card/40 border border-border/50 rounded-2xl p-5 sm:p-6 flex flex-col gap-4 shadow-sm h-full">

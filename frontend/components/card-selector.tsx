@@ -238,7 +238,7 @@ export function CardSelector({
       )}
 
       {isOpen && (
-        <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-14 gap-1.5 overflow-y-auto max-h-[196px] p-1 custom-scrollbar">
+        <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-1.5 overflow-y-auto max-h-[196px] p-1 custom-scrollbar">
           {filteredItems.map((item) => {
             const isSelected = selectedIndices.has(item.id);
             

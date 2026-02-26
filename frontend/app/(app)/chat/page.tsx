@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { CopilotChat, CopilotKitCSSProperties } from "@copilotkit/react-ui";
-import { AlertTriangle, X as XIcon, Loader2 } from "lucide-react";
+import { AlertTriangle, X as XIcon, Loader2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { CopilotKit, useCopilotChat } from "@copilotkit/react-core";
 import "@copilotkit/react-ui/styles.css";
 import { cn } from "@/lib/utils";
@@ -13,11 +13,12 @@ import { ChatToolRenderers } from "@/components/chat/ChatToolRenderers";
 import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function ChatPage() {
   const { getToken, isSignedIn, isLoaded, userId } = useAuth();
   const router = useRouter();
-  const [authHeaders, setAuthHeaders] = useState<Record<string, string>>({});
+  const [authHeaders, setAuthHeaders] = useState<Record<string, string> | null>(null);
   const [copilotError, setCopilotError] = useState<string | null>(null);
 
   // Redirect unauthenticated users
@@ -30,7 +31,7 @@ export default function ChatPage() {
   // Keep the auth token fresh — Clerk JWTs expire in ~60s
   useEffect(() => {
     if (!isSignedIn) {
-      setAuthHeaders({});
+      setAuthHeaders(null);
       return;
     }
     const updateToken = async () => {
@@ -57,7 +58,10 @@ export default function ChatPage() {
     return id;
   });
 
-  if (!isLoaded || !isSignedIn) {
+  // Also wait for the Bearer token to be ready before mounting CopilotKit.
+  // Without this, CopilotKit fires its first request with headers={} (empty),
+  // which causes intermittent 401s when the Clerk session cookie is also stale.
+  if (!isLoaded || !isSignedIn || authHeaders === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -100,6 +104,15 @@ interface ChatProps {
 function Chat({ setThreadId, copilotError, onDismissError }: ChatProps) {
   const { appendMessage } = useCopilotChat();
   const [pendingInput, setPendingInput] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Auto-collapse sidebar on mobile
+  useEffect(() => {
+    if (isMobile !== undefined) {
+      setSidebarOpen(!isMobile);
+    }
+  }, [isMobile]);
 
   const handleClearChat = useCallback(() => {
     const newThreadId = crypto.randomUUID();
@@ -118,37 +131,58 @@ function Chat({ setThreadId, copilotError, onDismissError }: ChatProps) {
   const clearPendingInput = useCallback(() => setPendingInput(null), []);
 
   return (
-    <div
-      className="h-[calc(100vh-4rem)] w-full grid p-6 gap-6"
-      style={{ gridTemplateColumns: "280px 1fr" }}
-    >
+    <div className="h-[calc(100vh-4rem)] w-full flex p-3 sm:p-4 lg:p-6 gap-3 sm:gap-4 lg:gap-6">
       {/* Tool-call renderers (registers useRenderToolCall hooks) */}
       <ChatToolRenderers />
 
-      {/* Left side: Command Center Sidebar */}
-      <ChatSidebar
-        onSendMessage={handleSendMessage}
-        onPopulateInput={handlePopulateInput}
-        onClearChat={handleClearChat}
-      />
+      {/* Left side: Command Center Sidebar — collapses with width transition */}
+      <div
+        className={cn(
+          "transition-all duration-300 ease-in-out overflow-hidden shrink-0 h-full",
+          sidebarOpen ? "w-[280px] opacity-100" : "w-0 opacity-0"
+        )}
+      >
+        <div className="w-[280px] h-full">
+          <ChatSidebar
+            onSendMessage={handleSendMessage}
+            onPopulateInput={handlePopulateInput}
+            onClearChat={handleClearChat}
+          />
+        </div>
+      </div>
 
       {/* Right side: Chat interface */}
-      <div className="overflow-y-auto rounded-xl h-full">
-        {/* Error Banner */}
-        {copilotError && (
-          <div className="mx-0 mb-3 flex items-center gap-3 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive animate-in slide-in-from-top-2 duration-200">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <p className="text-sm font-medium flex-1">{copilotError}</p>
-            <button
-              onClick={onDismissError}
-              className="p-1 hover:bg-destructive/10 rounded transition-colors"
-            >
-              <XIcon className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+        {/* Top bar: toggle button + error banner */}
+        <div className="flex items-start gap-2 mb-3 shrink-0">
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="p-2 rounded-lg border border-border hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground shrink-0"
+            title={sidebarOpen ? "Collapse Command Center" : "Expand Command Center"}
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose className="w-4 h-4" />
+            ) : (
+              <PanelLeftOpen className="w-4 h-4" />
+            )}
+          </button>
+
+          {copilotError && (
+            <div className="flex-1 flex items-center gap-3 px-4 py-2 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive animate-in slide-in-from-top-2 duration-200">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              <p className="text-sm font-medium flex-1">{copilotError}</p>
+              <button
+                onClick={onDismissError}
+                className="p-1 hover:bg-destructive/10 rounded transition-colors"
+              >
+                <XIcon className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+
         <div
-          className={cn("flex flex-col h-full w-full rounded-xl shadow-sm border border-border")}
+          className={cn("flex flex-col flex-1 min-h-0 w-full rounded-xl shadow-sm border border-border overflow-hidden")}
           style={
             {
               "--copilot-kit-primary-color": "var(--primary)",
