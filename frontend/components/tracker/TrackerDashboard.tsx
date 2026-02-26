@@ -199,59 +199,46 @@ function WorstMatchupRow({ matchup, rank }: { matchup: TrackerWorstMatchup; rank
     wr >= 55 ? "text-emerald-400" : wr >= 50 ? "text-amber-400" : "text-red-400";
 
   return (
-    <div className="relative flex flex-col items-center gap-4 p-5 rounded-2xl border border-border/40 bg-card/60 hover:bg-muted/10 hover:border-border/60 transition-colors shrink-0 w-[200px] h-full group overflow-hidden">
-      {/* Rank watermark */}
-      <div className="absolute right-2 -bottom-2 font-[family-name:var(--font-heading)] text-8xl font-black leading-none text-foreground/[0.02] select-none pointer-events-none transition-colors group-hover:text-foreground/[0.04] z-0">
-        {rank}
-      </div>
+    <div className="relative flex flex-col gap-6 p-6 rounded-3xl border border-border/40 bg-card/60 hover:bg-card/80 hover:border-border/60 transition-all shrink-0 w-[240px] h-full group overflow-hidden">
 
-      <div className="relative w-20 aspect-[3/4] rounded-lg overflow-hidden bg-muted/50 border border-white/5 shrink-0 shadow-lg group-hover:scale-105 transition-transform duration-300 z-10 mt-2">
+
+      <div className="relative w-32 aspect-[3/4] mx-auto shrink-0 group-hover:scale-110 group-hover:-translate-y-2 transition-all duration-300 z-10 filter drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
         <Image
           src={cardImagePath(matchup.card_name, null)}
           alt={matchup.card_name}
           fill
-          className="object-contain p-1.5"
-          sizes="80px"
+          className="object-contain"
+          sizes="128px"
         />
       </div>
 
-      <div className="flex flex-col items-center w-full z-10 text-center space-y-3 mt-1">
-        <p className="text-base font-bold text-foreground truncate w-full px-1">
+      <div className="flex flex-col w-full z-10 text-center space-y-1">
+        <p className="text-xl font-bold text-foreground font-[family-name:var(--font-heading)] tracking-wide truncate w-full px-1">
           {matchup.card_name}
         </p>
 
-        <div className="grid grid-cols-2 gap-2 w-full">
-          {/* Win Rate Square */}
-          <div className="bg-background/50 rounded-xl p-2.5 flex flex-col items-center justify-center border border-border/40 backdrop-blur-sm col-span-2">
-            <span className={cn("font-[family-name:var(--font-heading)] text-2xl font-black leading-none", wrColor)}>
-              {matchup.win_rate !== null ? `${matchup.win_rate}%` : "—"}
-            </span>
-            <span className="text-[9px] uppercase tracking-widest text-muted-foreground font-semibold mt-1.5">
-              Win Rate
-            </span>
-          </div>
+        <div className="flex flex-col items-center">
+          <span className={cn("font-[family-name:var(--font-heading)] text-5xl font-black mt-2", wrColor)}>
+            {matchup.win_rate !== null ? `${Math.round(matchup.win_rate)}%` : "—"}
+          </span>
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mt-1">
+            Win Rate
+          </span>
+        </div>
+      </div>
 
-          {/* Games Square */}
-          <div className="bg-background/50 rounded-xl p-2.5 flex flex-col items-center justify-center border border-border/40 backdrop-blur-sm">
-            <span className="font-[family-name:var(--font-heading)] text-xl font-black leading-none text-foreground">
-              {matchup.games.toLocaleString()}
-            </span>
-            <span className="text-[8px] uppercase tracking-widest text-muted-foreground font-semibold mt-1">
-              Games
-            </span>
+      <div className="flex items-center justify-between w-full mt-auto z-10 pt-5 border-t border-border/30">
+        <div className="flex flex-col items-start gap-1">
+          <span className="text-lg font-bold font-mono text-foreground leading-none">{matchup.games.toLocaleString()}</span>
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold leading-none">Games</span>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center font-mono text-lg font-bold leading-none">
+            <span className="text-emerald-400">{matchup.wins}</span>
+            <span className="text-muted-foreground/40 mx-1">-</span>
+            <span className="text-red-400">{matchup.losses}</span>
           </div>
-
-          {/* W / L Square */}
-          <div className="bg-background/50 rounded-xl p-2.5 flex flex-col items-center justify-center border border-border/40 backdrop-blur-sm">
-            <div className="flex items-center gap-0.5 font-[family-name:var(--font-heading)] text-[15px] font-black leading-none">
-              <span className="text-emerald-400">{matchup.wins}</span>
-              <span className="text-muted-foreground/30">-</span>
-              <span className="text-red-400">{matchup.losses}</span>
-            </div>
-            <span className="text-[8px] uppercase tracking-widest text-muted-foreground font-semibold mt-1">
-              W / L
-            </span>
-          </div>
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold leading-none">Record</span>
         </div>
       </div>
     </div>
@@ -371,7 +358,7 @@ export function TrackerDashboard({
       .finally(() => setLoadingDecks(false));
 
     setLoadingWorstMatchups(true);
-    authFetch(`${API_URL}/api/tracker/me/worst-matchups?limit=8`)
+    authFetch(`${API_URL}/api/tracker/me/worst-matchups?limit=10`)
       .then((d) => setWorstMatchups(d.worst_matchups ?? []))
       .catch(() => setWorstMatchups([]))
       .finally(() => setLoadingWorstMatchups(false));

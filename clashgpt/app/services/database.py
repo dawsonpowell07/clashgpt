@@ -1653,7 +1653,7 @@ class DatabaseService:
     async def get_tracker_worst_matchups(
         self,
         player_tag: str,
-        limit: int = 5,
+        limit: int = 10,
         min_games: int = 3,
     ) -> list[dict]:
         """

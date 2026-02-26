@@ -841,7 +841,7 @@ async def get_tracker_battles(
 @limiter.limit("30/minute")
 async def get_tracker_worst_matchups(
     request: Request,
-    limit: Annotated[int, Query(ge=1, le=20)] = 5,
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
     min_games: Annotated[int, Query(ge=1)] = 3,
     user_id: str = Depends(_get_current_user_id_dep()),
 ):

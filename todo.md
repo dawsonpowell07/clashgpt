@@ -1,3 +1,0 @@
-- allow sorting my evo and hero versions
-- deck naming
-- better ftp and deck arch labeling -> possible llm labeling
