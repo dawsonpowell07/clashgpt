@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { ChevronDown, ChevronUp, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlayerDeck } from "./types";
-import { CardIcon } from "./CardIcon";
+import { CardIcon } from "@/components/card-icon";
+import { DeckGrid } from "@/components/deck-grid";
 
 export function DeckAccordion({ deck, rank }: { deck: PlayerDeck; rank: number }) {
   const [open, setOpen] = useState(false);
@@ -43,37 +43,29 @@ export function DeckAccordion({ deck, rank }: { deck: PlayerDeck; rank: number }
         {/* Mini card strip (collapsed preview) */}
         {!open && sorted.length > 0 && (
           <div className="hidden sm:flex items-center gap-1 shrink-0">
-            {sorted.slice(0, 8).map((card, i) => {
-              const base = card.name.toLowerCase().replace(/ /g, "_").replace(/\./g, "");
-              const suffix =
-                card.variant === "evolution"
-                  ? "_evolution"
-                  : card.variant === "heroic"
-                  ? "_hero"
-                  : "";
-              return (
-                <div
-                  key={i}
-                  className="relative w-7 aspect-[3/4] rounded overflow-hidden bg-muted border border-white/5"
-                >
-                  <Image
-                    src={`/cards/${base}/${base}${suffix}.png`}
-                    alt={card.name}
-                    fill
-                    className="object-contain"
-                    sizes="28px"
-                  />
-                </div>
-              );
-            })}
+            {sorted.slice(0, 8).map((card, i) => (
+              <div key={i} className="w-7">
+                <CardIcon
+                  cardName={card.name}
+                  variant={card.variant as "normal" | "evolution" | "heroic"}
+                />
+              </div>
+            ))}
           </div>
         )}
 
         {/* Stats */}
         <div className="flex-1 flex flex-wrap items-center gap-x-5 gap-y-1 min-w-0">
-          <span className={cn("font-[family-name:var(--font-heading)] text-lg font-bold", wrColor)}>
+          <span
+            className={cn(
+              "font-[family-name:var(--font-heading)] text-lg font-bold",
+              wrColor
+            )}
+          >
             {deck.win_rate !== null ? `${deck.win_rate}%` : "—"}
-            <span className="text-xs font-normal text-muted-foreground ml-1">WR</span>
+            <span className="text-xs font-normal text-muted-foreground ml-1">
+              WR
+            </span>
           </span>
           <span className="text-sm text-muted-foreground">
             {deck.games.toLocaleString()} games
@@ -82,7 +74,9 @@ export function DeckAccordion({ deck, rank }: { deck: PlayerDeck; rank: number }
             <Zap className="w-3.5 h-3.5 text-purple-400" />
             {deck.avg_elixir ?? "—"}
           </span>
-          <span className="text-sm text-emerald-400 font-semibold">{deck.wins}W</span>
+          <span className="text-sm text-emerald-400 font-semibold">
+            {deck.wins}W
+          </span>
         </div>
 
         {open ? (
@@ -98,7 +92,10 @@ export function DeckAccordion({ deck, rank }: { deck: PlayerDeck; rank: number }
           <div className="flex items-center gap-3">
             <div className="flex-1 h-1.5 bg-muted/60 rounded-full overflow-hidden">
               <div
-                className={cn("h-full rounded-full transition-all duration-500", wrBarColor)}
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  wrBarColor
+                )}
                 style={{ width: `${Math.min(wr, 100)}%` }}
               />
             </div>
@@ -108,11 +105,12 @@ export function DeckAccordion({ deck, rank }: { deck: PlayerDeck; rank: number }
           </div>
 
           {/* Card grid */}
-          <div className="grid grid-cols-8 gap-2">
-            {sorted.slice(0, 8).map((card, i) => (
-              <CardIcon key={i} card={card} />
-            ))}
-          </div>
+          <DeckGrid
+            cards={deck.cards.map((c) => ({
+              cardName: c.name,
+              variant: c.variant as "normal" | "evolution" | "heroic",
+            }))}
+          />
         </div>
       )}
     </div>

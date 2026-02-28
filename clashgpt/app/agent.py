@@ -18,6 +18,7 @@ import json
 import logging
 from zoneinfo import ZoneInfo
 
+from ag_ui_adk import AGUIToolset
 from google.adk.agents import Agent
 from google.adk.apps.app import App
 from google.adk.models import Gemini
@@ -35,6 +36,7 @@ from app.tools import (
     get_player_battle_log,
     get_player_info,
     get_top_players,
+    get_win_condition_matchup,
     search_clans,
     search_decks,
 )
@@ -59,12 +61,14 @@ root_agent = Agent(
     ),
     instruction=PROMPT,
     tools=[
+        AGUIToolset(),  # Exposes frontend actions (e.g. request_deck_from_user) to the agent
         get_card_stats,
         get_clan_info,
         get_deck_matchups,
         get_player_info,
         get_player_battle_log,
         get_top_players,
+        get_win_condition_matchup,
         search_clans,
         search_decks,
     ],

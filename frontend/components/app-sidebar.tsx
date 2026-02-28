@@ -9,6 +9,7 @@ import {
   Users,
   Swords,
   BarChart2,
+  ArrowLeftRight,
   LogIn,
   Lock,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
@@ -40,36 +42,32 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-const NAV_ITEMS = [
+const NAV_SECTIONS = [
   {
-    title: "Chat",
-    url: "/chat",
-    icon: MessageSquare,
-    requiresAuth: true,
+    title: "Agent",
+    items: [
+      { title: "Chat", url: "/chat", icon: MessageSquare, requiresAuth: true },
+    ],
   },
   {
-    title: "Decks",
-    url: "/decks",
-    icon: LayoutGrid,
-    requiresAuth: false,
+    title: "Players",
+    items: [
+      { title: "Profiles", url: "/profiles", icon: Users, requiresAuth: true },
+      { title: "Tracker", url: "/tracker", icon: BarChart2, requiresAuth: true },
+    ],
   },
   {
-    title: "Profiles",
-    url: "/profiles",
-    icon: Users,
-    requiresAuth: true,
+    title: "Find Decks",
+    items: [
+      { title: "Decks", url: "/decks", icon: LayoutGrid, requiresAuth: false },
+    ],
   },
   {
-    title: "Matchups",
-    url: "/matchups",
-    icon: Swords,
-    requiresAuth: true,
-  },
-  {
-    title: "Tracker",
-    url: "/tracker",
-    icon: BarChart2,
-    requiresAuth: true,
+    title: "Deck Analysis",
+    items: [
+      { title: "Matchups", url: "/matchups", icon: Swords, requiresAuth: true },
+      { title: "Head to Head", url: "/head-to-head", icon: ArrowLeftRight, requiresAuth: false },
+    ],
   },
 ];
 
@@ -113,42 +111,46 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-            <SidebarMenu>
-              {NAV_ITEMS.map((item) => {
-                const isActive = pathname === item.url;
-                const isLocked = item.requiresAuth && !isSignedIn;
+          {NAV_SECTIONS.map((section) => (
+            <SidebarGroup key={section.title}>
+              <SidebarGroupLabel>{section.title}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {section.items.map((item) => {
+                    const isActive = pathname === item.url;
+                    const isLocked = item.requiresAuth && !isSignedIn;
 
-                if (isLocked) {
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        onClick={() => openAuthDialog(item.title, item.url)}
-                        isActive={isActive}
-                        tooltip={`Sign in to access ${item.title}`}
-                      >
-                        <item.icon />
-                        <span>{item.title}</span>
-                        <Lock className="ml-auto size-3 text-muted-foreground/60" />
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                }
+                    if (isLocked) {
+                      return (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton
+                            onClick={() => openAuthDialog(item.title, item.url)}
+                            isActive={isActive}
+                            tooltip={`Sign in to access ${item.title}`}
+                          >
+                            <item.icon />
+                            <span>{item.title}</span>
+                            <Lock className="ml-auto size-3 text-muted-foreground/60" />
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    }
 
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive}>
-                      <Link href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroup>
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild isActive={isActive}>
+                          <Link href={item.url}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
         </SidebarContent>
 
         <SidebarFooter>

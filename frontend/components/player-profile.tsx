@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, Label } from "recharts";
 
 interface Card {
   id: string;
@@ -125,30 +126,26 @@ export function PlayerProfile({ player, className }: PlayerProfileProps) {
 
       {/* Stats Section - Horizontal Grid */}
       <div className="p-6 space-y-6">
-        {/* First Row: Battle Stats - Always 4 columns */}
+        {/* First Row: Battle Stats - Pie chart + stat cards */}
         <div>
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            Battle Statistics
-          </h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              label="Wins"
-              value={player.wins.toLocaleString()}
-              icon="✅"
-              highlight="success"
-            />
-            <StatCard
-              label="Losses"
-              value={player.losses.toLocaleString()}
-              icon="❌"
-              highlight="destructive"
-            />
-            <StatCard
-              label="3-Crown"
-              value={player.three_crown_wins.toLocaleString()}
-              icon="👑"
-            />
-            <StatCard label="Win Rate" value={`${winRate}%`} icon="📊" />
+          <div className="flex flex-col lg:flex-row gap-4 items-center">
+            {/* Pie chart */}
+            <div className="w-full lg:w-56 shrink-0 h-48">
+              <WinsLossesPieChart wins={player.wins} losses={player.losses} winRate={winRate} />
+            </div>
+            {/* Remaining stats */}
+            <div className="flex flex-col gap-4 flex-1 w-full">
+              <StatCard
+                label="3-Crown Wins"
+                value={player.three_crown_wins.toLocaleString()}
+                icon="👑"
+              />
+              <StatCard
+                label="Total Battles"
+                value={player.battles_count.toLocaleString()}
+                icon="⚔️"
+              />
+            </div>
           </div>
         </div>
 
@@ -287,6 +284,75 @@ export function PlayerProfile({ player, className }: PlayerProfileProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+interface WinsLossesPieChartProps {
+  wins: number;
+  losses: number;
+  winRate: string;
+}
+
+function WinsLossesPieChart({ wins, losses, winRate }: WinsLossesPieChartProps) {
+  const data = [
+    { name: "Wins", value: wins },
+    { name: "Losses", value: losses },
+  ];
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <defs>
+          <linearGradient id="pieProfileBlueGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#60a5fa" />
+            <stop offset="100%" stopColor="#2563eb" />
+          </linearGradient>
+          <linearGradient id="pieProfileRedGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f87171" />
+            <stop offset="100%" stopColor="#dc2626" />
+          </linearGradient>
+        </defs>
+        <text
+          x="50%"
+          y={14}
+          textAnchor="middle"
+          style={{ fontSize: "11px", fontWeight: 600, fill: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em" }}
+        >
+          Win / Loss
+        </text>
+        <Pie
+          data={data}
+          cx="50%"
+          cy="52%"
+          innerRadius={44}
+          outerRadius={70}
+          dataKey="value"
+          strokeWidth={0}
+          isAnimationActive={false}
+          paddingAngle={3}
+          cornerRadius={4}
+        >
+          <Cell fill="url(#pieProfileBlueGrad)" />
+          <Cell fill="url(#pieProfileRedGrad)" />
+          <Label
+            value={`${winRate}%`}
+            position="center"
+            style={{ fontSize: "20px", fontWeight: 800, fill: "#f3f4f6" }}
+          />
+        </Pie>
+        <Tooltip
+          formatter={(value: any, name: any) => [value?.toLocaleString() ?? "", name]}
+          contentStyle={{
+            background: "#1e2433",
+            border: "1px solid #3d4560",
+            borderRadius: "8px",
+            fontSize: "12px",
+          }}
+          itemStyle={{ color: "#e5e7eb" }}
+          labelStyle={{ color: "#9ca3af", display: "none" }}
+        />
+      </PieChart>
+    </ResponsiveContainer>
   );
 }
 

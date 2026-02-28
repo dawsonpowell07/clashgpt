@@ -1,5 +1,13 @@
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Label,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 
 interface CardStatsData {
   card_id: number;
@@ -18,10 +26,7 @@ interface CardStatsProps {
 }
 
 export function CardStats({ stats, className }: CardStatsProps) {
-  // win_rate comes as decimal (0.464 = 46.4%), multiply by 100
   const winRatePercent = (stats.win_rate * 100).toFixed(1);
-  // usage_rate and deck_appearance_rate come as percentages already (7.09 = 7.09%)
-  const usageRatePercent = stats.usage_rate.toFixed(2);
   const deckAppearancePercent = stats.deck_appearance_rate.toFixed(1);
 
   const cardFileName = (stats.card_name || "unknown")
@@ -29,117 +34,126 @@ export function CardStats({ stats, className }: CardStatsProps) {
     .replace(/ /g, "_")
     .replace(/\./g, "");
 
+  const wrValue = parseFloat(winRatePercent);
+
   return (
     <div
       className={cn(
-        "bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all max-w-md",
+        "bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all w-full max-w-lg",
         className
       )}
     >
-      {/* Header with card name */}
-      <div className="px-4 py-3 bg-muted/30 border-b border-border">
-        <h3 className="text-lg font-bold text-foreground">{stats.card_name}</h3>
-        <p className="text-xs text-muted-foreground">Performance Statistics</p>
+      {/* Header */}
+      <div className="flex items-center gap-4 px-5 py-4 bg-muted/30 border-b border-border">
+        <div className="relative w-16 h-20 rounded-lg overflow-hidden border border-border bg-muted shadow-md shrink-0">
+          <Image
+            src={`/cards/${cardFileName}/${cardFileName}.png`}
+            alt={stats.card_name}
+            fill
+            className="object-contain"
+          />
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-foreground">{stats.card_name}</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Performance Statistics</p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-muted/60 border border-border text-muted-foreground">
+              {stats.total_uses.toLocaleString()} uses
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-muted/60 border border-border text-green-400">
+              {stats.wins.toLocaleString()}W
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-muted/60 border border-border text-red-400">
+              {stats.losses.toLocaleString()}L
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Card Image and Stats Grid */}
-      <div className="p-4 flex gap-4">
-        {/* Card Image */}
-        <div className="shrink-0">
-          <div className="relative w-24 h-32 rounded-lg overflow-hidden border border-border bg-muted shadow-md">
-            <Image
-              src={`/cards/${cardFileName}/${cardFileName}.png`}
-              alt={stats.card_name}
-              fill
-              className="object-contain"
-            />
+      {/* Charts row */}
+      <div className="grid grid-cols-2 divide-x divide-border">
+        {/* Win Rate donut */}
+        <div className="flex flex-col items-center py-4 px-3">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">
+            Win Rate
+          </p>
+          <div className="w-full h-36">
+            <WinRateDonut wins={stats.wins} losses={stats.losses} winRatePercent={winRatePercent} />
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="flex-1 grid grid-cols-2 gap-3">
-          {/* Win Rate - Primary stat */}
-          <div className="col-span-2 bg-muted/50 rounded-lg p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Win Rate
-              </span>
-              <span
-                className={cn(
-                  "text-2xl font-bold",
-                  parseFloat(winRatePercent) >= 55
-                    ? "text-green-500"
-                    : parseFloat(winRatePercent) >= 50
-                    ? "text-yellow-500"
-                    : "text-red-500"
-                )}
-              >
-                {winRatePercent}%
-              </span>
-            </div>
-            {/* Win rate bar */}
-            <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className={cn(
-                  "h-full rounded-full transition-all",
-                  parseFloat(winRatePercent) >= 55
-                    ? "bg-green-500"
-                    : parseFloat(winRatePercent) >= 50
-                    ? "bg-yellow-500"
-                    : "bg-red-500"
-                )}
-                style={{ width: `${Math.min(100, stats.win_rate * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Deck Appearance Rate */}
-          <div className="bg-muted/30 rounded-lg p-2.5">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block">
-              In Decks
-            </span>
-            <span className="text-lg font-bold text-foreground">
-              {deckAppearancePercent}%
-            </span>
-          </div>
-
-          {/* Usage Rate */}
-          <div className="bg-muted/30 rounded-lg p-2.5">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block">
-              Usage Rate
-            </span>
-            <span className="text-lg font-bold text-foreground">
-              {usageRatePercent}%
-            </span>
-          </div>
-
-          {/* Total Uses */}
-          <div className="bg-muted/30 rounded-lg p-2.5">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block">
-              Total Uses
-            </span>
-            <span className="text-lg font-bold text-foreground">
-              {stats.total_uses.toLocaleString()}
-            </span>
-          </div>
-
-          {/* W/L Record */}
-          <div className="bg-muted/30 rounded-lg p-2.5">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block">
-              Record
-            </span>
-            <div className="flex items-center gap-1">
-              <span className="text-lg font-bold text-green-500">
-                {stats.wins.toLocaleString()}
-              </span>
-              <span className="text-muted-foreground">-</span>
-              <span className="text-lg font-bold text-red-500">
-                {stats.losses.toLocaleString()}
-              </span>
-            </div>
-          </div>
+        {/* Deck appearance */}
+        <div className="flex flex-col items-center justify-center py-4 px-3 gap-1">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+            In Decks
+          </p>
+          <p className="text-4xl font-bold text-foreground tabular-nums">{deckAppearancePercent}%</p>
+          <p className="text-xs text-muted-foreground">of all decks</p>
         </div>
       </div>
     </div>
+  );
+}
+
+function WinRateDonut({
+  wins,
+  losses,
+  winRatePercent,
+}: {
+  wins: number;
+  losses: number;
+  winRatePercent: string;
+}) {
+  const data = [
+    { name: "Wins", value: wins },
+    { name: "Losses", value: losses },
+  ];
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <defs>
+          <linearGradient id="pieCardStatsBlueGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#60a5fa" />
+            <stop offset="100%" stopColor="#2563eb" />
+          </linearGradient>
+          <linearGradient id="pieCardStatsRedGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f87171" />
+            <stop offset="100%" stopColor="#dc2626" />
+          </linearGradient>
+        </defs>
+        <Pie
+          data={data}
+          cx="50%"
+          cy="50%"
+          innerRadius={38}
+          outerRadius={56}
+          dataKey="value"
+          strokeWidth={0}
+          isAnimationActive={false}
+          paddingAngle={3}
+          cornerRadius={4}
+        >
+          <Cell fill="url(#pieCardStatsBlueGrad)" />
+          <Cell fill="url(#pieCardStatsRedGrad)" />
+          <Label
+            value={`${winRatePercent}%`}
+            position="center"
+            style={{ fontSize: "16px", fontWeight: 700, fill: "#f3f4f6" }}
+          />
+        </Pie>
+        <Tooltip
+          formatter={(value: any, name: any) => [value?.toLocaleString() ?? "", name]}
+          contentStyle={{
+            background: "#1e2433",
+            border: "1px solid #3d4560",
+            borderRadius: "8px",
+            fontSize: "12px",
+          }}
+          itemStyle={{ color: "#e5e7eb" }}
+          labelStyle={{ color: "#9ca3af", display: "none" }}
+        />
+      </PieChart>
+    </ResponsiveContainer>
   );
 }

@@ -11,6 +11,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/decks": "Decks",
   "/profiles": "Profiles",
   "/matchups": "Matchups",
+  "/head-to-head": "Head to Head",
   "/tracker": "Tracker",
 };
 

@@ -195,17 +195,30 @@ export default function DecksPage() {
       <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative z-10">
 
         {/* Header */}
-        <div className="relative flex flex-col gap-4 pb-6 border-b-2 border-border/30">
-          <div className="absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-r from-transparent via-primary to-transparent opacity-60 battle-glow" />
-          <h1 className="text-5xl sm:text-6xl font-[family-name:var(--font-heading)] font-extrabold tracking-tight bg-gradient-to-r from-primary via-primary/90 to-accent bg-clip-text text-transparent relative">
-            <span className="relative inline-block">
-              Deck Arsenal
-              <span className="absolute inset-0 bg-gradient-to-r from-primary to-accent blur-2xl opacity-20 -z-10" />
-            </span>
-          </h1>
-          <p className="text-muted-foreground text-base font-normal max-w-2xl">
-            Browse and filter decks from top players
-          </p>
+        <div className="relative">
+          <div className="w-12 h-0.5 bg-primary mb-4 rounded-full" />
+
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary/80 mb-2">
+                Deck Database
+              </p>
+              <h1 className="font-[family-name:var(--font-heading)] text-5xl sm:text-7xl font-extrabold tracking-tight leading-none">
+                <span className="bg-gradient-to-br from-foreground via-foreground/90 to-foreground/60 bg-clip-text text-transparent">
+                  Deck
+                </span>
+                <br />
+                <span className="bg-gradient-to-r from-primary via-primary/90 to-amber-300 bg-clip-text text-transparent battle-glow">
+                  Arsenal
+                </span>
+              </h1>
+            </div>
+            <p className="text-sm text-muted-foreground max-w-xs leading-relaxed pb-1">
+              Browse and filter decks from top players
+            </p>
+          </div>
+
+          <div className="mt-6 h-px bg-gradient-to-r from-primary/40 via-border/50 to-transparent" />
         </div>
 
         {/* Filter Section */}

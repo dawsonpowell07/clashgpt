@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Trophy, Swords, Target, Clock, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Orbitron } from "next/font/google";
+import { DeckGrid } from "./deck-grid";
 
 const orbitron = Orbitron({
   subsets: ["latin"],
@@ -13,7 +13,7 @@ interface DeckCard {
   card_id: number;
   card_name: string;
   slot_index: number | null;
-  variant: string; // 'normal', 'evolution', or 'heroic'
+  variant: string;
 }
 
 interface Deck {
@@ -32,11 +32,8 @@ interface DeckGridCardProps {
   className?: string;
 }
 
-// Helper function to format ISO timestamp to readable relative time
 function formatLastSeen(timestamp: string): string {
   try {
-    // Backend sends ISO format: "2026-01-12T17:34:23" or "2026-01-12T17:34:23.000000"
-    // Append Z to treat as UTC if no timezone offset is present
     const isoString =
       timestamp.includes("+") || timestamp.endsWith("Z")
         ? timestamp
@@ -58,19 +55,18 @@ function formatLastSeen(timestamp: string): string {
       day: "numeric",
       year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
     });
-  } catch (error) {
+  } catch {
     return timestamp;
   }
 }
 
-// Helper function to extract key cards for deck naming
 function getKeyCards(cards: DeckCard[], avgElixir: number): string {
   const keyCardNames = [
     "giant", "royal giant", "golem", "goblin giant", "hog rider",
     "goblin drill", "goblin barrel", "mortar", "monk", "three musketeers",
     "royal hogs", "sparky", "graveyard", "p.e.k.k.a", "elixir golem",
     "balloon", "x-bow", "rocket", "ram rider", "boss bandit", "mega knight",
-    "lava hound", "miner",
+    "lava hound", "miner", "electro giant", "battle ram",
   ];
 
   const foundKeyCards = cards
@@ -78,114 +74,41 @@ function getKeyCards(cards: DeckCard[], avgElixir: number): string {
     .slice(0, 2);
 
   let deckName = "Mixed Deck";
-
   if (foundKeyCards.length > 0) {
     deckName = foundKeyCards.map((card) => card.card_name).join(" ");
   }
-
-  if (avgElixir < 3.0) {
-    deckName += " Cycle";
-  }
+  if (avgElixir < 3.0) deckName += " Cycle";
 
   return deckName;
 }
 
-function CardDisplay({ card }: { card: DeckCard }) {
-  const hasEvolution = card.variant === "evolution";
-  const isHero = card.variant === "heroic";
-  const cardFileName = (card.card_name || "unknown")
-    .toLowerCase()
-    .replace(/ /g, "_")
-    .replace(/\./g, "");
-
-  const imageSuffix = hasEvolution ? "_evolution" : isHero ? "_hero" : "";
-
-  return (
-    <div className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 bg-muted group hover:scale-[1.15] hover:z-20 hover:rotate-2 transition-all duration-300 shadow-md hover:shadow-lg"
-      style={{
-        borderColor: hasEvolution ? 'rgb(168, 85, 247)' : isHero ? 'rgb(234, 179, 8)' : 'rgba(255, 255, 255, 0.1)',
-      }}
-    >
-      <Image
-        src={`/cards/${cardFileName}/${cardFileName}${imageSuffix}.png`}
-        alt={card.card_name}
-        fill
-        className="object-contain p-0.5 relative z-10 group-hover:scale-105 transition-transform duration-300"
-      />
-
-      {/* Card name on hover without background */}
-      <div className="absolute inset-x-0 bottom-0 p-1.5 pt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
-        <p className="text-white text-[10px] font-bold text-center truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-          {card.card_name}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// Sort cards by variant: evo cards first, then hero cards, then normal cards
-function sortCardsByVariant(cards: DeckCard[]): DeckCard[] {
-  // Separate cards by variant
-  const evoCards = cards.filter(card => card.variant === "evolution");
-  const heroCards = cards.filter(card => card.variant === "heroic");
-  const normalCards = cards.filter(card => card.variant === "normal");
-
-  const sortedCards: DeckCard[] = [];
-
-  // First row positions 0-1: Evolution cards (up to 2)
-  sortedCards.push(...evoCards.slice(0, 2));
-
-  // Fill remaining first row evo slots with normals if needed
-  const evosNeeded = 2 - Math.min(evoCards.length, 2);
-  if (evosNeeded > 0) {
-    sortedCards.push(...normalCards.splice(0, evosNeeded));
-  }
-
-  // First row positions 2-3: Hero cards (up to 2)
-  sortedCards.push(...heroCards.slice(0, 2));
-
-  // Fill remaining first row hero slots with normals if needed
-  const heroesNeeded = 2 - Math.min(heroCards.length, 2);
-  if (heroesNeeded > 0) {
-    sortedCards.push(...normalCards.splice(0, heroesNeeded));
-  }
-
-  // Second row positions 4-7: Remaining normal cards
-  sortedCards.push(...normalCards);
-
-  // Add any extra evos/heroes that didn't fit in first row to second row
-  if (evoCards.length > 2) {
-    sortedCards.push(...evoCards.slice(2));
-  }
-  if (heroCards.length > 2) {
-    sortedCards.push(...heroCards.slice(2));
-  }
-
-  return sortedCards;
-}
-
 export function DeckGridCard({ deck, className }: DeckGridCardProps) {
-  const hasStats = deck.games_played !== undefined && deck.games_played !== null && deck.games_played >= 20;
-  const winRate = deck.win_rate !== undefined && deck.win_rate !== null
-    ? (deck.win_rate * 100).toFixed(1)
-    : null;
+  const hasStats =
+    deck.games_played !== undefined &&
+    deck.games_played !== null &&
+    deck.games_played >= 20;
+  const winRate =
+    deck.win_rate !== undefined && deck.win_rate !== null
+      ? (deck.win_rate * 100).toFixed(1)
+      : null;
 
   const deckName = getKeyCards(deck.cards, deck.avg_elixir);
-  const matchupsHref = `/matchups?deck=${deck.cards.map(c => `${c.card_id}:${c.variant}`).join(",")}`;
+  const matchupsHref = `/matchups?deck=${deck.cards
+    .map((c) => `${c.card_id}:${c.variant}`)
+    .join(",")}`;
 
-  // Determine win rate tier for styling
   const winRateValue = winRate ? parseFloat(winRate) : 0;
-  const winRateTier = winRateValue >= 55 ? "high" : winRateValue >= 50 ? "medium" : "low";
-
-  // Sort cards by variant
-  const sortedCards = sortCardsByVariant([...deck.cards]);
+  const winRateTier =
+    winRateValue >= 55 ? "high" : winRateValue >= 50 ? "medium" : "low";
 
   return (
-    <div className={cn(
-      "group relative bg-card border border-border/50 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1",
-      className
-    )}>
-      {/* Header Section */}
+    <div
+      className={cn(
+        "group relative bg-card border border-border/50 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1",
+        className
+      )}
+    >
+      {/* Header */}
       <div className="relative px-4 sm:px-5 py-3 sm:py-4 bg-muted/20 border-b border-border/30 flex items-center min-h-[52px]">
         <div className="flex items-center justify-between gap-3 w-full">
           <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -203,50 +126,62 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
         </div>
       </div>
 
-      {/* Stats Bar - Always rendered for consistent height */}
+      {/* Stats Bar */}
       <div className="relative px-4 sm:px-5 py-3 bg-muted/10 border-b border-border/20 min-h-[72px] flex items-center overflow-hidden">
         {hasStats && winRate ? (
           <div className="flex items-center justify-between gap-4 flex-wrap w-full">
-            {/* Win Rate - Prominent */}
             <div className="flex items-center gap-2">
-              <Trophy className={cn(
-                "w-4 h-4",
-                winRateTier === "high" ? "text-green-500" :
-                winRateTier === "medium" ? "text-yellow-500" : "text-red-500"
-              )} />
+              <Trophy
+                className={cn(
+                  "w-4 h-4",
+                  winRateTier === "high"
+                    ? "text-green-500"
+                    : winRateTier === "medium"
+                    ? "text-yellow-500"
+                    : "text-red-500"
+                )}
+              />
               <div className="flex items-baseline gap-1">
-                <span className={cn(
-                  orbitron.className,
-                  "text-3xl font-black tracking-tight",
-                  winRateTier === "high" ? "text-green-500 dark:text-green-400" :
-                  winRateTier === "medium" ? "text-yellow-500 dark:text-yellow-400" :
-                  "text-red-500 dark:text-red-400"
-                )}>
+                <span
+                  className={cn(
+                    orbitron.className,
+                    "text-3xl font-black tracking-tight",
+                    winRateTier === "high"
+                      ? "text-green-500 dark:text-green-400"
+                      : winRateTier === "medium"
+                      ? "text-yellow-500 dark:text-yellow-400"
+                      : "text-red-500 dark:text-red-400"
+                  )}
+                >
                   {winRate}%
                 </span>
-                <span className="text-xs text-muted-foreground font-medium">Win Rate</span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  Win Rate
+                </span>
               </div>
             </div>
 
-            {/* Stats Pills */}
             <div className="flex items-center gap-3 flex-wrap">
-              {/* Games Played */}
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30">
                 <Swords className="w-3 h-3 text-cyan-500" />
-                <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">{deck.games_played}</span>
+                <span className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">
+                  {deck.games_played}
+                </span>
               </div>
 
-              {/* W/L Record */}
               {deck.wins !== undefined && deck.losses !== undefined && (
                 <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted/50 border border-border/30">
                   <Target className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-xs font-semibold text-green-600 dark:text-green-400">{deck.wins}</span>
+                  <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                    {deck.wins}
+                  </span>
                   <span className="text-xs text-muted-foreground">-</span>
-                  <span className="text-xs font-semibold text-red-600 dark:text-red-400">{deck.losses}</span>
+                  <span className="text-xs font-semibold text-red-600 dark:text-red-400">
+                    {deck.losses}
+                  </span>
                 </div>
               )}
 
-              {/* Last Seen */}
               {deck.last_seen && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/30">
                   <Clock className="w-3 h-3 text-purple-500" />
@@ -267,20 +202,15 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
         )}
       </div>
 
-      {/* Cards Grid - 2 rows of 4 */}
-      <div className="relative p-3 sm:p-4 overflow-hidden">
-        <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-          {/* First row: Evos (0-1) + Heroes (2-3) */}
-          {sortedCards.slice(0, 4).map((card, index) => (
-            <CardDisplay key={`${deck.deck_id}-${index}`} card={card} />
-          ))}
-        </div>
-        <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mt-1.5 sm:mt-2">
-          {/* Second row: Normals (4-7) */}
-          {sortedCards.slice(4, 8).map((card, index) => (
-            <CardDisplay key={`${deck.deck_id}-${index + 4}`} card={card} />
-          ))}
-        </div>
+      {/* Cards Grid */}
+      <div className="p-3 sm:p-4">
+        <DeckGrid
+          cards={deck.cards.map((c) => ({
+            cardName: c.card_name,
+            variant: c.variant as "normal" | "evolution" | "heroic",
+          }))}
+          className="gap-1.5 sm:gap-2"
+        />
       </div>
 
       {/* Matchups link */}

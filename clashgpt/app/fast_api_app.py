@@ -22,6 +22,7 @@ import google.auth
 from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from google.adk.apps import App, ResumabilityConfig
 from google.cloud import logging as google_cloud_logging
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -173,9 +174,14 @@ if __name__ == "__main__":
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
-adk_agent = ADKAgent(
-    adk_agent=root_agent,
-    app_name="clash_gpt",
+adk_app = App(
+    name="clashgpt",
+    root_agent=root_agent,
+    resumability_config=ResumabilityConfig(is_resumable=True),
+)
+
+adk_agent = ADKAgent.from_app(
+    adk_app,
     user_id_extractor=lambda input: input.state.get(
         "headers", {}).get("user_id", "user"),
     session_timeout_seconds=1200,     # Session inactivity timeout (default: 20 min)

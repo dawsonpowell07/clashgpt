@@ -17,6 +17,21 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { CardIcon } from "@/components/card-icon";
+import { DeckGrid } from "@/components/deck-grid";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Label,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import type {
   TrackerStats,
   TrackerDeck,
@@ -118,16 +133,10 @@ function DeckRow({ deck, rank }: { deck: TrackerDeck; rank: number }) {
         {!open && sorted.length > 0 && (
           <div className="hidden sm:flex items-center gap-1 shrink-0">
             {sorted.map((card, i) => (
-              <div
-                key={i}
-                className="relative w-7 aspect-[3/4] rounded overflow-hidden bg-muted border border-white/5"
-              >
-                <Image
-                  src={cardImagePath(card.name, card.variant ?? null)}
-                  alt={card.name}
-                  fill
-                  className="object-contain"
-                  sizes="28px"
+              <div key={i} className="w-7">
+                <CardIcon
+                  cardName={card.name}
+                  variant={(card.variant ?? "normal") as "normal" | "evolution" | "heroic"}
                 />
               </div>
             ))}
@@ -169,24 +178,12 @@ function DeckRow({ deck, rank }: { deck: TrackerDeck; rank: number }) {
               {deck.win_rate !== null ? `${deck.win_rate}%` : "—"}
             </span>
           </div>
-          <div className="grid grid-cols-8 gap-2">
-            {sorted.map((card, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <div className="relative w-full aspect-[3/4] rounded overflow-hidden bg-muted/60 border border-white/5">
-                  <Image
-                    src={cardImagePath(card.name, card.variant ?? null)}
-                    alt={card.name}
-                    fill
-                    className="object-contain"
-                    sizes="64px"
-                  />
-                </div>
-                <span className="text-[9px] text-muted-foreground text-center leading-tight truncate w-full">
-                  {card.name}
-                </span>
-              </div>
-            ))}
-          </div>
+          <DeckGrid
+            cards={sorted.map((card) => ({
+              cardName: card.name,
+              variant: (card.variant ?? "normal") as "normal" | "evolution" | "heroic",
+            }))}
+          />
         </div>
       )}
     </div>
@@ -302,6 +299,243 @@ function BattleRow({ battle }: { battle: TrackerBattle }) {
   );
 }
 
+// ─── Chart helpers ───────────────────────────────────────────────────────────
+
+function getGamesPerDay(battles: TrackerBattle[]) {
+  const map: Record<string, { wins: number; losses: number }> = {};
+  battles.forEach((b) => {
+    if (!b.battle_time) return;
+    const day = b.battle_time.split("T")[0];
+    if (!map[day]) map[day] = { wins: 0, losses: 0 };
+    if (b.result === "Win") map[day].wins++;
+    else map[day].losses++;
+  });
+  return Object.entries(map)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, counts]) => ({
+      date: new Date(date + "T12:00:00").toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      }),
+      wins: counts.wins,
+      losses: counts.losses,
+    }))
+    .slice(-14);
+}
+
+const CHART_TOOLTIP_STYLE = {
+  background: "#1e2433",
+  border: "1px solid #3d4560",
+  borderRadius: "8px",
+  fontSize: "12px",
+};
+const CHART_ITEM_STYLE = { color: "#e5e7eb" };
+const CHART_LABEL_STYLE = { color: "#9ca3af" };
+
+function WinLossDonut({ wins, losses, winRate }: { wins: number; losses: number; winRate: number | null }) {
+  const pct = winRate !== null ? `${winRate}%` : "—";
+  const data = [
+    { name: "Wins", value: wins },
+    { name: "Losses", value: losses },
+  ];
+  return (
+    <div className="bg-card/40 border border-border/50 rounded-2xl p-5 flex flex-col gap-3 shadow-sm">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-2">
+        <Trophy className="w-3.5 h-3.5" /> Win / Loss
+      </p>
+      <div className="h-44">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <defs>
+              <linearGradient id="pieBlueGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#60a5fa" />
+                <stop offset="100%" stopColor="#2563eb" />
+              </linearGradient>
+              <linearGradient id="pieRedGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#f87171" />
+                <stop offset="100%" stopColor="#dc2626" />
+              </linearGradient>
+            </defs>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={50}
+              outerRadius={74}
+              dataKey="value"
+              strokeWidth={0}
+              isAnimationActive={false}
+              paddingAngle={3}
+              cornerRadius={4}
+            >
+              <Cell fill="url(#pieBlueGrad)" />
+              <Cell fill="url(#pieRedGrad)" />
+              <Label
+                value={pct}
+                position="center"
+                style={{ fontSize: "22px", fontWeight: 800, fill: "#f3f4f6" }}
+              />
+            </Pie>
+            <Tooltip
+              formatter={(v: any, n: any) => [v?.toLocaleString() ?? "", n]}
+              contentStyle={CHART_TOOLTIP_STYLE}
+              itemStyle={CHART_ITEM_STYLE}
+              labelStyle={{ ...CHART_LABEL_STYLE, display: "none" }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex justify-center gap-5 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+          {wins.toLocaleString()}W
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+          {losses.toLocaleString()}L
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function GamesPerDayChart({ battles }: { battles: TrackerBattle[] }) {
+  const data = getGamesPerDay(battles);
+  if (data.length === 0) return null;
+  return (
+    <div className="bg-card/40 border border-border/50 rounded-2xl p-5 flex flex-col gap-3 shadow-sm flex-1">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-2">
+        <Swords className="w-3.5 h-3.5" /> Activity
+      </p>
+      <div className="h-44">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} maxBarSize={28} barCategoryGap="25%" margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+            <defs>
+              <linearGradient id="barBlueGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#60a5fa" />
+                <stop offset="100%" stopColor="#2563eb" />
+              </linearGradient>
+              <linearGradient id="barRedGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#f87171" />
+                <stop offset="100%" stopColor="#dc2626" />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} stroke="#3d4560" strokeOpacity={0.4} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10, fill: "#6b7280" }}
+              axisLine={false}
+              tickLine={false}
+              dy={5}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 10, fill: "#6b7280" }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              contentStyle={CHART_TOOLTIP_STYLE}
+              itemStyle={CHART_ITEM_STYLE}
+              labelStyle={CHART_LABEL_STYLE}
+              cursor={{ fill: "rgba(255,255,255,0.04)" }}
+            />
+            <Bar dataKey="wins" name="Wins" stackId="a" fill="url(#barBlueGrad)" radius={[0, 0, 0, 0]} isAnimationActive={false} />
+            <Bar dataKey="losses" name="Losses" stackId="a" fill="url(#barRedGrad)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex justify-end gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-blue-500 inline-block" />Wins</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-red-500 inline-block" />Losses</span>
+      </div>
+    </div>
+  );
+}
+
+function DeckWinRateChart({ decks }: { decks: TrackerDeck[] }) {
+  if (decks.length === 0) return null;
+  const data = decks.slice(0, 8).map((d, i) => ({
+    name: `Deck ${i + 1}`,
+    wr: d.win_rate ?? 0,
+    games: d.games,
+  }));
+  return (
+    <div className="bg-card/40 border border-border/50 rounded-2xl p-5 flex flex-col gap-3 shadow-sm">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 flex items-center gap-2">
+        <Zap className="w-3.5 h-3.5 text-amber-400" /> Deck Win Rates
+      </p>
+      <div className="h-52">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={data}
+            layout="vertical"
+            margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
+            maxBarSize={20}
+            barCategoryGap="15%"
+          >
+            <defs>
+              <linearGradient id="deckGreenGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#4ade80" />
+                <stop offset="100%" stopColor="#16a34a" />
+              </linearGradient>
+              <linearGradient id="deckAmberGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#facc15" />
+                <stop offset="100%" stopColor="#ca8a04" />
+              </linearGradient>
+              <linearGradient id="deckRedGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#f87171" />
+                <stop offset="100%" stopColor="#dc2626" />
+              </linearGradient>
+            </defs>
+            <CartesianGrid horizontal={false} stroke="#3d4560" strokeOpacity={0.4} />
+            <XAxis
+              type="number"
+              domain={[0, 100]}
+              tick={{ fontSize: 10, fill: "#6b7280" }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => `${v}%`}
+            />
+            <YAxis
+              type="category"
+              dataKey="name"
+              tick={{ fontSize: 11, fill: "#9ca3af", fontWeight: 500 }}
+              axisLine={false}
+              tickLine={false}
+              width={64}
+            />
+            <Tooltip
+              formatter={(v: any, _n: any, props: any) => [
+                `${v}% (${props.payload?.games?.toLocaleString() ?? 0} games)`,
+                "Win Rate",
+              ]}
+              contentStyle={CHART_TOOLTIP_STYLE}
+              itemStyle={CHART_ITEM_STYLE}
+              labelStyle={CHART_LABEL_STYLE}
+              cursor={{ fill: "rgba(255,255,255,0.04)" }}
+            />
+            <Bar
+              dataKey="wr"
+              name="Win Rate"
+              radius={[0, 4, 4, 0]}
+              isAnimationActive={false}
+              label={{ position: "right", fontSize: 11, fill: "#d1d5db", fontWeight: 600, formatter: (v: any) => `${v}%` }}
+            >
+              {data.map((d, i) => (
+                <Cell
+                  key={i}
+                  fill={d.wr >= 55 ? "url(#deckGreenGrad)" : d.wr >= 50 ? "url(#deckAmberGrad)" : "url(#deckRedGrad)"}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 
 interface TrackerDashboardProps {
@@ -321,6 +555,7 @@ export function TrackerDashboard({
   const [decks, setDecks] = useState<TrackerDeck[]>([]);
   const [worstMatchups, setWorstMatchups] = useState<TrackerWorstMatchup[]>([]);
   const [battlesData, setBattlesData] = useState<TrackerBattlesResponse | null>(null);
+  const [chartBattles, setChartBattles] = useState<TrackerBattle[]>([]);
   const [page, setPage] = useState(1);
 
   const [loadingStats, setLoadingStats] = useState(true);
@@ -362,6 +597,10 @@ export function TrackerDashboard({
       .then((d) => setWorstMatchups(d.worst_matchups ?? []))
       .catch(() => setWorstMatchups([]))
       .finally(() => setLoadingWorstMatchups(false));
+
+    authFetch(`${API_URL}/api/tracker/me/battles?page=1&page_size=50`)
+      .then((d) => setChartBattles(d.battles ?? []))
+      .catch(() => setChartBattles([]));
   }, [authFetch]);
 
   useEffect(() => {
@@ -464,6 +703,23 @@ export function TrackerDashboard({
               />
             </div>
           ) : null}
+        </section>
+      )}
+
+      {/* Charts row */}
+      {hasData && (
+        <section className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {stats && (
+              <WinLossDonut wins={stats.wins} losses={stats.losses} winRate={stats.win_rate} />
+            )}
+            {chartBattles.length > 0 && (
+              <div className="md:col-span-2">
+                <GamesPerDayChart battles={chartBattles} />
+              </div>
+            )}
+          </div>
+          {decks.length > 0 && <DeckWinRateChart decks={decks} />}
         </section>
       )}
 

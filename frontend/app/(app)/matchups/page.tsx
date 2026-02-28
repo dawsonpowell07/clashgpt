@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Orbitron } from "next/font/google";
 import { Card } from "@/lib/types";
 import { CardSelector } from "@/components/card-selector";
+import { CardIcon } from "@/components/card-icon";
 
 const orbitron = Orbitron({ subsets: ["latin"], weight: ["700", "900"] });
 
@@ -173,48 +174,59 @@ function DeckSlotPreview({
   selectedVariants: Set<string>;
   cards: Card[];
 }) {
-  const filled: MatchupCard[] = Array.from(selectedVariants).map((id) => {
+  const filled = Array.from(selectedVariants).map((id) => {
     const [cardIdStr, variantStr] = id.split("_");
     const cardId = parseInt(cardIdStr);
     const variant = parseInt(variantStr);
     const card = cards.find((c) => c.card_id === cardId);
     return {
-      card_id: cardId,
-      card_name: card?.name || `Card ${cardId}`,
-      variant: variant === 1 ? "evolution" : variant === 2 ? "heroic" : "normal",
-      slot_index: null,
+      cardId,
+      cardName: card?.name || `Card ${cardId}`,
+      variant: (variant === 1 ? "evolution" : variant === 2 ? "heroic" : "normal") as
+        | "normal"
+        | "evolution"
+        | "heroic",
     };
   });
 
-  const emptyCount = 8 - filled.length;
-  const all = [...filled, ...Array(emptyCount).fill(null)];
+  const all = [...filled, ...Array(8 - filled.length).fill(null)];
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-2 flex-wrap">
+    <div className="flex flex-col items-center gap-2">
+      <div className="flex gap-2">
         {all.slice(0, 4).map((card, i) =>
           card ? (
-            <CardTile key={`slot-r1-${card.card_id}-${i}`} card={card} size="md" />
+            <CardIcon
+              key={`slot-${card.cardId}-${i}`}
+              cardName={card.cardName}
+              variant={card.variant}
+              className="w-16 sm:w-20"
+            />
           ) : (
             <div
               key={`empty-r1-${i}`}
-              className="w-16 sm:w-20 lg:w-24 aspect-[3/4] rounded-xl border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
+              className="w-16 sm:w-20 aspect-[3/4] rounded-lg border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
             >
-              <span className="text-muted-foreground/20 text-xl font-bold">{i + 1}</span>
+              <span className="text-muted-foreground/20 text-lg font-bold">{i + 1}</span>
             </div>
           )
         )}
       </div>
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2">
         {all.slice(4, 8).map((card, i) =>
           card ? (
-            <CardTile key={`slot-r2-${card.card_id}-${i}`} card={card} size="md" />
+            <CardIcon
+              key={`slot-${card.cardId}-${i}`}
+              cardName={card.cardName}
+              variant={card.variant}
+              className="w-16 sm:w-20"
+            />
           ) : (
             <div
               key={`empty-r2-${i}`}
-              className="w-16 sm:w-20 lg:w-24 aspect-[3/4] rounded-xl border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
+              className="w-16 sm:w-20 aspect-[3/4] rounded-lg border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
             >
-              <span className="text-muted-foreground/20 text-xl font-bold">{i + 5}</span>
+              <span className="text-muted-foreground/20 text-lg font-bold">{i + 5}</span>
             </div>
           )
         )}
