@@ -205,7 +205,7 @@ export function ChatToolRenderers() {
     render: ({ args, respond, status }) => (
       <DeckBuilderHITL
         prompt={args?.prompt as string | undefined}
-        respond={respond}
+        respond={(value) => respond?.(value)}
         status={status}
       />
     ),
