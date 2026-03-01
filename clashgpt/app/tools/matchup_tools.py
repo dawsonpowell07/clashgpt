@@ -1,12 +1,13 @@
 """
-Deck matchup tool for the Clash Royale agent.
+Deck matchup tools for the Clash Royale agent.
 
-Returns aggregated win/loss stats for a specific deck against all opponent
-decks it has faced, grouped by opponent deck.
+- get_deck_matchups: aggregated win/loss stats for a specific 8-card deck
+- get_win_condition_matchup: head-to-head stats for two win condition cards
 """
 import logging
 
 from app.services.database import (
+    WIN_CONDITION_CARD_IDS,
     DatabaseConnectionError,
     DatabaseDataError,
     DatabaseQueryError,
@@ -22,7 +23,7 @@ VALID_VARIANTS = {"normal", "evolution", "heroic"}
 async def get_deck_matchups(
     deck: str,
     page: int = 1,
-    page_size: int = 10,
+    page_size: int = 12,
 ) -> dict:
     """
     Get aggregated matchup data for an exact 8-card deck.
@@ -130,6 +131,22 @@ async def get_deck_matchups(
             offset=offset,
         )
 
+        # DB returns different keys when deck is not found ("total_battles"/"battles")
+        # vs when it is found ("total_matchups"/"matchups"). Handle both cases.
+        if result.get("deck_id") is None:
+            return {
+                "deck_id": None,
+                "deck_cards": [],
+                "stats": None,
+                "matchups": [],
+                "total": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0,
+                "has_next": False,
+                "has_previous": False,
+            }
+
         total = result["total_matchups"]
         total_pages = (total + page_size - 1) // page_size if total > 0 else 0
 
@@ -169,6 +186,118 @@ async def get_deck_matchups(
         }
     except Exception as e:
         logger.error(f"Tool: get_deck_matchups | Unexpected error: {e}", exc_info=True)
+        return {
+            "error": "Unexpected error while fetching matchup data.",
+            "error_type": "unexpected",
+            "details": str(e),
+        }
+
+
+async def get_win_condition_matchup(
+    card_a_id: int,
+    card_b_id: int,
+) -> dict:
+    """
+    Get head-to-head win rate data for two win condition cards facing each other.
+
+    Use this when the user asks who has the matchup advantage between two specific
+    win conditions — e.g. "Giant vs X-Bow", "Goblin Drill vs Hog Rider",
+    "who wins Golem vs Lava Hound".
+
+    This tool analyses all recorded battles where one side's deck contained
+    card_a and the opponent's deck contained card_b, then returns:
+      - Win rates for both sides
+      - Total games analysed
+      - The top decks used on each side (by games played) with their cards
+
+    IMPORTANT: Both cards must be win conditions. Valid win condition card IDs:
+      27000002 (Mortar), 26000024 (Royal Giant), 26000067 (Elixir Golem),
+      26000036 (Battle Ram), 26000021 (Hog Rider), 26000003 (Giant),
+      26000059 (Royal Hogs), 26000058 (Wall Breakers), 28000004 (Goblin Barrel),
+      27000013 (Goblin Drill), 26000006 (Balloon), 26000060 (Goblin Giant),
+      26000085 (Electro Giant), 27000008 (X-Bow), 26000009 (Golem),
+      26000032 (Miner), 26000051 (Ram Rider), 28000010 (Graveyard),
+      26000029 (Lava Hound), 26000028 (Three Musketeers), 28000003 (Rocket),
+      26000056 (Skeleton Barrel)
+
+    Args:
+        card_a_id: Card ID of the first win condition (the "user's" side).
+        card_b_id: Card ID of the second win condition (the opponent's side).
+
+    Returns:
+        Dictionary with:
+        - card_a: {card_id, name, icon_urls}
+        - card_b: {card_id, name, icon_urls}
+        - total_games: Total head-to-head battles analysed
+        - wins_a: Wins for the side using card_a
+        - losses_a: Losses for the side using card_a
+        - win_rate_a: Win rate for side A (0-1 decimal, e.g. 0.53 = 53%)
+        - win_rate_b: Win rate for side B (0-1 decimal)
+        - top_decks_a: Up to 5 most-played decks containing card_a (with card list + stats)
+        - top_decks_b: Up to 5 most-played decks containing card_b (with card list + stats)
+
+    Examples:
+        # Giant vs X-Bow
+        await get_win_condition_matchup(card_a_id=26000003, card_b_id=27000008)
+
+        # Goblin Drill vs Hog Rider
+        await get_win_condition_matchup(card_a_id=27000013, card_b_id=26000021)
+    """
+    logger.info(
+        f"Tool: get_win_condition_matchup | card_a_id={card_a_id}, card_b_id={card_b_id}"
+    )
+
+    if card_a_id not in WIN_CONDITION_CARD_IDS:
+        return {
+            "error": f"Card ID {card_a_id} is not a recognised win condition.",
+            "error_type": "validation",
+            "suggestion": "Check the valid win condition card IDs in the tool docstring.",
+        }
+
+    if card_b_id not in WIN_CONDITION_CARD_IDS:
+        return {
+            "error": f"Card ID {card_b_id} is not a recognised win condition.",
+            "error_type": "validation",
+            "suggestion": "Check the valid win condition card IDs in the tool docstring.",
+        }
+
+    if card_a_id == card_b_id:
+        return {
+            "error": "Both card IDs are the same. Provide two different win conditions.",
+            "error_type": "validation",
+        }
+
+    try:
+        db = get_database_service()
+        result = await db.get_win_condition_matchup(
+            card_a_id=card_a_id,
+            card_b_id=card_b_id,
+        )
+        return result
+
+    except (DatabaseConnectionError, DatabaseQueryError) as e:
+        logger.error(f"Tool: get_win_condition_matchup | Database error: {e}")
+        return {
+            "error": "Matchup data is temporarily unavailable.",
+            "error_type": "database",
+            "details": str(e),
+        }
+    except DatabaseDataError as e:
+        logger.error(f"Tool: get_win_condition_matchup | Data error: {e}")
+        return {
+            "error": "Matchup data could not be parsed.",
+            "error_type": "data_error",
+            "details": str(e),
+        }
+    except DatabaseServiceError as e:
+        logger.error(f"Tool: get_win_condition_matchup | Service error: {e}")
+        return {
+            "error": "Matchup service is temporarily unavailable.",
+            "error_type": "database",
+            "details": str(e),
+        }
+    except Exception as e:
+        logger.error(f"Tool: get_win_condition_matchup | Unexpected error: {e}", exc_info=True)
         return {
             "error": "Unexpected error while fetching matchup data.",
             "error_type": "unexpected",

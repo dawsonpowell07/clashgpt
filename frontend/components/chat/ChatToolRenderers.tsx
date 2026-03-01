@@ -1,6 +1,6 @@
 "use client";
 
-import { useRenderToolCall } from "@copilotkit/react-core";
+import { useRenderToolCall, useHumanInTheLoop } from "@copilotkit/react-core";
 import { PlayerProfile } from "@/components/player-profile";
 import { BattleLog } from "@/components/battle-log";
 import { DeckSearchResults } from "@/components/deck-search-results";
@@ -9,6 +9,8 @@ import { ClanSearchResults } from "@/components/clan-search-results";
 import { Leaderboard } from "@/components/leaderboard";
 import { CardStats } from "@/components/card-stats";
 import { DeckMatchupResults } from "@/components/deck-matchup-results";
+import { WinConditionMatchup } from "@/components/win-condition-matchup";
+import { DeckBuilderHITL } from "@/components/deck-builder-hitl";
 
 const LOCATION_MAP: Record<string, string> = {
   "57000249": "US",
@@ -34,6 +36,8 @@ const HANDLED_TOOLS = [
   "get_top_players",
   "get_card_stats",
   "get_deck_matchups",
+  "get_win_condition_matchup",
+  "request_deck_from_user",
 ];
 
 function ToolLoading({ label }: { label: string }) {
@@ -167,6 +171,44 @@ export function ChatToolRenderers() {
         return <ToolError label="Could not load matchup data" />;
       return <DeckMatchupResults results={result} className="my-4" />;
     },
+  });
+
+  useRenderToolCall({
+    name: "get_win_condition_matchup",
+    render: ({ args, result, status }) => {
+      if (status !== "complete") {
+        const a = args.card_a_id ? `#${args.card_a_id}` : "...";
+        const b = args.card_b_id ? `#${args.card_b_id}` : "...";
+        return <ToolLoading label={`Analysing matchup ${a} vs ${b}...`} />;
+      }
+      if (hasToolError(result)) return <ToolError label="Error loading matchup data" />;
+      if (!result || !result.card_a)
+        return <ToolError label="Could not load win condition matchup data" />;
+      return <WinConditionMatchup data={result} className="my-4" />;
+    },
+  });
+
+  // Human-in-the-loop: agent asks user to build a deck
+  useHumanInTheLoop({
+    name: "request_deck_from_user",
+    description:
+      "Ask the user to select exactly 8 cards (with variants) to build their deck. " +
+      "Returns a comma-separated string of card_id:variant pairs suitable for get_deck_matchups.",
+    parameters: [
+      {
+        name: "prompt",
+        type: "string",
+        description: "Short context explaining why the deck is needed (shown to user)",
+        required: false,
+      },
+    ],
+    render: ({ args, respond, status }) => (
+      <DeckBuilderHITL
+        prompt={args?.prompt as string | undefined}
+        respond={(value) => respond?.(value)}
+        status={status}
+      />
+    ),
   });
 
   // Catch-all: show unknown tools in debug view

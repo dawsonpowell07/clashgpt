@@ -27,20 +27,30 @@ export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
     }
   };
 
-  const wrapperStyle = "flex gap-3 p-4 border-t border-border bg-card";
-  const inputStyle =
-    "flex-1 p-3 rounded-lg border border-input bg-input/20 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/50 disabled:bg-muted disabled:cursor-not-allowed text-base transition-all duration-300";
-  const buttonStyle =
-    "px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed font-medium transition-all duration-300 hover:shadow-lg active:scale-95 flex items-center gap-2";
-
   return (
-    <div className={wrapperStyle}>
+    <div
+      className="flex gap-3 px-4 py-3 border-t bg-card/80 backdrop-blur-sm"
+      style={{ borderColor: "oklch(0.35 0.025 250)" }}
+    >
       <input
         ref={inputRef}
         disabled={inProgress}
         type="text"
         placeholder="Ask about decks, players, strategies..."
-        className={inputStyle}
+        className="flex-1 px-4 py-2.5 rounded-xl border text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:cursor-not-allowed transition-all duration-200"
+        style={{
+          background: "oklch(0.26 0.02 250)",
+          borderColor: inProgress ? "oklch(0.33 0.02 250)" : "oklch(0.36 0.025 250)",
+          boxShadow: "none",
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = "oklch(0.68 0.16 45 / 0.6)";
+          e.currentTarget.style.boxShadow = "0 0 0 3px oklch(0.68 0.16 45 / 0.12), 0 1px 8px oklch(0.68 0.16 45 / 0.08)";
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = "oklch(0.36 0.025 250)";
+          e.currentTarget.style.boxShadow = "none";
+        }}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
@@ -52,11 +62,26 @@ export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
       />
       <button
         disabled={inProgress || !value.trim()}
-        className={buttonStyle}
+        className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{
+          background: inProgress || !value.trim()
+            ? "oklch(0.30 0.02 250)"
+            : "linear-gradient(135deg, oklch(0.72 0.16 45) 0%, oklch(0.64 0.18 38) 100%)",
+          color: inProgress || !value.trim()
+            ? "oklch(0.55 0.01 80)"
+            : "oklch(0.14 0.018 250)",
+          boxShadow: !inProgress && value.trim()
+            ? "0 2px 12px oklch(0.68 0.16 45 / 0.3)"
+            : "none",
+          fontFamily: "var(--font-heading)",
+          fontSize: "0.65rem",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+        }}
         onClick={() => handleSubmit(value)}
       >
-        <Send className="w-4 h-4" />
-        Ask
+        <Send className="w-3.5 h-3.5" />
+        Send
       </button>
     </div>
   );

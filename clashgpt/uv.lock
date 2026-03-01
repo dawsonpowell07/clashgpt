@@ -4,7 +4,7 @@ requires-python = "==3.13.*"
 
 [[package]]
 name = "ag-ui-adk"
-version = "0.4.0"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ag-ui-protocol" },
@@ -15,21 +15,21 @@ dependencies = [
     { name = "pydantic" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4f/a1/76c3040d0a419545e86403441b64f472e6cb1fa748e8682bf9d578ecbb30/ag_ui_adk-0.4.0.tar.gz", hash = "sha256:819e37e12ae7fa025987b92cc6fec235b33cb7444e6496c476c276f776362801", size = 38991, upload-time = "2025-12-16T02:01:20.334Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cf/65/82c3a48037895097925c90c75a6c574557e766b62f9574de56dd61695e49/ag_ui_adk-0.5.0.tar.gz", hash = "sha256:da1a3b4739a23c5074ae86511d9b8a3d02e06a02148a960bdf256411c73df958", size = 56835, upload-time = "2026-02-23T19:58:02.397Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/48/84/f5e90f8350b9761e8650d2993199508fb2e607a24c38052ad00bb5728deb/ag_ui_adk-0.4.0-py3-none-any.whl", hash = "sha256:9b48b85d29c4c7c5ee26fdf7f8b377bfb06eda0d7754d529d6a78a92fd04f656", size = 44558, upload-time = "2025-12-16T02:01:19.341Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/7b/ccc72e23d36bf2a2973d121519b091c490ae5015c988e3ea7745cdbe88b9/ag_ui_adk-0.5.0-py3-none-any.whl", hash = "sha256:8f520005ac0fb2b0190fe6b75903250aff065c089c91729ca5b7580eff87183a", size = 63618, upload-time = "2026-02-23T19:58:01.389Z" },
 ]
 
 [[package]]
 name = "ag-ui-protocol"
-version = "0.1.10"
+version = "0.1.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/67/bb/5a5ec893eea5805fb9a3db76a9888c3429710dfb6f24bbb37568f2cf7320/ag_ui_protocol-0.1.10.tar.gz", hash = "sha256:3213991c6b2eb24bb1a8c362ee270c16705a07a4c5962267a083d0959ed894f4", size = 6945, upload-time = "2025-11-06T15:17:17.068Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/b5/fc0b65b561d00d88811c8a7d98ee735833f81554be244340950e7b65820c/ag_ui_protocol-0.1.13.tar.gz", hash = "sha256:811d7d7dcce4783dec252918f40b717ebfa559399bf6b071c4ba47c0c1e21bcb", size = 5671, upload-time = "2026-02-19T18:40:38.602Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8f/78/eb55fabaab41abc53f52c0918a9a8c0f747807e5306273f51120fd695957/ag_ui_protocol-0.1.10-py3-none-any.whl", hash = "sha256:c81e6981f30aabdf97a7ee312bfd4df0cd38e718d9fc10019c7d438128b93ab5", size = 7889, upload-time = "2025-11-06T15:17:15.325Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/9f/b833c1ab1999da35ebad54841ae85d2c2764c931da9a6f52d8541b6901b2/ag_ui_protocol-0.1.13-py3-none-any.whl", hash = "sha256:1393fa894c1e8416efe184168a50689e760d05b32f4646eebb8ff423dddf8e8f", size = 8053, upload-time = "2026-02-19T18:40:37.27Z" },
 ]
 
 [[package]]
@@ -398,7 +398,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ag-ui-adk", specifier = ">=0.4.0" },
+    { name = "ag-ui-adk", specifier = ">=0.5.0" },
     { name = "asyncpg", specifier = ">=0.30.0,<1.0.0" },
     { name = "cachetools", specifier = ">=5.3.0" },
     { name = "codespell", marker = "extra == 'lint'", specifier = ">=2.2.0,<3.0.0" },

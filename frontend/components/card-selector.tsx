@@ -238,7 +238,7 @@ export function CardSelector({
       )}
 
       {isOpen && (
-        <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-1.5 overflow-y-auto max-h-[196px] p-1 custom-scrollbar">
+        <div className="grid grid-cols-10 sm:grid-cols-12 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-1 overflow-y-auto max-h-[220px] p-1 custom-scrollbar">
           {filteredItems.map((item) => {
             const isSelected = selectedIndices.has(item.id);
             
@@ -267,10 +267,10 @@ export function CardSelector({
                       
                       {/* Badge for Variants */}
                       {item.variant === CardVariantType.EVOLUTION && (
-                        <div className="absolute top-1 right-1 h-2 w-2 rounded-full bg-purple-500 ring-1 ring-black/50" />
+                        <div className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-purple-500 ring-1 ring-black/50" />
                       )}
                       {item.variant === CardVariantType.HERO && (
-                        <div className="absolute top-1 right-1 h-2 w-2 rounded-full bg-yellow-500 ring-1 ring-black/50" />
+                        <div className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-yellow-500 ring-1 ring-black/50" />
                       )}
 
                       {/* Selection Indicator Overlay */}

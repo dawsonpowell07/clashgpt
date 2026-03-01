@@ -1410,6 +1410,243 @@ class DatabaseService:
                 f"Unexpected error while fetching deck matchups: {e!s}"
             ) from e
 
+    async def get_win_condition_matchup(
+        self,
+        card_a_id: int,
+        card_b_id: int,
+        top_decks: int = 5,
+    ) -> dict:
+        """
+        Get head-to-head win rate stats for two win condition cards.
+
+        Looks at all battles where the player's deck contains card_a_id and
+        the opponent's deck contains card_b_id, then aggregates win/loss stats
+        and the top decks for each side.
+
+        Args:
+            card_a_id: Card ID for side A (e.g. 26000003 for Giant)
+            card_b_id: Card ID for side B (e.g. 27000008 for X-Bow)
+            top_decks: Number of top decks to return per side (default: 5)
+
+        Returns:
+            dict with card_a, card_b, total_games, wins_a, losses_a,
+            win_rate_a, win_rate_b, top_decks_a, top_decks_b
+        """
+        logger.info(
+            f"DB query: get_win_condition_matchup | "
+            f"card_a_id={card_a_id}, card_b_id={card_b_id}, top_decks={top_decks}"
+        )
+        try:
+            async with self.async_session() as session:
+                import json as _json
+
+                # ── 1. Fetch card info ──
+                cards_query = text(
+                    "SELECT card_id, name, icon_urls FROM dim_cards "
+                    "WHERE card_id = :caid OR card_id = :cbid"
+                )
+                cards_result = await session.execute(
+                    cards_query, {"caid": card_a_id, "cbid": card_b_id}
+                )
+                cards_by_id: dict[int, dict] = {}
+                for row in cards_result.fetchall():
+                    icon_urls_raw = row[2]
+                    if isinstance(icon_urls_raw, dict):
+                        icon_urls = icon_urls_raw
+                    elif isinstance(icon_urls_raw, str) and icon_urls_raw.strip():
+                        try:
+                            icon_urls = _json.loads(icon_urls_raw)
+                        except _json.JSONDecodeError:
+                            icon_urls = None
+                    else:
+                        icon_urls = None
+                    cards_by_id[row[0]] = {
+                        "card_id": row[0],
+                        "name": row[1],
+                        "icon_urls": icon_urls,
+                    }
+
+                if card_a_id not in cards_by_id or card_b_id not in cards_by_id:
+                    return {
+                        "error": "One or both card IDs not found in the database.",
+                        "card_a_id": card_a_id,
+                        "card_b_id": card_b_id,
+                    }
+
+                # ── 2. Head-to-head aggregate (card_a decks vs card_b decks) ──
+                stats_query = text("""
+                    SELECT
+                        COUNT(*) AS total_games,
+                        COALESCE(SUM(fbp.is_win), 0) AS wins_a,
+                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses_a
+                    FROM fact_battle_participants fbp
+                    WHERE fbp.opponent_deck_id IS NOT NULL
+                      AND EXISTS (
+                          SELECT 1 FROM deck_card_config dcc
+                          WHERE dcc.deck_id = fbp.deck_id AND dcc.card_id = :card_a_id
+                      )
+                      AND EXISTS (
+                          SELECT 1 FROM deck_card_config dcc
+                          WHERE dcc.deck_id = fbp.opponent_deck_id AND dcc.card_id = :card_b_id
+                      )
+                """)
+                stats_result = await session.execute(
+                    stats_query, {"card_a_id": card_a_id, "card_b_id": card_b_id}
+                )
+                stats_row = stats_result.fetchone()
+                total_games = int(stats_row[0]) if stats_row and stats_row[0] else 0
+                wins_a = int(stats_row[1]) if stats_row and stats_row[1] else 0
+                losses_a = int(stats_row[2]) if stats_row and stats_row[2] else 0
+                win_rate_a = round(wins_a / total_games, 4) if total_games > 0 else None
+                win_rate_b = round(losses_a / total_games, 4) if total_games > 0 else None
+
+                if total_games == 0:
+                    return {
+                        "card_a": cards_by_id[card_a_id],
+                        "card_b": cards_by_id[card_b_id],
+                        "total_games": 0,
+                        "wins_a": 0,
+                        "losses_a": 0,
+                        "win_rate_a": None,
+                        "win_rate_b": None,
+                        "top_decks_a": [],
+                        "top_decks_b": [],
+                    }
+
+                # ── 3. Top decks for side A ──
+                top_a_query = text("""
+                    SELECT
+                        fbp.deck_id,
+                        COUNT(*) AS games,
+                        COALESCE(SUM(fbp.is_win), 0) AS wins,
+                        ROUND(
+                            COALESCE(SUM(fbp.is_win), 0)::numeric / NULLIF(COUNT(*), 0),
+                            4
+                        ) AS win_rate
+                    FROM fact_battle_participants fbp
+                    WHERE fbp.opponent_deck_id IS NOT NULL
+                      AND EXISTS (
+                          SELECT 1 FROM deck_card_config dcc
+                          WHERE dcc.deck_id = fbp.deck_id AND dcc.card_id = :card_a_id
+                      )
+                      AND EXISTS (
+                          SELECT 1 FROM deck_card_config dcc
+                          WHERE dcc.deck_id = fbp.opponent_deck_id AND dcc.card_id = :card_b_id
+                      )
+                    GROUP BY fbp.deck_id
+                    ORDER BY games DESC
+                    LIMIT :top_decks
+                """)
+                top_a_result = await session.execute(
+                    top_a_query,
+                    {"card_a_id": card_a_id, "card_b_id": card_b_id, "top_decks": top_decks},
+                )
+                top_a_rows = top_a_result.fetchall()
+
+                # ── 4. Top decks for side B ──
+                top_b_query = text("""
+                    SELECT
+                        fbp.opponent_deck_id AS deck_id,
+                        COUNT(*) AS games,
+                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS wins,
+                        ROUND(
+                            COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0)::numeric
+                            / NULLIF(COUNT(*), 0),
+                            4
+                        ) AS win_rate
+                    FROM fact_battle_participants fbp
+                    WHERE fbp.opponent_deck_id IS NOT NULL
+                      AND EXISTS (
+                          SELECT 1 FROM deck_card_config dcc
+                          WHERE dcc.deck_id = fbp.deck_id AND dcc.card_id = :card_a_id
+                      )
+                      AND EXISTS (
+                          SELECT 1 FROM deck_card_config dcc
+                          WHERE dcc.deck_id = fbp.opponent_deck_id AND dcc.card_id = :card_b_id
+                      )
+                    GROUP BY fbp.opponent_deck_id
+                    ORDER BY games DESC
+                    LIMIT :top_decks
+                """)
+                top_b_result = await session.execute(
+                    top_b_query,
+                    {"card_a_id": card_a_id, "card_b_id": card_b_id, "top_decks": top_decks},
+                )
+                top_b_rows = top_b_result.fetchall()
+
+                # ── 5. Batch-fetch cards for all top decks ──
+                all_deck_ids = [r[0] for r in top_a_rows if r[0]] + [r[0] for r in top_b_rows if r[0]]
+                cards_by_deck: dict[str, list[dict]] = {}
+
+                if all_deck_ids:
+                    id_params: dict[str, Any] = {f"did_{i}": did for i, did in enumerate(all_deck_ids)}
+                    in_clause = ", ".join(f":did_{i}" for i in range(len(all_deck_ids)))
+                    deck_cards_query = f"""
+                        SELECT dcc.deck_id, dcc.card_id, dc.name, dcc.variant::text, dcc.slot_index
+                        FROM deck_card_config dcc
+                        JOIN dim_cards dc ON dcc.card_id = dc.card_id
+                        WHERE dcc.deck_id IN ({in_clause})
+                        ORDER BY dcc.deck_id, dcc.slot_index
+                    """
+                    deck_cards_result = await session.execute(text(deck_cards_query), id_params)
+                    for r in deck_cards_result.fetchall():
+                        did = r[0]
+                        if did not in cards_by_deck:
+                            cards_by_deck[did] = []
+                        cards_by_deck[did].append({
+                            "card_id": r[1],
+                            "card_name": r[2],
+                            "variant": r[3],
+                            "slot_index": r[4],
+                        })
+
+                def _build_deck_list(rows: list) -> list[dict]:
+                    result = []
+                    for r in rows:
+                        deck_id = r[0]
+                        games = int(r[1])
+                        wins = int(r[2])
+                        result.append({
+                            "deck_id": deck_id,
+                            "games": games,
+                            "wins": wins,
+                            "losses": games - wins,
+                            "win_rate": float(r[3]) if r[3] is not None else None,
+                            "cards": cards_by_deck.get(deck_id, []) if deck_id else [],
+                        })
+                    return result
+
+                top_decks_a = _build_deck_list(top_a_rows)
+                top_decks_b = _build_deck_list(top_b_rows)
+
+                logger.info(
+                    f"DB result: get_win_condition_matchup | "
+                    f"total={total_games}, wr_a={win_rate_a}, wr_b={win_rate_b}"
+                )
+                return {
+                    "card_a": cards_by_id[card_a_id],
+                    "card_b": cards_by_id[card_b_id],
+                    "total_games": total_games,
+                    "wins_a": wins_a,
+                    "losses_a": losses_a,
+                    "win_rate_a": win_rate_a,
+                    "win_rate_b": win_rate_b,
+                    "top_decks_a": top_decks_a,
+                    "top_decks_b": top_decks_b,
+                }
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_win_condition_matchup")
+            raise DatabaseQueryError(
+                f"Database query failed while fetching win condition matchup: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_win_condition_matchup")
+            raise DatabaseServiceError(
+                f"Unexpected error while fetching win condition matchup: {e!s}"
+            ) from e
+
     # ===== TRACKER ENDPOINTS =====
 
     async def register_tracked_player(

@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, LayoutGrid } from "lucide-react";
+import { DeckGrid } from "./deck-grid";
 
 interface DeckCard {
   card_id: number;
   card_name: string;
   slot_index: number | null;
-  variant: string; // 'normal', 'evolution', or 'heroic'
+  variant: string;
 }
 
 interface Deck {
@@ -40,7 +40,7 @@ export function DeckSearchResults({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div 
+      <div
         className={cn(
           "flex items-center justify-between bg-card border border-border p-4 rounded-xl cursor-pointer hover:bg-accent/50 transition-colors",
           isOpen ? "rounded-b-none border-b-0" : "rounded-xl"
@@ -54,19 +54,24 @@ export function DeckSearchResults({
           <div>
             <h2 className="text-lg font-bold text-foreground">Deck Results</h2>
             <p className="text-xs text-muted-foreground">
-              {results.decks.length} deck{results.decks.length !== 1 ? "s" : ""} found
+              {results.decks.length} deck{results.decks.length !== 1 ? "s" : ""}{" "}
+              found
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2 text-muted-foreground">
-          {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          {isOpen ? (
+            <ChevronUp className="w-5 h-5" />
+          ) : (
+            <ChevronDown className="w-5 h-5" />
+          )}
         </div>
       </div>
 
       {isOpen && (
         <div className="bg-card border border-t-0 border-border rounded-b-xl p-4 mt-0 animate-in slide-in-from-top-2 duration-200">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-2">
             {results.decks.map((deck) => (
               <DeckCardComponent key={deck.deck_id} deck={deck} />
             ))}
@@ -81,91 +86,26 @@ interface DeckCardComponentProps {
   deck: Deck;
 }
 
-// Helper function to extract key cards for deck naming
 function getKeyCards(cards: DeckCard[], avgElixir: number): string {
   const keyCardNames = [
-    "giant",
-    "royal giant",
-    "golem",
-    "goblin giant",
-    "hog rider",
-    "goblin drill",
-    "goblin barrel",
-    "mortar",
-    "monk",
-    "three musketeers",
-    "royal hogs",
-    "sparky",
-    "graveyard",
-    "p.e.k.k.a",
-    "elixir golem",
-    "balloon",
-    "x-bow",
-    "rocket",
-    "ram rider",
-    "boss bandit",
-    "mega knight",
-    "lava hound",
-    "miner",
+    "giant", "royal giant", "golem", "goblin giant", "hog rider",
+    "goblin drill", "goblin barrel", "mortar", "monk", "three musketeers",
+    "royal hogs", "sparky", "graveyard", "p.e.k.k.a", "elixir golem",
+    "balloon", "x-bow", "rocket", "ram rider", "boss bandit", "mega knight",
+    "lava hound", "miner", "electro giant", "battle ram",
   ];
 
   const foundKeyCards = cards
     .filter((card) => keyCardNames.includes(card.card_name.toLowerCase()))
-    .slice(0, 2); // Take up to 2 key cards
+    .slice(0, 2);
 
   let deckName = "Deck";
-
   if (foundKeyCards.length > 0) {
     deckName = foundKeyCards.map((card) => card.card_name).join(" ");
   }
-
-  // Add "Cycle" suffix if avg elixir is under 3.0
-  if (avgElixir < 3.0) {
-    deckName += " Cycle";
-  }
+  if (avgElixir < 3.0) deckName += " Cycle";
 
   return deckName;
-}
-
-// Sort cards by variant: evo cards first, then hero cards, then normal cards
-function sortCardsByVariant(cards: DeckCard[]): DeckCard[] {
-  // Separate cards by variant
-  const evoCards = cards.filter(card => card.variant === "evolution");
-  const heroCards = cards.filter(card => card.variant === "heroic");
-  const normalCards = cards.filter(card => card.variant === "normal");
-
-  const sortedCards: DeckCard[] = [];
-
-  // First row positions 0-1: Evolution cards (up to 2)
-  sortedCards.push(...evoCards.slice(0, 2));
-
-  // Fill remaining first row evo slots with normals if needed
-  const evosNeeded = 2 - Math.min(evoCards.length, 2);
-  if (evosNeeded > 0) {
-    sortedCards.push(...normalCards.splice(0, evosNeeded));
-  }
-
-  // First row positions 2-3: Hero cards (up to 2)
-  sortedCards.push(...heroCards.slice(0, 2));
-
-  // Fill remaining first row hero slots with normals if needed
-  const heroesNeeded = 2 - Math.min(heroCards.length, 2);
-  if (heroesNeeded > 0) {
-    sortedCards.push(...normalCards.splice(0, heroesNeeded));
-  }
-
-  // Second row positions 4-7: Remaining normal cards
-  sortedCards.push(...normalCards);
-
-  // Add any extra evos/heroes that didn't fit in first row to second row
-  if (evoCards.length > 2) {
-    sortedCards.push(...evoCards.slice(2));
-  }
-  if (heroCards.length > 2) {
-    sortedCards.push(...heroCards.slice(2));
-  }
-
-  return sortedCards;
 }
 
 function DeckCardComponent({ deck }: DeckCardComponentProps) {
@@ -179,125 +119,64 @@ function DeckCardComponent({ deck }: DeckCardComponentProps) {
       : null;
 
   const deckName = getKeyCards(deck.cards, deck.avg_elixir);
-  const sortedCards = sortCardsByVariant([...deck.cards]);
+
+  const wrColor =
+    winRate === null
+      ? "text-muted-foreground"
+      : parseFloat(winRate) >= 55
+      ? "text-green-400"
+      : parseFloat(winRate) >= 50
+      ? "text-yellow-400"
+      : "text-red-400";
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all h-full flex flex-col">
-      {/* Header */}
-      <div className="px-3 py-2 bg-muted/30 border-b border-border">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-sm font-semibold text-foreground truncate" title={deckName}>
-            {deckName}
-          </div>
-          <div className="text-xs text-muted-foreground whitespace-nowrap">
-            {deck.avg_elixir.toFixed(1)} Avg
-          </div>
+    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-border/80 transition-all flex flex-col gap-0">
+      {/* Header row */}
+      <div className="flex items-center justify-between gap-3 px-3 pt-3 pb-2">
+        <span
+          className="text-sm font-semibold text-foreground truncate"
+          title={deckName}
+        >
+          {deckName}
+        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          {winRate && hasStats && (
+            <span className={cn("text-sm font-bold tabular-nums", wrColor)}>
+              {winRate}%
+            </span>
+          )}
+          <span className="text-xs text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-full">
+            {deck.avg_elixir.toFixed(1)}
+            <span className="text-[10px] ml-0.5">avg</span>
+          </span>
         </div>
       </div>
 
-      {/* Stats Section (if available) */}
-      {hasStats && (
-        <div className="px-3 py-2 bg-muted/10 border-b border-border">
-          <div className="flex items-center justify-between text-xs">
-            {/* Win Rate - Most prominent */}
-            {winRate && (
-              <div className="flex items-center gap-1.5">
-                <span className="font-medium text-muted-foreground">WR:</span>
-                <span
-                  className={cn(
-                    "font-bold",
-                    parseFloat(winRate) >= 55
-                      ? "text-green-500"
-                      : parseFloat(winRate) >= 50
-                      ? "text-yellow-500"
-                      : "text-red-500"
-                  )}
-                >
-                  {winRate}%
-                </span>
-              </div>
-            )}
-
-            {/* Games Played */}
-            <div className="flex items-center gap-1">
-              <span className="text-muted-foreground">Games:</span>
-              <span className="font-semibold text-foreground">
-                {deck.games_played}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Deck Cards - using user specified layout */}
-      <div className="p-3">
-        <div className="grid grid-cols-4 gap-1.5">
-          {/* First row: Evos (0-1) + Heroes (2-3) */}
-          {sortedCards.slice(0, 4).map((card, index) => (
-            <CardDisplay key={`${deck.deck_id}-${index}`} card={card} />
-          ))}
-        </div>
-        <div className="grid grid-cols-4 gap-1.5 mt-1.5">
-          {/* Second row: Normals (4-7) */}
-          {sortedCards.slice(4, 8).map((card, index) => (
-            <CardDisplay key={`${deck.deck_id}-${index + 4}`} card={card} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface CardDisplayProps {
-  card: DeckCard;
-}
-
-function CardDisplay({ card }: CardDisplayProps) {
-  const hasEvolution = card.variant === "evolution";
-  const isHero = card.variant === "heroic";
-  const cardFileName = (card.card_name || "unknown")
-    .toLowerCase()
-    .replace(/ /g, "_")
-    .replace(/\./g, "");
-
-  // Determine the image suffix based on variant
-  const imageSuffix = hasEvolution ? "_evolution" : isHero ? "_hero" : "";
-  
-  // Custom border colors for variants to match deck-grid-card style
-  const borderColor = hasEvolution ? 'border-purple-500/50' : isHero ? 'border-yellow-500/50' : 'border-border';
-
-  return (
-    <div 
-      className={cn(
-        "relative aspect-3/4 rounded overflow-hidden border bg-muted group hover:scale-105 transition-transform",
-        borderColor
-      )}
-    >
-      <Image
-        src={`/cards/${cardFileName}/${cardFileName}${imageSuffix}.png`}
-        alt={card.card_name}
-        fill
-        className="object-contain"
+      {/* Card grid */}
+      <DeckGrid
+        cards={deck.cards.map((c) => ({
+          cardName: c.card_name,
+          variant: c.variant as "normal" | "evolution" | "heroic",
+        }))}
+        className="px-3 pb-2"
       />
 
-      {/* Variant badge */}
-      {hasEvolution && (
-        <div className="absolute top-0.5 left-0.5 px-1 py-px rounded bg-purple-500/90 text-white text-[6px] font-bold uppercase leading-none z-10">
-          Evo
+      {/* Footer stats */}
+      {hasStats && (
+        <div className="flex items-center gap-3 px-3 py-1.5 border-t border-border bg-muted/20 text-[11px] text-muted-foreground">
+          <span>{deck.games_played?.toLocaleString()} games</span>
+          {deck.wins !== undefined && (
+            <>
+              <span className="text-green-400/80">
+                {deck.wins.toLocaleString()}W
+              </span>
+              <span className="text-red-400/80">
+                {deck.losses?.toLocaleString()}L
+              </span>
+            </>
+          )}
         </div>
       )}
-      {isHero && (
-        <div className="absolute top-0.5 left-0.5 px-1 py-px rounded bg-yellow-500/90 text-white text-[6px] font-bold uppercase leading-none z-10">
-          Hero
-        </div>
-      )}
-
-      {/* Card name tooltip on hover */}
-      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/90 via-black/60 to-transparent p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <p className="text-white text-[8px] font-medium text-center truncate leading-tight">
-          {card.card_name}
-        </p>
-      </div>
     </div>
   );
 }

@@ -862,6 +862,67 @@ async def get_tracker_worst_matchups(
 
 
 
+# ===== WIN CONDITION MATCHUP ENDPOINT =====
+
+WIN_CONDITION_MATCHUP_TIMEOUT = 15.0
+
+
+@router.get("/win-condition-matchup")
+@limiter.limit("30/minute")
+async def get_win_condition_matchup(
+    request: Request,
+    card_a: Annotated[int, Query(description="Card ID for side A — must be a win condition")],
+    card_b: Annotated[int, Query(description="Card ID for side B — must be a win condition")],
+):
+    """
+    Get head-to-head win rate stats for two win condition cards.
+
+    Aggregates all recorded battles where one side's deck contained card_a
+    and the opponent's deck contained card_b, then returns:
+      - Win rates for both sides
+      - Total battles analysed
+      - Top 5 most-played decks for each side (with card compositions)
+
+    Both card IDs must be recognised win conditions. Returns 400 if either
+    card is not a valid win condition or if both IDs are the same.
+
+    Example:
+        /api/win-condition-matchup?card_a=26000003&card_b=27000008
+    """
+    from app.services.database import WIN_CONDITION_CARD_IDS
+
+    if card_a not in WIN_CONDITION_CARD_IDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Card ID {card_a} is not a valid win condition.",
+        )
+    if card_b not in WIN_CONDITION_CARD_IDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Card ID {card_b} is not a valid win condition.",
+        )
+    if card_a == card_b:
+        raise HTTPException(
+            status_code=400,
+            detail="Both card IDs are the same. Provide two different win conditions.",
+        )
+
+    db = get_database_service()
+
+    try:
+        result = await asyncio.wait_for(
+            db.get_win_condition_matchup(card_a_id=card_a, card_b_id=card_b),
+            timeout=WIN_CONDITION_MATCHUP_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail="Matchup query timed out. Try again shortly.",
+        ) from None
+
+    return result
+
+
 # ===== LOCATIONS ENDPOINTS =====
 
 @router.get("/locations", response_model=Locations)
