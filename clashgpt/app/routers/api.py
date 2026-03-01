@@ -20,10 +20,10 @@ from app.models.models import (
     Locations,
     Rarity,
 )
-
-VALID_VARIANTS = {"normal", "evolution", "heroic"}
 from app.rate_limit import limiter
 from app.services.database import get_database_service
+
+VALID_VARIANTS = {"normal", "evolution", "heroic"}
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -161,6 +161,7 @@ CARD_ID_TO_NAME = {
 
 # ===== ROOT ENDPOINT =====
 
+
 @router.get("/", response_model=dict)
 @limiter.limit("60/minute")
 async def list_endpoints(request: Request):
@@ -178,23 +179,21 @@ async def list_endpoints(request: Request):
                     "parameters": {
                         "rarity": "Optional - Filter by rarity (COMMON, RARE, EPIC, LEGENDARY, CHAMPION)"
                     },
-                    "example": "/api/cards?rarity=LEGENDARY"
+                    "example": "/api/cards?rarity=LEGENDARY",
                 },
                 "GET /api/cards/{card_id}": {
                     "description": "Get a specific card by its ID",
-                    "parameters": {
-                        "card_id": "Required - The card ID to fetch"
-                    },
-                    "example": "/api/cards/26000000"
+                    "parameters": {"card_id": "Required - The card ID to fetch"},
+                    "example": "/api/cards/26000000",
                 },
                 "GET /api/cards/{card_id}/stats": {
                     "description": "Get usage statistics for a specific card (win rate, usage rate, deck appearance rate)",
                     "parameters": {
                         "card_id": "Required - The card ID to fetch stats for",
-                        "season_id": "Optional - Filter by season (e.g., 202601)"
+                        "season_id": "Optional - Filter by season (e.g., 202601)",
                     },
-                    "example": "/api/cards/26000000/stats?season_id=202601"
-                }
+                    "example": "/api/cards/26000000/stats?season_id=202601",
+                },
             },
             "decks": {
                 "GET /api/decks": {
@@ -206,35 +205,35 @@ async def list_endpoints(request: Request):
                         "min_games": "Optional - Minimum games played (default: 0)",
                         "page": "Optional - Page number (1-indexed, default: 1)",
                         "page_size": "Optional - Results per page (1-200, default: 24)",
-                        "include_cards": "Optional - Include card details and variants for each deck (default: false)"
+                        "include_cards": "Optional - Include card details and variants for each deck (default: false)",
                     },
-                    "example": "/api/decks?include=26000000,26000012:evolution&sort_by=WIN_RATE&min_games=20&include_cards=true&page=1&page_size=24"
+                    "example": "/api/decks?include=26000000,26000012:evolution&sort_by=WIN_RATE&min_games=20&include_cards=true&page=1&page_size=24",
                 }
             },
             "locations": {
                 "GET /api/locations": {
                     "description": "Get all locations",
                     "parameters": {},
-                    "example": "/api/locations"
+                    "example": "/api/locations",
                 }
-            }
+            },
         },
         "enums": {
             "Rarity": ["COMMON", "RARE", "EPIC", "LEGENDARY", "CHAMPION"],
-            "DeckSortBy": ["RECENT", "GAMES_PLAYED", "WIN_RATE", "WINS"]
+            "DeckSortBy": ["RECENT", "GAMES_PLAYED", "WIN_RATE", "WINS"],
         },
-        "documentation": "/docs"
+        "documentation": "/docs",
     }
 
 
 # ===== CARDS ENDPOINTS =====
 
+
 @router.get("/cards", response_model=CardList)
 @limiter.limit("60/minute")
 async def get_cards(
     request: Request,
-    rarity: Annotated[Rarity | None, Query(
-        description="Filter by card rarity")] = None
+    rarity: Annotated[Rarity | None, Query(description="Filter by card rarity")] = None,
 ):
     """
     Get all cards, optionally filtered by rarity.
@@ -274,7 +273,8 @@ async def get_card_by_id(request: Request, card_id: str):
 
     if card is None:
         raise HTTPException(
-            status_code=404, detail=f"Card with id '{card_id}' not found")
+            status_code=404, detail=f"Card with id '{card_id}' not found"
+        )
 
     return card
 
@@ -284,8 +284,9 @@ async def get_card_by_id(request: Request, card_id: str):
 async def get_card_stats(
     request: Request,
     card_id: str,
-    season_id: Annotated[int | None, Query(
-        description="Filter by season (e.g., 202601)")] = None,
+    season_id: Annotated[
+        int | None, Query(description="Filter by season (e.g., 202601)")
+    ] = None,
 ):
     """
     Get usage statistics for a specific card.
@@ -311,29 +312,35 @@ async def get_card_stats(
 
     if stats is None:
         raise HTTPException(
-            status_code=404, detail=f"Card with id '{card_id}' not found")
+            status_code=404, detail=f"Card with id '{card_id}' not found"
+        )
 
     return stats
 
 
 # ===== DECKS ENDPOINTS =====
 
+
 @router.get("/decks")
 @limiter.limit("5/second;30/minute;500/day")
 async def search_decks(
     request: Request,
-    include: Annotated[str | None, Query(
-        description="Comma-separated card IDs that must be in deck")] = None,
-    exclude: Annotated[str | None, Query(
-        description="Comma-separated card IDs that must not be in deck")] = None,
-    sort_by: Annotated[DeckSortBy, Query(
-        description="Sort by metric")] = DeckSortBy.RECENT,
-    min_games: Annotated[int, Query(
-        ge=0, description="Minimum games played")] = 0,
+    include: Annotated[
+        str | None, Query(description="Comma-separated card IDs that must be in deck")
+    ] = None,
+    exclude: Annotated[
+        str | None,
+        Query(description="Comma-separated card IDs that must not be in deck"),
+    ] = None,
+    sort_by: Annotated[
+        DeckSortBy, Query(description="Sort by metric")
+    ] = DeckSortBy.RECENT,
+    min_games: Annotated[int, Query(ge=0, description="Minimum games played")] = 0,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=200)] = 24,
-    include_cards: Annotated[bool, Query(
-        description="Include card details and variants")] = False
+    include_cards: Annotated[
+        bool, Query(description="Include card details and variants")
+    ] = False,
 ):
     """
     Search for decks with stats and filters (paginated).
@@ -381,12 +388,12 @@ async def search_decks(
     if include_card_ids and len(include_card_ids) > MAX_INCLUDE_CARDS:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot include more than {MAX_INCLUDE_CARDS} cards."
+            detail=f"Cannot include more than {MAX_INCLUDE_CARDS} cards.",
         )
     if exclude_card_ids and len(exclude_card_ids) > MAX_EXCLUDE_CARDS:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot exclude more than {MAX_EXCLUDE_CARDS} cards."
+            detail=f"Cannot exclude more than {MAX_EXCLUDE_CARDS} cards.",
         )
 
     offset = (page - 1) * page_size
@@ -402,12 +409,11 @@ async def search_decks(
                 offset=offset,
                 include_cards=include_cards,
             ),
-            timeout=DECK_SEARCH_TIMEOUT
+            timeout=DECK_SEARCH_TIMEOUT,
         )
     except asyncio.TimeoutError:
         raise HTTPException(
-            status_code=504,
-            detail="Search took too long. Try narrowing your filters."
+            status_code=504, detail="Search took too long. Try narrowing your filters."
         ) from None
 
     deck_payloads = []
@@ -484,7 +490,7 @@ def _parse_card_filter_param(
                         detail=(
                             f"Invalid variant '{variant}' in {param_name}='{cid}'. "
                             f"Valid variants: {', '.join(sorted(VALID_VARIANTS))}."
-                        )
+                        ),
                     )
                 result.append(f"{card_id_str}:{variant}")
             else:
@@ -495,26 +501,31 @@ def _parse_card_filter_param(
                 detail=(
                     f"Invalid card id '{cid}' in {param_name}. "
                     "Use numeric IDs (e.g. 26000024) or card_id:variant (e.g. 26000024:evolution)."
-                )
+                ),
             )
     return result or None
 
 
 # ===== AUTH DEPENDENCY =====
 
+
 def _get_current_user_id_dep():
     """Lazy import to avoid circular imports at module load time."""
     from app.app_utils.clerk_auth import get_current_user_id
+
     return get_current_user_id
 
 
 # ===== PLAYERS ENDPOINTS =====
 
+
 @router.get("/players")
 @limiter.limit("30/minute")
 async def search_players(
     request: Request,
-    name: Annotated[str, Query(min_length=1, description="Player name to search (partial match)")],
+    name: Annotated[
+        str, Query(min_length=1, description="Player name to search (partial match)")
+    ],
     user_id: str = Depends(_get_current_user_id_dep()),
 ):
     """
@@ -553,11 +564,17 @@ async def get_player_cr_info(
             player = await service.get_player(player_tag)
             return serialize_dataclass(player)
     except ClashRoyaleNotFoundError:
-        raise HTTPException(status_code=404, detail="Player not found in Clash Royale API")
+        raise HTTPException(
+            status_code=404, detail="Player not found in Clash Royale API"
+        ) from None
     except ClashRoyaleRateLimitError:
-        raise HTTPException(status_code=429, detail="Clash Royale API rate limit exceeded")
+        raise HTTPException(
+            status_code=429, detail="Clash Royale API rate limit exceeded"
+        ) from None
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Clash Royale API error: {e!s}")
+        raise HTTPException(
+            status_code=502, detail=f"Clash Royale API error: {e!s}"
+        ) from e
 
 
 @router.get("/players/{player_tag}/decks")
@@ -600,10 +617,13 @@ MATCHUP_SEARCH_TIMEOUT = 10.0
 @limiter.limit("30/minute")
 async def get_deck_matchups(
     request: Request,
-    deck: Annotated[str, Query(
-        description="Comma-separated card specs: card_id:variant for each of 8 cards. "
-                    "Variant must be one of: normal, evolution, heroic."
-    )],
+    deck: Annotated[
+        str,
+        Query(
+            description="Comma-separated card specs: card_id:variant for each of 8 cards. "
+            "Variant must be one of: normal, evolution, heroic."
+        ),
+    ],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
     user_id: str = Depends(_get_current_user_id_dep()),
@@ -614,7 +634,7 @@ async def get_deck_matchups(
     The deck parameter must contain exactly 8 comma-separated card specs in the
     format ``card_id:variant`` where variant is ``normal``, ``evolution``, or
     ``heroic``.  The lookup matches the database record that has **exactly** these
-    8 (card_id, variant) pairs – no more, no fewer.
+    8 (card_id, variant) pairs - no more, no fewer.
 
     Returns aggregate win/loss stats and paginated recent battles with each
     opponent's deck cards.
@@ -629,7 +649,7 @@ async def get_deck_matchups(
     if len(raw_specs) != 8:
         raise HTTPException(
             status_code=400,
-            detail=f"Exactly 8 card specs are required; got {len(raw_specs)}."
+            detail=f"Exactly 8 card specs are required; got {len(raw_specs)}.",
         )
 
     card_specs: list[tuple[int, str]] = []
@@ -640,7 +660,7 @@ async def get_deck_matchups(
                 detail=(
                     f"Invalid card spec '{raw}'. "
                     "Use card_id:variant format (e.g. 26000021:normal)."
-                )
+                ),
             )
         card_id_str, variant = raw.split(":", 1)
         variant = variant.lower()
@@ -650,15 +670,15 @@ async def get_deck_matchups(
                 detail=(
                     f"Invalid variant '{variant}' in '{raw}'. "
                     f"Valid variants: {', '.join(sorted(VALID_VARIANTS))}."
-                )
+                ),
             )
         try:
             card_specs.append((int(card_id_str), variant))
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid card_id '{card_id_str}' — must be a numeric ID."
-            )
+                detail=f"Invalid card_id '{card_id_str}' — must be a numeric ID.",
+            ) from None
 
     db = get_database_service()
     offset = (page - 1) * page_size
@@ -674,8 +694,7 @@ async def get_deck_matchups(
         )
     except asyncio.TimeoutError:
         raise HTTPException(
-            status_code=504,
-            detail="Matchup search timed out. Try again shortly."
+            status_code=504, detail="Matchup search timed out. Try again shortly."
         ) from None
 
     total = result["total_matchups"]
@@ -702,7 +721,9 @@ async def get_deck_matchups(
 @limiter.limit("10/minute")
 async def register_tracker(
     request: Request,
-    player_tag: Annotated[str, Query(description="Your Clash Royale player tag (e.g. #2PP)")],
+    player_tag: Annotated[
+        str, Query(description="Your Clash Royale player tag (e.g. #2PP)")
+    ],
     user_id: str = Depends(_get_current_user_id_dep()),
 ):
     """
@@ -728,11 +749,19 @@ async def register_tracker(
             player = await service.get_player(normalised)
             player_name = player.name
     except ClashRoyaleNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Player tag '{normalised}' not found in Clash Royale. Check the tag and try again.")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Player tag '{normalised}' not found in Clash Royale. Check the tag and try again.",
+        ) from None
     except ClashRoyaleRateLimitError:
-        raise HTTPException(status_code=429, detail="Clash Royale API rate limit hit. Please try again in a moment.")
+        raise HTTPException(
+            status_code=429,
+            detail="Clash Royale API rate limit hit. Please try again in a moment.",
+        ) from None
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Could not verify player tag: {e!s}")
+        raise HTTPException(
+            status_code=502, detail=f"Could not verify player tag: {e!s}"
+        ) from e
 
     db = get_database_service()
     tracked = await db.register_tracked_player(
@@ -759,7 +788,10 @@ async def get_tracker_me(
     db = get_database_service()
     tracked = await db.get_tracked_player(user_id=user_id)
     if tracked is None:
-        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+        raise HTTPException(
+            status_code=404,
+            detail="No player tag linked. Use POST /api/tracker/register first.",
+        )
     return {"tracked_player": tracked}
 
 
@@ -775,10 +807,17 @@ async def get_tracker_stats(
     db = get_database_service()
     tracked = await db.get_tracked_player(user_id=user_id)
     if tracked is None:
-        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+        raise HTTPException(
+            status_code=404,
+            detail="No player tag linked. Use POST /api/tracker/register first.",
+        )
 
     stats = await db.get_tracker_stats(player_tag=tracked["player_tag"])
-    return {"player_tag": tracked["player_tag"], "player_name": tracked["player_name"], "stats": stats}
+    return {
+        "player_tag": tracked["player_tag"],
+        "player_name": tracked["player_name"],
+        "stats": stats,
+    }
 
 
 @router.get("/tracker/me/decks")
@@ -794,10 +833,19 @@ async def get_tracker_decks(
     db = get_database_service()
     tracked = await db.get_tracked_player(user_id=user_id)
     if tracked is None:
-        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+        raise HTTPException(
+            status_code=404,
+            detail="No player tag linked. Use POST /api/tracker/register first.",
+        )
 
-    decks = await db.get_tracker_deck_breakdown(player_tag=tracked["player_tag"], limit=limit)
-    return {"player_tag": tracked["player_tag"], "player_name": tracked["player_name"], "decks": decks}
+    decks = await db.get_tracker_deck_breakdown(
+        player_tag=tracked["player_tag"], limit=limit
+    )
+    return {
+        "player_tag": tracked["player_tag"],
+        "player_name": tracked["player_name"],
+        "decks": decks,
+    }
 
 
 @router.get("/tracker/me/battles")
@@ -814,7 +862,10 @@ async def get_tracker_battles(
     db = get_database_service()
     tracked = await db.get_tracked_player(user_id=user_id)
     if tracked is None:
-        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+        raise HTTPException(
+            status_code=404,
+            detail="No player tag linked. Use POST /api/tracker/register first.",
+        )
 
     offset = (page - 1) * page_size
     result = await db.get_tracker_battles(
@@ -851,15 +902,21 @@ async def get_tracker_worst_matchups(
     db = get_database_service()
     tracked = await db.get_tracked_player(user_id=user_id)
     if tracked is None:
-        raise HTTPException(status_code=404, detail="No player tag linked. Use POST /api/tracker/register first.")
+        raise HTTPException(
+            status_code=404,
+            detail="No player tag linked. Use POST /api/tracker/register first.",
+        )
 
     matchups = await db.get_tracker_worst_matchups(
         player_tag=tracked["player_tag"],
         limit=limit,
         min_games=min_games,
     )
-    return {"player_tag": tracked["player_tag"], "player_name": tracked["player_name"], "worst_matchups": matchups}
-
+    return {
+        "player_tag": tracked["player_tag"],
+        "player_name": tracked["player_name"],
+        "worst_matchups": matchups,
+    }
 
 
 # ===== WIN CONDITION MATCHUP ENDPOINT =====
@@ -871,8 +928,12 @@ WIN_CONDITION_MATCHUP_TIMEOUT = 15.0
 @limiter.limit("30/minute")
 async def get_win_condition_matchup(
     request: Request,
-    card_a: Annotated[int, Query(description="Card ID for side A — must be a win condition")],
-    card_b: Annotated[int, Query(description="Card ID for side B — must be a win condition")],
+    card_a: Annotated[
+        int, Query(description="Card ID for side A — must be a win condition")
+    ],
+    card_b: Annotated[
+        int, Query(description="Card ID for side B — must be a win condition")
+    ],
 ):
     """
     Get head-to-head win rate stats for two win condition cards.
@@ -924,6 +985,7 @@ async def get_win_condition_matchup(
 
 
 # ===== LOCATIONS ENDPOINTS =====
+
 
 @router.get("/locations", response_model=Locations)
 @limiter.limit("60/minute")

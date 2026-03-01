@@ -4,6 +4,7 @@ Card-related tools for the Clash Royale agent.
 These tools provide access to individual card data and performance statistics,
 allowing the agent to analyze card viability, meta strength, and usage trends.
 """
+
 import logging
 
 from app.services.database import (
@@ -69,7 +70,7 @@ async def get_card_stats(
             return {
                 "error": "card_id must be a positive integer.",
                 "error_type": "validation",
-                "suggestion": "Use a valid card ID like 26000000 (Knight)."
+                "suggestion": "Use a valid card ID like 26000000 (Knight).",
             }
 
         db = get_database_service()
@@ -82,7 +83,7 @@ async def get_card_stats(
             return {
                 "error": f"Card with ID {card_id} not found.",
                 "error_type": "not_found",
-                "suggestion": "Check the card ID list for valid IDs."
+                "suggestion": "Check the card ID list for valid IDs.",
             }
 
         return {
@@ -125,5 +126,5 @@ async def get_card_stats(
         return {
             "error": "Unexpected error while fetching card stats.",
             "error_type": "unexpected",
-            "details": str(e)
+            "details": str(e),
         }

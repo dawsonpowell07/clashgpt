@@ -377,6 +377,7 @@ function WinLossDonut({ wins, losses, winRate }: { wins: number; losses: number;
               />
             </Pie>
             <Tooltip
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={(v: any, n: any) => [v?.toLocaleString() ?? "", n]}
               contentStyle={CHART_TOOLTIP_STYLE}
               itemStyle={CHART_ITEM_STYLE}
@@ -506,6 +507,7 @@ function DeckWinRateChart({ decks }: { decks: TrackerDeck[] }) {
               width={64}
             />
             <Tooltip
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={(v: any, _n: any, props: any) => [
                 `${v}% (${props.payload?.games?.toLocaleString() ?? 0} games)`,
                 "Win Rate",
@@ -520,6 +522,7 @@ function DeckWinRateChart({ decks }: { decks: TrackerDeck[] }) {
               name="Win Rate"
               radius={[0, 4, 4, 0]}
               isAnimationActive={false}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               label={{ position: "right", fontSize: 11, fill: "#d1d5db", fontWeight: 600, formatter: (v: any) => `${v}%` }}
             >
               {data.map((d, i) => (
@@ -580,6 +583,7 @@ export function TrackerDashboard({
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingStats(true);
     authFetch(`${API_URL}/api/tracker/me/stats`)
       .then((d) => setStats(d.stats))
@@ -604,6 +608,7 @@ export function TrackerDashboard({
   }, [authFetch]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingBattles(true);
     authFetch(`${API_URL}/api/tracker/me/battles?page=${page}&page_size=10`)
       .then((d) => setBattlesData(d))

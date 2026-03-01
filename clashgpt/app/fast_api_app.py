@@ -14,7 +14,6 @@
 
 import hmac
 import logging
-import os
 import time
 from contextlib import asynccontextmanager
 
@@ -37,8 +36,7 @@ from app.settings import settings
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 setup_telemetry()
@@ -46,8 +44,6 @@ _, project_id = google.auth.default()
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 app_logger = logging.getLogger(__name__)
-
-
 
 
 @asynccontextmanager
@@ -59,19 +55,25 @@ async def lifespan(app: FastAPI):
     """
     # Startup: Initialize database connections
     db_service = get_database_service()
-    logger.log_struct({
-        "event": "database_services_initialized",
-        "postgres": True,
-    }, severity="INFO")
+    logger.log_struct(
+        {
+            "event": "database_services_initialized",
+            "postgres": True,
+        },
+        severity="INFO",
+    )
 
     yield
 
     # Shutdown: Close database connections
     await db_service.close()
-    logger.log_struct({
-        "event": "database_services_closed",
-        "postgres": True,
-    }, severity="INFO")
+    logger.log_struct(
+        {
+            "event": "database_services_closed",
+            "postgres": True,
+        },
+        severity="INFO",
+    )
 
 
 app = FastAPI()
@@ -92,7 +94,9 @@ if not settings.dev_mode and not settings.allow_origins:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allow_origins if isinstance(settings.allow_origins, list) else [
+    allow_origins=settings.allow_origins
+    if isinstance(settings.allow_origins, list)
+    else [
         "http://localhost:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3000",
@@ -132,6 +136,7 @@ async def log_and_protect_requests(request: Request, call_next):
                 "BACKEND_API_KEY is not set in production — rejecting request"
             )
             from starlette.responses import JSONResponse
+
             return JSONResponse(
                 status_code=500,
                 content={"detail": "Server misconfiguration"},
@@ -142,6 +147,7 @@ async def log_and_protect_requests(request: Request, call_next):
                 f"Rejected request to {request.url.path}: invalid or missing API key"
             )
             from starlette.responses import JSONResponse
+
             return JSONResponse(
                 status_code=403,
                 content={"detail": "Forbidden: invalid or missing API key"},
@@ -182,11 +188,12 @@ adk_app = App(
 
 adk_agent = ADKAgent.from_app(
     adk_app,
-    user_id_extractor=lambda input: input.state.get(
-        "headers", {}).get("user_id", "user"),
-    session_timeout_seconds=1200,     # Session inactivity timeout (default: 20 min)
-    execution_timeout_seconds=600,    # Max execution time (default: 10 min)
-    tool_timeout_seconds=300,         # Tool execution timeout (default: 5 min)
+    user_id_extractor=lambda input: input.state.get("headers", {}).get(
+        "user_id", "user"
+    ),
+    session_timeout_seconds=1200,  # Session inactivity timeout (default: 20 min)
+    execution_timeout_seconds=600,  # Max execution time (default: 10 min)
+    tool_timeout_seconds=300,  # Tool execution timeout (default: 5 min)
     use_in_memory_services=True,
 )
 

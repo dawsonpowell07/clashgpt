@@ -15,7 +15,11 @@ Usage:
 import logging
 
 from fastapi import Depends, HTTPException
-from fastapi_clerk_auth import ClerkConfig, ClerkHTTPBearer, HTTPAuthorizationCredentials
+from fastapi_clerk_auth import (
+    ClerkConfig,
+    ClerkHTTPBearer,
+    HTTPAuthorizationCredentials,
+)
 
 from app.settings import settings
 
@@ -26,7 +30,7 @@ clerk_auth_guard = ClerkHTTPBearer(config=_clerk_config, auto_error=True)
 
 
 async def get_current_user_id(
-    credentials: HTTPAuthorizationCredentials = Depends(clerk_auth_guard),
+    credentials: HTTPAuthorizationCredentials = Depends(clerk_auth_guard),  # noqa: B008
 ) -> str:
     """
     FastAPI dependency that validates a Clerk JWT and returns the user_id (sub claim).

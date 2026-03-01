@@ -1,6 +1,7 @@
 """
 Clan-related tools for the Clash Royale agent.
 """
+
 import logging
 
 from app.services.clash_royale import (
@@ -42,7 +43,7 @@ async def get_clan_info(clan_tag: str) -> dict:
             "error": error_msg,
             "error_type": "not_found",
             "clan_tag": clan_tag,
-            "suggestion": "Confirm the clan tag and try again."
+            "suggestion": "Confirm the clan tag and try again.",
         }
     except ClashRoyaleAuthError as e:
         error_msg = f"Authentication failed when fetching clan info: {e}"
@@ -58,7 +59,7 @@ async def get_clan_info(clan_tag: str) -> dict:
         return {
             "error": "Clash Royale API rate limit exceeded. Please retry shortly.",
             "error_type": "rate_limit",
-            "suggestion": "Wait a moment, then retry."
+            "suggestion": "Wait a moment, then retry.",
         }
     except ClashRoyaleTimeoutError:
         error_msg = f"Request timed out while fetching clan info for {clan_tag}."
@@ -66,7 +67,7 @@ async def get_clan_info(clan_tag: str) -> dict:
         return {
             "error": "The request timed out. Please retry.",
             "error_type": "timeout",
-            "clan_tag": clan_tag
+            "clan_tag": clan_tag,
         }
     except ClashRoyaleNetworkError as e:
         error_msg = f"Network error while fetching clan info: {e}"
@@ -90,7 +91,7 @@ async def get_clan_info(clan_tag: str) -> dict:
         return {
             "error": f"Failed to fetch clan info: {e}",
             "error_type": "api_error",
-            "clan_tag": clan_tag
+            "clan_tag": clan_tag,
         }
     except Exception as e:
         error_msg = f"Unexpected error in get_clan_info: {e}"
@@ -108,7 +109,7 @@ async def search_clans(
     min_members: int | None = None,
     max_members: int | None = None,
     min_score: int | None = None,
-    limit: int = 10
+    limit: int = 10,
 ) -> dict:
     """
     Search for Clash Royale clans based on various criteria.
@@ -150,7 +151,7 @@ async def search_clans(
                 min_members=min_members,
                 max_members=max_members,
                 min_score=min_score,
-                limit=limit
+                limit=limit,
             )
             return serialize_dataclass(results)
     except ClashRoyaleAuthError as e:
@@ -160,7 +161,7 @@ async def search_clans(
             "error": "Unable to access Clash Royale API due to authentication issues.",
             "error_type": "authentication",
             "details": str(e),
-            "items": []
+            "items": [],
         }
     except ClashRoyaleRateLimitError:
         error_msg = "Rate limit exceeded while searching clans."
@@ -169,7 +170,7 @@ async def search_clans(
             "error": "Clash Royale API rate limit exceeded. Please retry shortly.",
             "error_type": "rate_limit",
             "items": [],
-            "suggestion": "Wait a moment, then retry."
+            "suggestion": "Wait a moment, then retry.",
         }
     except ClashRoyaleTimeoutError:
         error_msg = "Request timed out while searching clans."
@@ -177,7 +178,7 @@ async def search_clans(
         return {
             "error": "The request timed out. Please retry.",
             "error_type": "timeout",
-            "items": []
+            "items": [],
         }
     except ClashRoyaleNetworkError as e:
         error_msg = f"Network error while searching clans: {e}"
@@ -186,7 +187,7 @@ async def search_clans(
             "error": "Network error contacting Clash Royale API.",
             "error_type": "network",
             "details": str(e),
-            "items": []
+            "items": [],
         }
     except ClashRoyaleDataError as e:
         error_msg = f"Data error while parsing clan search results: {e}"
@@ -195,7 +196,7 @@ async def search_clans(
             "error": "Received unexpected data from Clash Royale API.",
             "error_type": "data_error",
             "details": str(e),
-            "items": []
+            "items": [],
         }
     except ClashRoyaleAPIError as e:
         error_msg = f"API error while searching clans: {e}"
@@ -203,7 +204,7 @@ async def search_clans(
         return {
             "error": f"Failed to search clans: {e}",
             "error_type": "api_error",
-            "items": []
+            "items": [],
         }
     except Exception as e:
         error_msg = f"Unexpected error in search_clans: {e}"
@@ -212,5 +213,5 @@ async def search_clans(
             "error": "Unexpected error while searching clans.",
             "error_type": "unexpected",
             "details": str(e),
-            "items": []
+            "items": [],
         }

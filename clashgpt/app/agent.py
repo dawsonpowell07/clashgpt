@@ -43,14 +43,13 @@ from app.tools import (
 from dataclasses import dataclass
 from google.adk.agents.callback_context import CallbackContext
 from app.models.models import Player
+
 logger = logging.getLogger(__name__)
 
 _, project_id = google.auth.default()
 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
-
-
 
 
 root_agent = Agent(

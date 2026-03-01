@@ -28,6 +28,7 @@ export default function ChatPage() {
   // Keep the auth token fresh — Clerk JWTs expire in ~60s
   useEffect(() => {
     if (!isSignedIn) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAuthHeaders(null);
       return;
     }

@@ -143,6 +143,7 @@ function WinRateDonut({
           />
         </Pie>
         <Tooltip
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           formatter={(value: any, name: any) => [value?.toLocaleString() ?? "", name]}
           contentStyle={{
             background: "#1e2433",

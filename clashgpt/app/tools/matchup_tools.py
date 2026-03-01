@@ -4,6 +4,7 @@ Deck matchup tools for the Clash Royale agent.
 - get_deck_matchups: aggregated win/loss stats for a specific 8-card deck
 - get_win_condition_matchup: head-to-head stats for two win condition cards
 """
+
 import logging
 
 from app.services.database import (
@@ -297,7 +298,9 @@ async def get_win_condition_matchup(
             "details": str(e),
         }
     except Exception as e:
-        logger.error(f"Tool: get_win_condition_matchup | Unexpected error: {e}", exc_info=True)
+        logger.error(
+            f"Tool: get_win_condition_matchup | Unexpected error: {e}", exc_info=True
+        )
         return {
             "error": "Unexpected error while fetching matchup data.",
             "error_type": "unexpected",
