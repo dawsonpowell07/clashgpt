@@ -1,0 +1,125 @@
+
+> frontend@0.1.0 lint
+> eslint
+
+
+/Users/dawsonpowell/developer/clashgpt/frontend/app/(app)/chat/page.tsx
+  31:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/dawsonpowell/developer/clashgpt/frontend/app/(app)/chat/page.tsx:31:7
+  29 |   useEffect(() => {
+  30 |     if (!isSignedIn) {
+> 31 |       setAuthHeaders(null);
+     |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  32 |       return;
+  33 |     }
+  34 |     const updateToken = async () => {  react-hooks/set-state-in-effect
+
+/Users/dawsonpowell/developer/clashgpt/frontend/app/(app)/profiles/page.tsx
+  85:6  warning  React Hook useCallback has a missing dependency: 'selectPlayer'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/card-selector.tsx
+  3:18  warning  'Info' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/card-stats.tsx
+   37:9   warning  'wrValue' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  146:30  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  146:41  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/chat/ChatToolRenderers.tsx
+  112:22  warning  '_args' is defined but never used  @typescript-eslint/no-unused-vars
+  155:22  warning  '_args' is defined but never used  @typescript-eslint/no-unused-vars
+  166:16  warning  'args' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/chat/CustomInput.tsx
+   8:51  warning  'isVisible' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  16:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/chat/CustomInput.tsx:16:7
+  14 |   useEffect(() => {
+  15 |     if (pendingInput !== null) {
+> 16 |       setValue(pendingInput);
+     |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  17 |       clearPendingInput();
+  18 |       // Focus the input after a short delay to ensure it's rendered
+  19 |       setTimeout(() => inputRef.current?.focus(), 50);  react-hooks/set-state-in-effect
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/player-profile.tsx
+    3:40  warning  'Legend' is defined but never used        @typescript-eslint/no-unused-vars
+  344:30  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  344:41  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/tracker/RegistrationForm.tsx
+  67:6  warning  React Hook useCallback has a missing dependency: 'getToken'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/tracker/TrackerDashboard.tsx
+   11:3    warning  'Loader2' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+   41:3    warning  'TrackerWorstMatchupsResponse' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  193:37   warning  'rank' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  380:30   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  380:38   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  509:30   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  509:39   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  509:51   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  523:106  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-explicit-any
+  583:5    error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/tracker/TrackerDashboard.tsx:583:5
+  581 |
+  582 |   useEffect(() => {
+> 583 |     setLoadingStats(true);
+      |     ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  584 |     authFetch(`${API_URL}/api/tracker/me/stats`)
+  585 |       .then((d) => setStats(d.stats))
+  586 |       .catch((e) => setError(e.message))                                  react-hooks/set-state-in-effect
+  607:5    error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/tracker/TrackerDashboard.tsx:607:5
+  605 |
+  606 |   useEffect(() => {
+> 607 |     setLoadingBattles(true);
+      |     ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  608 |     authFetch(`${API_URL}/api/tracker/me/battles?page=${page}&page_size=10`)
+  609 |       .then((d) => setBattlesData(d))
+  610 |       .catch(() => setBattlesData(null))  react-hooks/set-state-in-effect
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/ui/sidebar.tsx
+  611:26  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/dawsonpowell/developer/clashgpt/frontend/components/ui/sidebar.tsx:611:26
+  609 |   // Random width between 50 to 90%.
+  610 |   const width = React.useMemo(() => {
+> 611 |     return `${Math.floor(Math.random() * 40) + 50}%`
+      |                          ^^^^^^^^^^^^^ Cannot call impure function
+  612 |   }, [])
+  613 |
+  614 |   return (  react-hooks/purity
+
+✖ 27 problems (15 errors, 12 warnings)
+

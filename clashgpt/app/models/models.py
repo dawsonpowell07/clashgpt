@@ -1,7 +1,6 @@
 import json
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Literal
 
 
 class Rarity(Enum):
@@ -15,6 +14,7 @@ class Rarity(Enum):
 @dataclass
 class Deck:
     """Dimension table for unique deck compositions. deck_id is a SHA-256 hash."""
+
     deck_id: str
     avg_elixir: float | None = None
     tower_troop_id: int | None = None
@@ -31,6 +31,7 @@ class DeckCardConfig:
     Bridge table mapping cards to decks with variant and slot tracking.
     Composite primary key: (deck_id, card_id, variant)
     """
+
     deck_id: str
     card_id: int
     variant: str  # 'normal', 'evolution', or 'heroic'
@@ -49,7 +50,7 @@ class Card:
     elixir_cost: int | None
     rarity: Rarity | None
     icon_urls: dict[str, str] | None
-    card_type: str | None = None      # e.g., 'Troop', 'Tower Troop'
+    card_type: str | None = None  # e.g., 'Troop', 'Tower Troop'
     can_evolve: bool = False
     can_be_heroic: bool = False
     evolution_level: int = 0  # Preserved for API-sourced cards (battle/player data)
@@ -58,7 +59,7 @@ class Card:
         """Serialize to JSON string for compatibility with Pydantic API."""
         data = asdict(self)
         # Convert Enum to value for JSON serialization
-        data['rarity'] = self.rarity.value if self.rarity else None
+        data["rarity"] = self.rarity.value if self.rarity else None
         return json.dumps(data, indent=indent)
 
 
@@ -134,12 +135,12 @@ class CardList:
 
     def model_dump_json(self, indent: int | None = None) -> str:
         """Serialize to JSON string for compatibility with Pydantic API."""
-        data = {'cards': [asdict(c) for c in self.cards]}
-        for card_data in data['cards']:
-            if 'rarity' in card_data and isinstance(card_data['rarity'], Rarity):
-                card_data['rarity'] = card_data['rarity'].value
-            elif 'rarity' in card_data and card_data['rarity'] is None:
-                card_data['rarity'] = None
+        data = {"cards": [asdict(c) for c in self.cards]}
+        for card_data in data["cards"]:
+            if "rarity" in card_data and isinstance(card_data["rarity"], Rarity):
+                card_data["rarity"] = card_data["rarity"].value
+            elif "rarity" in card_data and card_data["rarity"] is None:
+                card_data["rarity"] = None
         return json.dumps(data, indent=indent)
 
 
@@ -150,6 +151,7 @@ class CardStats:
 
     This is computed on demand from fact tables, not stored in database.
     """
+
     card_id: int
     card_name: str | None = None
     total_uses: int = 0
@@ -168,6 +170,7 @@ class CardStats:
 @dataclass
 class CardStatsFilters:
     """Filter parameters for card statistics queries."""
+
     season_id: int | None = None
     league: str | None = None
     min_uses: int = 0
@@ -184,6 +187,7 @@ class DeckStats:
 
     This is not a database table - it's computed on demand from fact tables.
     """
+
     deck_id: str
     games_played: int
     wins: int
@@ -198,6 +202,7 @@ class DeckStats:
 @dataclass
 class DeckStatsFilters:
     """Filter parameters for deck statistics queries."""
+
     season_id: int | None = None
     league: str | None = None
     min_games: int = 0
@@ -225,6 +230,7 @@ class DeckWithStats:
 
     Combines dim_decks dimension data with computed statistics.
     """
+
     deck_id: str
     avg_elixir: float | None = None
     # Optional: joined from deck_card_config bridge table
@@ -361,6 +367,7 @@ class FullClan:
 @dataclass
 class ClanSearchResult:
     """Represents a clan in search results."""
+
     tag: str
     name: str
     type: str | None
@@ -380,6 +387,7 @@ class ClanSearchResult:
 @dataclass
 class ClanSearchPaging:
     """Pagination information for clan search."""
+
     cursors: dict[str, str] | None = None
 
     def model_dump_json(self, indent: int | None = None) -> str:
@@ -390,6 +398,7 @@ class ClanSearchPaging:
 @dataclass
 class ClanSearchResults:
     """Paginated clan search results."""
+
     items: list[ClanSearchResult]
     paging: ClanSearchPaging | None = None
 
@@ -427,5 +436,5 @@ class Player:
         # Convert nested Card rarity enum
         if self.current_favorite_card:
             rarity = self.current_favorite_card.rarity
-            data['current_favorite_card']['rarity'] = rarity.value if rarity else None
+            data["current_favorite_card"]["rarity"] = rarity.value if rarity else None
         return json.dumps(data, indent=indent)

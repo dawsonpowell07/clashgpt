@@ -38,36 +38,43 @@ logger = logging.getLogger(__name__)
 
 class ClashRoyaleAPIError(Exception):
     """Base exception for Clash Royale API errors."""
+
     pass
 
 
 class ClashRoyaleAuthError(ClashRoyaleAPIError):
     """Raised when authentication fails."""
+
     pass
 
 
 class ClashRoyaleNotFoundError(ClashRoyaleAPIError):
     """Raised when a resource is not found."""
+
     pass
 
 
 class ClashRoyaleRateLimitError(ClashRoyaleAPIError):
     """Raised when rate limit is exceeded."""
+
     pass
 
 
 class ClashRoyaleNetworkError(ClashRoyaleAPIError):
     """Raised when network/connection errors occur."""
+
     pass
 
 
 class ClashRoyaleDataError(ClashRoyaleAPIError):
     """Raised when API returns malformed or unexpected data."""
+
     pass
 
 
 class ClashRoyaleTimeoutError(ClashRoyaleAPIError):
     """Raised when API request times out."""
+
     pass
 
 
@@ -101,7 +108,7 @@ class ClashRoyaleService:
 
         self.headers = {
             "Authorization": f"Bearer {self.api_token}",
-            "Accept": "application/json"
+            "Accept": "application/json",
         }
         self.client: httpx.AsyncClient | None = None
 
@@ -141,7 +148,9 @@ class ClashRoyaleService:
             tag = f"#{tag}"
         return quote(tag, safe="")
 
-    async def _request(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def _request(
+        self, endpoint: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Make an async request to the Clash Royale API.
 
@@ -157,7 +166,8 @@ class ClashRoyaleService:
         """
         if not self.client:
             raise ClashRoyaleAPIError(
-                "Service not initialized. Use async context manager.")
+                "Service not initialized. Use async context manager."
+            )
 
         url = f"{self.BASE_URL}{endpoint}"
         logger.info(f"Clash Royale API: GET {endpoint}")
@@ -178,11 +188,15 @@ class ClashRoyaleService:
 
             # Handle authentication errors
             elif response.status_code == 401:
-                logger.error(f"Clash Royale API: {endpoint} | status=401 (Invalid API token)")
+                logger.error(
+                    f"Clash Royale API: {endpoint} | status=401 (Invalid API token)"
+                )
                 raise ClashRoyaleAuthError("Invalid API token")
 
             elif response.status_code == 403:
-                logger.error(f"Clash Royale API: {endpoint} | status=403 (Access denied)")
+                logger.error(
+                    f"Clash Royale API: {endpoint} | status=403 (Access denied)"
+                )
                 raise ClashRoyaleAuthError(f"Access denied to {endpoint}")
 
             # Handle not found
@@ -192,12 +206,18 @@ class ClashRoyaleService:
 
             # Handle rate limiting
             elif response.status_code == 429:
-                logger.warning(f"Clash Royale API: {endpoint} | status=429 (Rate limited)")
-                raise ClashRoyaleRateLimitError("Rate limit exceeded. Please try again later.")
+                logger.warning(
+                    f"Clash Royale API: {endpoint} | status=429 (Rate limited)"
+                )
+                raise ClashRoyaleRateLimitError(
+                    "Rate limit exceeded. Please try again later."
+                )
 
             # Handle server errors
             elif response.status_code >= 500:
-                logger.error(f"Clash Royale API: {endpoint} | status={response.status_code} (Server error)")
+                logger.error(
+                    f"Clash Royale API: {endpoint} | status={response.status_code} (Server error)"
+                )
                 raise ClashRoyaleAPIError(
                     f"Clash Royale API server error (status {response.status_code}). Please try again later."
                 )
@@ -216,7 +236,9 @@ class ClashRoyaleService:
 
             # Handle other status codes
             else:
-                logger.error(f"Clash Royale API: {endpoint} | status={response.status_code}")
+                logger.error(
+                    f"Clash Royale API: {endpoint} | status={response.status_code}"
+                )
                 raise ClashRoyaleAPIError(
                     f"API request failed with status {response.status_code}: {response.text!r}"
                 )
@@ -252,7 +274,9 @@ class ClashRoyaleService:
             # Don't catch our own exceptions
             if isinstance(e, ClashRoyaleAPIError):
                 raise
-            logger.error(f"Clash Royale API: {endpoint} | Unexpected error: {e}", exc_info=True)
+            logger.error(
+                f"Clash Royale API: {endpoint} | Unexpected error: {e}", exc_info=True
+            )
             raise ClashRoyaleAPIError(
                 f"Unexpected error while accessing {endpoint}: {e!s}"
             ) from e
@@ -264,17 +288,21 @@ class ClashRoyaleService:
         """Map API clan response to Clan."""
         try:
             if not isinstance(clan_data, dict):
-                raise ClashRoyaleDataError(f"Expected dict for clan data, got {type(clan_data)}")
+                raise ClashRoyaleDataError(
+                    f"Expected dict for clan data, got {type(clan_data)}"
+                )
 
             required_fields = ["tag", "name", "badgeId"]
             missing_fields = [f for f in required_fields if f not in clan_data]
             if missing_fields:
-                raise ClashRoyaleDataError(f"Missing required clan fields: {missing_fields}")
+                raise ClashRoyaleDataError(
+                    f"Missing required clan fields: {missing_fields}"
+                )
 
             return Clan(
                 tag=clan_data["tag"],
                 clan_name=clan_data["name"],
-                badge_id=str(clan_data["badgeId"])
+                badge_id=str(clan_data["badgeId"]),
             )
         except ClashRoyaleDataError:
             raise
@@ -287,17 +315,21 @@ class ClashRoyaleService:
         """Map API arena response to Arena."""
         try:
             if not isinstance(arena_data, dict):
-                raise ClashRoyaleDataError(f"Expected dict for arena data, got {type(arena_data)}")
+                raise ClashRoyaleDataError(
+                    f"Expected dict for arena data, got {type(arena_data)}"
+                )
 
             required_fields = ["id", "name"]
             missing_fields = [f for f in required_fields if f not in arena_data]
             if missing_fields:
-                raise ClashRoyaleDataError(f"Missing required arena fields: {missing_fields}")
+                raise ClashRoyaleDataError(
+                    f"Missing required arena fields: {missing_fields}"
+                )
 
             return Arena(
                 id=str(arena_data["id"]),
                 name=arena_data["name"],
-                raw_name=arena_data.get("rawName", "")
+                raw_name=arena_data.get("rawName", ""),
             )
         except ClashRoyaleDataError:
             raise
@@ -310,21 +342,31 @@ class ClashRoyaleService:
         """Map API card response to Card."""
         try:
             if not isinstance(card_data, dict):
-                raise ClashRoyaleDataError(f"Expected dict for card data, got {type(card_data)}")
+                raise ClashRoyaleDataError(
+                    f"Expected dict for card data, got {type(card_data)}"
+                )
 
             required_fields = ["id", "name", "rarity"]
             missing_fields = [f for f in required_fields if f not in card_data]
             if missing_fields:
-                raise ClashRoyaleDataError(f"Missing required card fields: {missing_fields}")
+                raise ClashRoyaleDataError(
+                    f"Missing required card fields: {missing_fields}"
+                )
 
             elixir_cost = card_data.get("elixirCost") or 0
 
             # Safely parse rarity
-            rarity_str = card_data["rarity"].upper() if isinstance(card_data["rarity"], str) else str(card_data["rarity"]).upper()
+            rarity_str = (
+                card_data["rarity"].upper()
+                if isinstance(card_data["rarity"], str)
+                else str(card_data["rarity"]).upper()
+            )
             try:
                 rarity = Rarity[rarity_str]
             except KeyError:
-                logger.warning(f"Unknown rarity '{rarity_str}', using COMMON as default")
+                logger.warning(
+                    f"Unknown rarity '{rarity_str}', using COMMON as default"
+                )
                 rarity = Rarity.COMMON
 
             return Card(
@@ -333,7 +375,7 @@ class ClashRoyaleService:
                 elixir_cost=elixir_cost,
                 icon_urls=card_data.get("iconUrls", {}),
                 rarity=rarity,
-                evolution_level=int(card_data.get("evolutionLevel", 0))
+                evolution_level=int(card_data.get("evolutionLevel", 0)),
             )
         except ClashRoyaleDataError:
             raise
@@ -346,12 +388,16 @@ class ClashRoyaleService:
         """Map API leaderboard entry response to LeaderboardEntry."""
         try:
             if not isinstance(entry_data, dict):
-                raise ClashRoyaleDataError(f"Expected dict for leaderboard entry data, got {type(entry_data)}")
+                raise ClashRoyaleDataError(
+                    f"Expected dict for leaderboard entry data, got {type(entry_data)}"
+                )
 
             required_fields = ["tag", "name", "eloRating"]
             missing_fields = [f for f in required_fields if f not in entry_data]
             if missing_fields:
-                raise ClashRoyaleDataError(f"Missing required leaderboard entry fields: {missing_fields}")
+                raise ClashRoyaleDataError(
+                    f"Missing required leaderboard entry fields: {missing_fields}"
+                )
 
             clan = None
             if entry_data.get("clan"):
@@ -364,13 +410,15 @@ class ClashRoyaleService:
                 tag=entry_data["tag"],
                 name=entry_data["name"],
                 elo_rating=entry_data["eloRating"],
-                clan=clan
+                clan=clan,
             )
         except ClashRoyaleDataError:
             raise
         except Exception as e:
             logger.error(f"Failed to map leaderboard entry data: {e}", exc_info=True)
-            raise ClashRoyaleDataError(f"Failed to parse leaderboard entry data: {e!s}") from e
+            raise ClashRoyaleDataError(
+                f"Failed to parse leaderboard entry data: {e!s}"
+            ) from e
 
     @staticmethod
     def _map_player(player_data: dict[str, Any]) -> Player:
@@ -382,12 +430,25 @@ class ClashRoyaleService:
         """
         try:
             if not isinstance(player_data, dict):
-                raise ClashRoyaleDataError(f"Expected dict for player data, got {type(player_data)}")
+                raise ClashRoyaleDataError(
+                    f"Expected dict for player data, got {type(player_data)}"
+                )
 
-            required_fields = ["tag", "name", "trophies", "bestTrophies", "wins", "losses", "battleCount", "threeCrownWins"]
+            required_fields = [
+                "tag",
+                "name",
+                "trophies",
+                "bestTrophies",
+                "wins",
+                "losses",
+                "battleCount",
+                "threeCrownWins",
+            ]
             missing_fields = [f for f in required_fields if f not in player_data]
             if missing_fields:
-                raise ClashRoyaleDataError(f"Missing required player fields: {missing_fields}")
+                raise ClashRoyaleDataError(
+                    f"Missing required player fields: {missing_fields}"
+                )
 
             # Map clan if present
             clan = None
@@ -454,7 +515,7 @@ class ClashRoyaleService:
                 current_favorite_card=current_favorite_card,
                 total_donations=player_data.get("totalDonations"),
                 challenge_max_wins=player_data.get("challengeMaxWins"),
-                current_path_of_legends_league=current_pol_league
+                current_path_of_legends_league=current_pol_league,
             )
         except ClashRoyaleDataError:
             raise
@@ -471,30 +532,53 @@ class ClashRoyaleService:
         """
         try:
             if not isinstance(battle_log_data, list):
-                raise ClashRoyaleDataError(f"Expected list for battle log data, got {type(battle_log_data)}")
+                raise ClashRoyaleDataError(
+                    f"Expected list for battle log data, got {type(battle_log_data)}"
+                )
 
             battles = []
             for idx, battle_data in enumerate(battle_log_data):
                 try:
                     if not isinstance(battle_data, dict):
-                        logger.warning(f"Skipping battle {idx}: expected dict, got {type(battle_data)}")
+                        logger.warning(
+                            f"Skipping battle {idx}: expected dict, got {type(battle_data)}"
+                        )
                         continue
 
                     # Validate required fields
-                    required_fields = ["type", "battleTime", "arena", "gameMode", "team", "opponent"]
-                    missing_fields = [f for f in required_fields if f not in battle_data]
+                    required_fields = [
+                        "type",
+                        "battleTime",
+                        "arena",
+                        "gameMode",
+                        "team",
+                        "opponent",
+                    ]
+                    missing_fields = [
+                        f for f in required_fields if f not in battle_data
+                    ]
                     if missing_fields:
-                        logger.warning(f"Skipping battle {idx}: missing fields {missing_fields}")
+                        logger.warning(
+                            f"Skipping battle {idx}: missing fields {missing_fields}"
+                        )
                         continue
 
                     # Map arena
                     arena = ClashRoyaleService._map_arena(battle_data["arena"])
 
                     # Validate team and opponent arrays
-                    if not battle_data.get("team") or not isinstance(battle_data["team"], list) or len(battle_data["team"]) == 0:
+                    if (
+                        not battle_data.get("team")
+                        or not isinstance(battle_data["team"], list)
+                        or len(battle_data["team"]) == 0
+                    ):
                         logger.warning(f"Skipping battle {idx}: invalid team data")
                         continue
-                    if not battle_data.get("opponent") or not isinstance(battle_data["opponent"], list) or len(battle_data["opponent"]) == 0:
+                    if (
+                        not battle_data.get("opponent")
+                        or not isinstance(battle_data["opponent"], list)
+                        or len(battle_data["opponent"]) == 0
+                    ):
                         logger.warning(f"Skipping battle {idx}: invalid opponent data")
                         continue
 
@@ -514,7 +598,9 @@ class ClashRoyaleService:
                             try:
                                 user_cards.append(ClashRoyaleService._map_card(card))
                             except Exception as e:
-                                logger.warning(f"Failed to map user card in battle {idx}: {e}")
+                                logger.warning(
+                                    f"Failed to map user card in battle {idx}: {e}"
+                                )
                     user_deck = CardList(cards=user_cards)
 
                     # Get opponent info (opponent[0])
@@ -531,13 +617,20 @@ class ClashRoyaleService:
                     if "cards" in opponent and isinstance(opponent["cards"], list):
                         for card in opponent["cards"]:
                             try:
-                                opponent_cards.append(ClashRoyaleService._map_card(card))
+                                opponent_cards.append(
+                                    ClashRoyaleService._map_card(card)
+                                )
                             except Exception as e:
-                                logger.warning(f"Failed to map opponent card in battle {idx}: {e}")
+                                logger.warning(
+                                    f"Failed to map opponent card in battle {idx}: {e}"
+                                )
                     opponent_deck = CardList(cards=opponent_cards)
 
                     # Validate game mode
-                    if not isinstance(battle_data.get("gameMode"), dict) or "name" not in battle_data["gameMode"]:
+                    if (
+                        not isinstance(battle_data.get("gameMode"), dict)
+                        or "name" not in battle_data["gameMode"]
+                    ):
                         logger.warning(f"Skipping battle {idx}: invalid game mode data")
                         continue
 
@@ -552,7 +645,7 @@ class ClashRoyaleService:
                         user_deck=user_deck,
                         opponent_name=opponent_name,
                         opponent_trophy_change=opponent_trophy_change,
-                        opponent_deck=opponent_deck
+                        opponent_deck=opponent_deck,
                     )
                     battles.append(battle)
 
@@ -573,37 +666,47 @@ class ClashRoyaleService:
         """Map API clan member response to ClanMemberEntry."""
         try:
             if not isinstance(member_data, dict):
-                raise ClashRoyaleDataError(f"Expected dict for clan member data, got {type(member_data)}")
+                raise ClashRoyaleDataError(
+                    f"Expected dict for clan member data, got {type(member_data)}"
+                )
 
             required_fields = ["tag", "name"]
             missing_fields = [f for f in required_fields if f not in member_data]
             if missing_fields:
-                raise ClashRoyaleDataError(f"Missing required clan member fields: {missing_fields}")
+                raise ClashRoyaleDataError(
+                    f"Missing required clan member fields: {missing_fields}"
+                )
 
             return ClanMemberEntry(
                 tag=member_data["tag"],
                 name=member_data["name"],
                 role=member_data.get("role"),
                 last_seen=member_data.get("lastSeen"),
-                trophies=member_data.get("trophies")
+                trophies=member_data.get("trophies"),
             )
         except ClashRoyaleDataError:
             raise
         except Exception as e:
             logger.error(f"Failed to map clan member data: {e}", exc_info=True)
-            raise ClashRoyaleDataError(f"Failed to parse clan member data: {e!s}") from e
+            raise ClashRoyaleDataError(
+                f"Failed to parse clan member data: {e!s}"
+            ) from e
 
     @staticmethod
     def _map_full_clan(clan_data: dict[str, Any]) -> FullClan:
         """Map API clan response to FullClan."""
         try:
             if not isinstance(clan_data, dict):
-                raise ClashRoyaleDataError(f"Expected dict for full clan data, got {type(clan_data)}")
+                raise ClashRoyaleDataError(
+                    f"Expected dict for full clan data, got {type(clan_data)}"
+                )
 
             required_fields = ["tag", "name"]
             missing_fields = [f for f in required_fields if f not in clan_data]
             if missing_fields:
-                raise ClashRoyaleDataError(f"Missing required full clan fields: {missing_fields}")
+                raise ClashRoyaleDataError(
+                    f"Missing required full clan fields: {missing_fields}"
+                )
 
             # Extract location name if present
             location_name = None
@@ -617,21 +720,24 @@ class ClashRoyaleService:
                     try:
                         members_list.append(ClashRoyaleService._map_clan_member(member))
                     except Exception as e:
-                        logger.warning(f"Failed to map clan member {idx}, skipping: {e}")
+                        logger.warning(
+                            f"Failed to map clan member {idx}, skipping: {e}"
+                        )
 
             return FullClan(
                 tag=clan_data["tag"],
                 name=clan_data["name"],
                 type=clan_data.get("type"),
                 description=clan_data.get("description"),
-                clan_score=str(clan_data.get("clanScore")) if clan_data.get(
-                    "clanScore") is not None else None,
+                clan_score=str(clan_data.get("clanScore"))
+                if clan_data.get("clanScore") is not None
+                else None,
                 clan_war_trophies=clan_data.get("clanWarTrophies"),
                 location=location_name,
                 required_trophies=clan_data.get("requiredTrophies"),
                 donations_per_week=clan_data.get("donationsPerWeek"),
                 num_members=clan_data.get("members"),
-                members_list=members_list
+                members_list=members_list,
             )
         except ClashRoyaleDataError:
             raise
@@ -644,12 +750,16 @@ class ClashRoyaleService:
         """Map API clan search response to ClanSearchResult."""
         try:
             if not isinstance(clan_data, dict):
-                raise ClashRoyaleDataError(f"Expected dict for clan search result data, got {type(clan_data)}")
+                raise ClashRoyaleDataError(
+                    f"Expected dict for clan search result data, got {type(clan_data)}"
+                )
 
             required_fields = ["tag", "name", "badgeId"]
             missing_fields = [f for f in required_fields if f not in clan_data]
             if missing_fields:
-                raise ClashRoyaleDataError(f"Missing required clan search result fields: {missing_fields}")
+                raise ClashRoyaleDataError(
+                    f"Missing required clan search result fields: {missing_fields}"
+                )
 
             # Extract location info if present
             location_id = None
@@ -668,13 +778,15 @@ class ClashRoyaleService:
                 location_id=location_id,
                 location_name=location_name,
                 members=clan_data.get("members"),
-                required_trophies=clan_data.get("requiredTrophies")
+                required_trophies=clan_data.get("requiredTrophies"),
             )
         except ClashRoyaleDataError:
             raise
         except Exception as e:
             logger.error(f"Failed to map clan search result data: {e}", exc_info=True)
-            raise ClashRoyaleDataError(f"Failed to parse clan search result data: {e!s}") from e
+            raise ClashRoyaleDataError(
+                f"Failed to parse clan search result data: {e!s}"
+            ) from e
 
     async def get_player(self, player_tag: str) -> Player:
         """
@@ -699,10 +811,14 @@ class ClashRoyaleService:
         except ClashRoyaleAPIError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error getting player {player_tag}: {e}", exc_info=True)
+            logger.error(
+                f"Unexpected error getting player {player_tag}: {e}", exc_info=True
+            )
             raise ClashRoyaleAPIError(f"Failed to get player data: {e!s}") from e
 
-    async def get_player_battle_log(self, player_tag: str, limit: int | None = None) -> BattleLog:
+    async def get_player_battle_log(
+        self, player_tag: str, limit: int | None = None
+    ) -> BattleLog:
         """
         Get a player's recent battle log.
 
@@ -730,14 +846,19 @@ class ClashRoyaleService:
             if isinstance(result, list):
                 battle_log_data = result[:limit] if limit is not None else result
             else:
-                logger.warning(f"Expected list for battle log, got {type(result)}, returning empty battle log")
+                logger.warning(
+                    f"Expected list for battle log, got {type(result)}, returning empty battle log"
+                )
                 battle_log_data = []
 
             return self._map_battle_log(battle_log_data)
         except ClashRoyaleAPIError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error getting battle log for {player_tag}: {e}", exc_info=True)
+            logger.error(
+                f"Unexpected error getting battle log for {player_tag}: {e}",
+                exc_info=True,
+            )
             raise ClashRoyaleAPIError(f"Failed to get battle log: {e!s}") from e
 
     # ===== CLAN ENDPOINTS =====
@@ -765,7 +886,9 @@ class ClashRoyaleService:
         except ClashRoyaleAPIError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error getting clan {clan_tag}: {e}", exc_info=True)
+            logger.error(
+                f"Unexpected error getting clan {clan_tag}: {e}", exc_info=True
+            )
             raise ClashRoyaleAPIError(f"Failed to get clan data: {e!s}") from e
 
     async def search_clans(
@@ -777,7 +900,7 @@ class ClashRoyaleService:
         min_score: int | None = None,
         limit: int = 10,
         after: str | None = None,
-        before: str | None = None
+        before: str | None = None,
     ) -> ClanSearchResults:
         """
         Search for clans by name and/or various criteria.
@@ -839,13 +962,15 @@ class ClashRoyaleService:
 
         # Ensure at least one filtering criterion is provided
         # (limit, after, before are not filtering criteria)
-        has_filter = any([
-            name is not None,
-            location_id is not None,
-            min_members is not None,
-            max_members is not None,
-            min_score is not None
-        ])
+        has_filter = any(
+            [
+                name is not None,
+                location_id is not None,
+                min_members is not None,
+                max_members is not None,
+                min_score is not None,
+            ]
+        )
         if not has_filter:
             raise ClashRoyaleAPIError(
                 "At least one filtering criterion must be provided (name, location_id, min_members, max_members, or min_score)"
@@ -857,12 +982,16 @@ class ClashRoyaleService:
 
             # Validate response structure
             if not isinstance(response, dict):
-                raise ClashRoyaleDataError(f"Expected dict response, got {type(response)}")
+                raise ClashRoyaleDataError(
+                    f"Expected dict response, got {type(response)}"
+                )
 
             # Parse results
             items_data = response.get("items", [])
             if not isinstance(items_data, list):
-                logger.warning(f"Expected list for items, got {type(items_data)}, using empty list")
+                logger.warning(
+                    f"Expected list for items, got {type(items_data)}, using empty list"
+                )
                 items_data = []
 
             clans = []
@@ -870,14 +999,15 @@ class ClashRoyaleService:
                 try:
                     clans.append(self._map_clan_search_result(clan_data))
                 except Exception as e:
-                    logger.warning(f"Failed to map clan search result {idx}, skipping: {e}")
+                    logger.warning(
+                        f"Failed to map clan search result {idx}, skipping: {e}"
+                    )
 
             # Parse paging info
             paging = None
             if "paging" in response and isinstance(response["paging"], dict):
                 try:
-                    paging = ClanSearchPaging(
-                        cursors=response["paging"].get("cursors"))
+                    paging = ClanSearchPaging(cursors=response["paging"].get("cursors"))
                 except Exception as e:
                     logger.warning(f"Failed to parse paging info: {e}")
 
@@ -905,12 +1035,16 @@ class ClashRoyaleService:
 
             # Validate response structure
             if not isinstance(response, dict):
-                raise ClashRoyaleDataError(f"Expected dict response, got {type(response)}")
+                raise ClashRoyaleDataError(
+                    f"Expected dict response, got {type(response)}"
+                )
 
             # API returns {"items": [card1, card2, ...]}
             cards_data = response.get("items", [])
             if not isinstance(cards_data, list):
-                logger.warning(f"Expected list for cards, got {type(cards_data)}, using empty list")
+                logger.warning(
+                    f"Expected list for cards, got {type(cards_data)}, using empty list"
+                )
                 cards_data = []
 
             cards = []
@@ -929,9 +1063,7 @@ class ClashRoyaleService:
             raise ClashRoyaleAPIError(f"Failed to get cards: {e!s}") from e
 
     async def get_player_rankings(
-        self,
-        location_id: int | str,
-        limit: int = 10
+        self, location_id: int | str, limit: int = 10
     ) -> Leaderboard:
         """
         Get Path of Legend player rankings for a specific location.
@@ -957,16 +1089,22 @@ class ClashRoyaleService:
             limit = max(1, min(limit, 50))
 
             params = {"limit": limit}
-            response = await self._request(f"/locations/{location_id}/pathoflegend/players", params=params)
+            response = await self._request(
+                f"/locations/{location_id}/pathoflegend/players", params=params
+            )
 
             # Validate response structure
             if not isinstance(response, dict):
-                raise ClashRoyaleDataError(f"Expected dict response, got {type(response)}")
+                raise ClashRoyaleDataError(
+                    f"Expected dict response, got {type(response)}"
+                )
 
             # API returns {"items": [entry1, entry2, ...]}
             entries_data = response.get("items", [])
             if not isinstance(entries_data, list):
-                logger.warning(f"Expected list for entries, got {type(entries_data)}, using empty list")
+                logger.warning(
+                    f"Expected list for entries, got {type(entries_data)}, using empty list"
+                )
                 entries_data = []
 
             entries = []
@@ -974,14 +1112,19 @@ class ClashRoyaleService:
                 try:
                     entries.append(self._map_leaderboard_entry(entry_data))
                 except Exception as e:
-                    logger.warning(f"Failed to map leaderboard entry {idx}, skipping: {e}")
+                    logger.warning(
+                        f"Failed to map leaderboard entry {idx}, skipping: {e}"
+                    )
 
             return Leaderboard(entries=entries)
 
         except ClashRoyaleAPIError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error getting player rankings for location {location_id}: {e}", exc_info=True)
+            logger.error(
+                f"Unexpected error getting player rankings for location {location_id}: {e}",
+                exc_info=True,
+            )
             raise ClashRoyaleAPIError(f"Failed to get player rankings: {e!s}") from e
 
 

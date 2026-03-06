@@ -4,6 +4,7 @@ Deck-related tools for the Clash Royale agent.
 These tools provide access to competitive deck data with performance statistics,
 allowing the agent to recommend decks based on win rates, popularity, and other metrics.
 """
+
 import logging
 
 from app.models.models import DeckSortBy
@@ -25,7 +26,7 @@ async def search_decks(
     exclude_cards: str | None = None,
     sort_by: str = "RECENT",
     min_games: int = 0,
-    limit: int = 10
+    limit: int = 10,
 ) -> dict:
     """
     Search for decks with filters, performance stats, and custom sorting.
@@ -90,13 +91,13 @@ async def search_decks(
             return {
                 "error": "Limit must be a positive integer.",
                 "error_type": "validation",
-                "suggestion": "Use a limit between 1 and 200."
+                "suggestion": "Use a limit between 1 and 200.",
             }
         if not isinstance(min_games, int) or min_games < 0:
             return {
                 "error": "min_games must be a non-negative integer.",
                 "error_type": "validation",
-                "suggestion": "Use 0 or a positive integer."
+                "suggestion": "Use 0 or a positive integer.",
             }
 
         db = get_database_service()
@@ -117,7 +118,7 @@ async def search_decks(
                 return {
                     "error": f"Invalid sort_by: {sort_by}.",
                     "error_type": "validation",
-                    "suggestion": "Use RECENT, WIN_RATE, GAMES_PLAYED, or WINS."
+                    "suggestion": "Use RECENT, WIN_RATE, GAMES_PLAYED, or WINS.",
                 }
 
         decks, _ = await db.search_decks_with_stats(
@@ -140,16 +141,18 @@ async def search_decks(
                 }
                 for c in (deck.cards or [])
             ]
-            payloads.append({
-                "deck_id": deck.deck_id,
-                "avg_elixir": deck.avg_elixir,
-                "games_played": deck.games_played,
-                "wins": deck.wins,
-                "losses": deck.losses,
-                "win_rate": deck.win_rate,
-                "last_seen": deck.last_seen,
-                "cards": cards,
-            })
+            payloads.append(
+                {
+                    "deck_id": deck.deck_id,
+                    "avg_elixir": deck.avg_elixir,
+                    "games_played": deck.games_played,
+                    "wins": deck.wins,
+                    "losses": deck.losses,
+                    "win_rate": deck.win_rate,
+                    "last_seen": deck.last_seen,
+                    "cards": cards,
+                }
+            )
 
         return {"decks": payloads}
     except (DatabaseConnectionError, DatabaseQueryError) as e:
@@ -182,7 +185,7 @@ async def search_decks(
         return {
             "error": "Unexpected error while searching decks.",
             "error_type": "unexpected",
-            "details": str(e)
+            "details": str(e),
         }
 
 
@@ -213,7 +216,7 @@ def _parse_card_filter(cards_str: str | None) -> list[str | int] | dict:
                     return {
                         "error": f"Invalid variant '{variant}' in '{cid}'.",
                         "error_type": "validation",
-                        "suggestion": f"Valid variants: {', '.join(sorted(VALID_VARIANTS))}."
+                        "suggestion": f"Valid variants: {', '.join(sorted(VALID_VARIANTS))}.",
                     }
                 result.append(cid.lower())  # e.g. "26000012:evolution"
             else:
@@ -222,6 +225,6 @@ def _parse_card_filter(cards_str: str | None) -> list[str | int] | dict:
             return {
                 "error": f"Invalid card id: '{cid}'.",
                 "error_type": "validation",
-                "suggestion": "Use numeric card IDs (e.g. 26000000) or card_id:variant (e.g. 26000000:evolution)."
+                "suggestion": "Use numeric card IDs (e.g. 26000000) or card_id:variant (e.g. 26000000:evolution).",
             }
     return result or None  # type: ignore[return-value]

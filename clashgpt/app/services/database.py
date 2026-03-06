@@ -7,6 +7,7 @@ Provides read-only access to cards, decks, and locations.
 Schema: dim_cards, dim_decks, deck_card_config, fact_battle_participants,
         processed_battles, dim_players, dim_seasons
 """
+
 import logging
 from typing import Any
 from urllib.parse import quote
@@ -34,29 +35,30 @@ logger = logging.getLogger(__name__)
 
 # List of card IDs that constitute win conditions for identifying worst matchups
 WIN_CONDITION_CARD_IDS = [
-    27000002, # Mortar
-    26000024, # Royal Giant
-    26000067, # Elixir Golem
-    26000036, # Battle Ram
-    26000021, # Hog Rider
-    26000003, # Giant
-    26000059, # Royal Hogs
-    26000058, # Wall Breakers
-    28000004, # Goblin Barrel
-    27000013, # Goblin Drill
-    26000006, # Balloon
-    26000060, # Goblin Giant
-    26000085, # Electro Giant
-    27000008, # X-Bow
-    26000009, # Golem
-    26000032, # Miner
-    26000051, # Ram Rider
-    28000010, # Graveyard
-    26000029, # Lava Hound
-    26000028, # Three Musketeers
-    28000003, # Rocket
-    26000056  # Skeleton Barrel
+    27000002,  # Mortar
+    26000024,  # Royal Giant
+    26000067,  # Elixir Golem
+    26000036,  # Battle Ram
+    26000021,  # Hog Rider
+    26000003,  # Giant
+    26000059,  # Royal Hogs
+    26000058,  # Wall Breakers
+    28000004,  # Goblin Barrel
+    27000013,  # Goblin Drill
+    26000006,  # Balloon
+    26000060,  # Goblin Giant
+    26000085,  # Electro Giant
+    27000008,  # X-Bow
+    26000009,  # Golem
+    26000032,  # Miner
+    26000051,  # Ram Rider
+    28000010,  # Graveyard
+    26000029,  # Lava Hound
+    26000028,  # Three Musketeers
+    28000003,  # Rocket
+    26000056,  # Skeleton Barrel
 ]
+
 
 class DatabaseServiceError(Exception):
     """Base exception for database service errors."""
@@ -94,9 +96,7 @@ class DatabaseService:
                 f"Initializing database service | mode={'dev' if settings.dev_mode else 'prod'}"
             )
             self.engine = create_async_engine(database_url, echo=False)
-            self.async_session = async_sessionmaker(
-                self.engine, expire_on_commit=False
-            )
+            self.async_session = async_sessionmaker(self.engine, expire_on_commit=False)
         except DatabaseServiceError:
             raise
         except Exception as e:
@@ -118,9 +118,7 @@ class DatabaseService:
             )
         except Exception as e:
             logger.exception("Failed to build database URL")
-            raise DatabaseConnectionError(
-                f"Failed to build database URL: {e!s}"
-            ) from e
+            raise DatabaseConnectionError(f"Failed to build database URL: {e!s}") from e
 
     async def close(self):
         """Close database connections."""
@@ -139,6 +137,7 @@ class DatabaseService:
         """Convert a dim_cards row to a Card dataclass."""
         # row: card_id, name, elixir_cost, rarity, card_type, can_evolve, can_be_heroic, icon_urls
         import json as _json
+
         rarity = Rarity(row[3].lower()) if row[3] else None
         icon_urls_raw = row[7]
         if isinstance(icon_urls_raw, dict):
@@ -180,7 +179,9 @@ class DatabaseService:
                         cards.append(self._row_to_card(row))
                     except Exception as e:
                         logger.exception("Failed to parse card row in get_all_cards")
-                        raise DatabaseDataError(f"Failed to parse card row: {e!s}") from e
+                        raise DatabaseDataError(
+                            f"Failed to parse card row: {e!s}"
+                        ) from e
 
                 logger.info(f"DB result: get_all_cards returned {len(cards)} cards")
                 return CardList(cards=cards)
@@ -215,7 +216,9 @@ class DatabaseService:
                         return self._row_to_card(row)
                     except Exception as e:
                         logger.exception("Failed to parse card row in get_card_by_id")
-                        raise DatabaseDataError(f"Failed to parse card row: {e!s}") from e
+                        raise DatabaseDataError(
+                            f"Failed to parse card row: {e!s}"
+                        ) from e
                 return None
         except DatabaseServiceError:
             raise
@@ -248,8 +251,12 @@ class DatabaseService:
                     try:
                         cards.append(self._row_to_card(row))
                     except Exception as e:
-                        logger.exception("Failed to parse card row in get_cards_by_rarity")
-                        raise DatabaseDataError(f"Failed to parse card row: {e!s}") from e
+                        logger.exception(
+                            "Failed to parse card row in get_cards_by_rarity"
+                        )
+                        raise DatabaseDataError(
+                            f"Failed to parse card row: {e!s}"
+                        ) from e
 
                 return CardList(cards=cards)
         except DatabaseServiceError:
@@ -268,10 +275,7 @@ class DatabaseService:
     # ===== CARD ANALYTICS =====
 
     async def get_card_win_rates(
-        self,
-        season_id: int | None = None,
-        min_uses: int = 100,
-        limit: int = 50
+        self, season_id: int | None = None, min_uses: int = 100, limit: int = 50
     ) -> list[CardStats]:
         """
         Get card win rates derived from fact_battle_participants + deck_card_config.
@@ -292,11 +296,17 @@ class DatabaseService:
                 where_conditions = []
 
                 if season_id:
-                    join_clause = "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                    join_clause = (
+                        "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                    )
                     where_conditions.append("pb.season_id = :season_id")
                     params["season_id"] = season_id
 
-                where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+                where_clause = (
+                    "WHERE " + " AND ".join(where_conditions)
+                    if where_conditions
+                    else ""
+                )
 
                 query = f"""
                     SELECT
@@ -329,19 +339,25 @@ class DatabaseService:
                         total_uses = int(row[2])
                         wins = int(row[3])
                         win_rate = (wins / total_uses) if total_uses > 0 else None
-                        stats_list.append(CardStats(
-                            card_id=row[0],
-                            card_name=row[1],
-                            total_uses=total_uses,
-                            wins=wins,
-                            losses=int(row[4]),
-                            win_rate=win_rate,
-                        ))
+                        stats_list.append(
+                            CardStats(
+                                card_id=row[0],
+                                card_name=row[1],
+                                total_uses=total_uses,
+                                wins=wins,
+                                losses=int(row[4]),
+                                win_rate=win_rate,
+                            )
+                        )
                     except Exception as e:
                         logger.exception("Failed to parse card stats row")
-                        raise DatabaseDataError(f"Failed to parse card stats row: {e!s}") from e
+                        raise DatabaseDataError(
+                            f"Failed to parse card stats row: {e!s}"
+                        ) from e
 
-                logger.info(f"DB result: get_card_win_rates returned {len(stats_list)} cards")
+                logger.info(
+                    f"DB result: get_card_win_rates returned {len(stats_list)} cards"
+                )
                 return stats_list
         except DatabaseServiceError:
             raise
@@ -357,9 +373,7 @@ class DatabaseService:
             ) from e
 
     async def get_card_usage_rates(
-        self,
-        season_id: int | None = None,
-        limit: int = 50
+        self, season_id: int | None = None, limit: int = 50
     ) -> list[CardStats]:
         """
         Get card usage rates (how often cards are played) derived from
@@ -379,11 +393,17 @@ class DatabaseService:
                 where_conditions = []
 
                 if season_id:
-                    join_clause = "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                    join_clause = (
+                        "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                    )
                     where_conditions.append("pb.season_id = :season_id")
                     params["season_id"] = season_id
 
-                where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+                where_clause = (
+                    "WHERE " + " AND ".join(where_conditions)
+                    if where_conditions
+                    else ""
+                )
 
                 # Total card appearances across all battle-deck slots
                 total_query = f"""
@@ -423,22 +443,26 @@ class DatabaseService:
                     try:
                         total = int(row[2])
                         wins = int(row[3])
-                        stats_list.append(CardStats(
-                            card_id=row[0],
-                            card_name=row[1],
-                            total_uses=total,
-                            wins=wins,
-                            losses=int(row[4]),
-                            win_rate=(wins / total) if total > 0 else None,
-                            usage_rate=float(row[5]),
-                        ))
+                        stats_list.append(
+                            CardStats(
+                                card_id=row[0],
+                                card_name=row[1],
+                                total_uses=total,
+                                wins=wins,
+                                losses=int(row[4]),
+                                win_rate=(wins / total) if total > 0 else None,
+                                usage_rate=float(row[5]),
+                            )
+                        )
                     except Exception as e:
                         logger.exception("Failed to parse card usage stats row")
                         raise DatabaseDataError(
                             f"Failed to parse card usage stats row: {e!s}"
                         ) from e
 
-                logger.info(f"DB result: get_card_usage_rates returned {len(stats_list)} cards")
+                logger.info(
+                    f"DB result: get_card_usage_rates returned {len(stats_list)} cards"
+                )
                 return stats_list
         except DatabaseServiceError:
             raise
@@ -479,7 +503,9 @@ class DatabaseService:
                 card_row = card_result.fetchone()
 
                 if not card_row:
-                    logger.info(f"DB result: get_card_stats_by_id - card {card_id} not found")
+                    logger.info(
+                        f"DB result: get_card_stats_by_id - card {card_id} not found"
+                    )
                     return None
 
                 card_name = card_row[1]
@@ -488,11 +514,17 @@ class DatabaseService:
                 season_conditions = []
                 season_params: dict[str, Any] = {}
                 if season_id:
-                    join_clause = "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                    join_clause = (
+                        "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                    )
                     season_conditions.append("pb.season_id = :season_id")
                     season_params["season_id"] = season_id
 
-                season_where = "WHERE " + " AND ".join(season_conditions) if season_conditions else ""
+                season_where = (
+                    "WHERE " + " AND ".join(season_conditions)
+                    if season_conditions
+                    else ""
+                )
 
                 # Total card appearances across all decks for usage rate
                 total_query = f"""
@@ -512,11 +544,13 @@ class DatabaseService:
                     {join_clause}
                     {season_where}
                 """
-                total_decks_result = await session.execute(text(total_decks_query), season_params)
+                total_decks_result = await session.execute(
+                    text(total_decks_query), season_params
+                )
                 total_decks = total_decks_result.scalar() or 1
 
                 # Stats for the specific card
-                card_where_conditions = [f"dcc.card_id = :card_id"]
+                card_where_conditions = ["dcc.card_id = :card_id"]
                 if season_conditions:
                     card_where_conditions.extend(season_conditions)
 
@@ -700,7 +734,9 @@ class DatabaseService:
                 join_clause = ""
 
                 if season_id:
-                    join_clause = "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                    join_clause = (
+                        "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                    )
                     where_conditions.append("pb.season_id = :season_id")
                     params["season_id"] = season_id
 
@@ -856,7 +892,6 @@ class DatabaseService:
         try:
             async with self.async_session() as session:
                 # Build season join for the stats CTE
-                season_join = ""
                 season_where = ""
                 params: dict[str, Any] = {
                     "min_games": min_games,
@@ -865,7 +900,6 @@ class DatabaseService:
                 }
 
                 if season_id:
-                    season_join = "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
                     season_where = "WHERE pb.season_id = :season_id"
                     params["season_id"] = season_id
 
@@ -888,7 +922,11 @@ class DatabaseService:
                                 f"EXISTS (SELECT 1 FROM deck_card_config "
                                 f"WHERE deck_id = d.deck_id AND card_id = :include_{i})"
                             )
-                            params[f"include_{i}"] = int(card_spec) if isinstance(card_spec, str) else card_spec
+                            params[f"include_{i}"] = (
+                                int(card_spec)
+                                if isinstance(card_spec, str)
+                                else card_spec
+                            )
 
                 if exclude_card_ids:
                     for i, card_spec in enumerate(exclude_card_ids):
@@ -906,7 +944,11 @@ class DatabaseService:
                                 f"NOT EXISTS (SELECT 1 FROM deck_card_config "
                                 f"WHERE deck_id = d.deck_id AND card_id = :exclude_{i})"
                             )
-                            params[f"exclude_{i}"] = int(card_spec) if isinstance(card_spec, str) else card_spec
+                            params[f"exclude_{i}"] = (
+                                int(card_spec)
+                                if isinstance(card_spec, str)
+                                else card_spec
+                            )
 
                 where_clause = "WHERE " + " AND ".join(deck_conditions)
 
@@ -1017,21 +1059,31 @@ class DatabaseService:
                     ORDER BY total_games DESC
                     LIMIT :limit
                 """)
-                result = await session.execute(query, {"search": f"%{name}%", "limit": limit})
+                result = await session.execute(
+                    query, {"search": f"%{name}%", "limit": limit}
+                )
                 rows = result.fetchall()
                 players = []
                 for row in rows:
-                    players.append({
-                        "player_tag": row[0],
-                        "name": row[1],
-                        "last_seen": row[2].isoformat() if hasattr(row[2], "isoformat") else (str(row[2]) if row[2] else None),
-                        "total_games": int(row[3]),
-                        "wins": int(row[4]),
-                        "win_rate": float(row[5]) if row[5] is not None else None,
-                        "avg_crowns": float(row[6]) if row[6] is not None else None,
-                        "avg_elixir_leaked": float(row[7]) if row[7] is not None else None,
-                    })
-                logger.info(f"DB result: search_players_by_name returned {len(players)} players")
+                    players.append(
+                        {
+                            "player_tag": row[0],
+                            "name": row[1],
+                            "last_seen": row[2].isoformat()
+                            if hasattr(row[2], "isoformat")
+                            else (str(row[2]) if row[2] else None),
+                            "total_games": int(row[3]),
+                            "wins": int(row[4]),
+                            "win_rate": float(row[5]) if row[5] is not None else None,
+                            "avg_crowns": float(row[6]) if row[6] is not None else None,
+                            "avg_elixir_leaked": float(row[7])
+                            if row[7] is not None
+                            else None,
+                        }
+                    )
+                logger.info(
+                    f"DB result: search_players_by_name returned {len(players)} players"
+                )
                 return players
         except DatabaseServiceError:
             raise
@@ -1058,7 +1110,9 @@ class DatabaseService:
             List of dicts with deck_id, games, wins, win_rate, avg_elixir, cards
             where cards is a list of {name, variant}
         """
-        logger.info(f"DB query: get_player_top_decks | player_tag={player_tag}, limit={limit}")
+        logger.info(
+            f"DB query: get_player_top_decks | player_tag={player_tag}, limit={limit}"
+        )
         try:
             async with self.async_session() as session:
                 decks_query = text("""
@@ -1078,7 +1132,9 @@ class DatabaseService:
                     ORDER BY games DESC
                     LIMIT :limit
                 """)
-                decks_result = await session.execute(decks_query, {"tag": player_tag, "limit": limit})
+                decks_result = await session.execute(
+                    decks_query, {"tag": player_tag, "limit": limit}
+                )
                 deck_rows = decks_result.fetchall()
 
                 if not deck_rows:
@@ -1110,16 +1166,20 @@ class DatabaseService:
                     deck_id = row[0]
                     games = int(row[1])
                     wins = int(row[2])
-                    decks.append({
-                        "deck_id": deck_id,
-                        "games": games,
-                        "wins": wins,
-                        "win_rate": float(row[3]) if row[3] is not None else None,
-                        "avg_elixir": float(row[4]) if row[4] is not None else None,
-                        "cards": cards_by_deck.get(deck_id, []),
-                    })
+                    decks.append(
+                        {
+                            "deck_id": deck_id,
+                            "games": games,
+                            "wins": wins,
+                            "win_rate": float(row[3]) if row[3] is not None else None,
+                            "avg_elixir": float(row[4]) if row[4] is not None else None,
+                            "cards": cards_by_deck.get(deck_id, []),
+                        }
+                    )
 
-                logger.info(f"DB result: get_player_top_decks returned {len(decks)} decks")
+                logger.info(
+                    f"DB result: get_player_top_decks returned {len(decks)} decks"
+                )
                 return decks
         except DatabaseServiceError:
             raise
@@ -1146,7 +1206,9 @@ class DatabaseService:
             List of dicts with battle_time, game_mode, result, crowns,
             elixir_leaked, opponent (name or None)
         """
-        logger.info(f"DB query: get_player_recent_battles | player_tag={player_tag}, limit={limit}")
+        logger.info(
+            f"DB query: get_player_recent_battles | player_tag={player_tag}, limit={limit}"
+        )
         try:
             async with self.async_session() as session:
                 query = text("""
@@ -1170,21 +1232,31 @@ class DatabaseService:
                     ORDER BY pb.battle_time DESC
                     LIMIT :limit
                 """)
-                result = await session.execute(query, {"tag": player_tag, "limit": limit})
+                result = await session.execute(
+                    query, {"tag": player_tag, "limit": limit}
+                )
                 rows = result.fetchall()
 
                 battles = []
                 for row in rows:
-                    battles.append({
-                        "battle_time": row[0].isoformat() if hasattr(row[0], "isoformat") else (str(row[0]) if row[0] else None),
-                        "game_mode": row[1],
-                        "result": row[2],
-                        "crowns": int(row[3]) if row[3] is not None else None,
-                        "elixir_leaked": float(row[4]) if row[4] is not None else None,
-                        "opponent": row[5],
-                    })
+                    battles.append(
+                        {
+                            "battle_time": row[0].isoformat()
+                            if hasattr(row[0], "isoformat")
+                            else (str(row[0]) if row[0] else None),
+                            "game_mode": row[1],
+                            "result": row[2],
+                            "crowns": int(row[3]) if row[3] is not None else None,
+                            "elixir_leaked": float(row[4])
+                            if row[4] is not None
+                            else None,
+                            "opponent": row[5],
+                        }
+                    )
 
-                logger.info(f"DB result: get_player_recent_battles returned {len(battles)} battles")
+                logger.info(
+                    f"DB result: get_player_recent_battles returned {len(battles)} battles"
+                )
                 return battles
         except DatabaseServiceError:
             raise
@@ -1261,7 +1333,9 @@ class DatabaseService:
                     ) = 8
                     LIMIT 1
                 """
-                deck_result = await session.execute(text(deck_lookup_query), card_params)
+                deck_result = await session.execute(
+                    text(deck_lookup_query), card_params
+                )
                 deck_row = deck_result.fetchone()
 
                 if not deck_row:
@@ -1284,7 +1358,9 @@ class DatabaseService:
                     WHERE dcc.deck_id = :deck_id
                     ORDER BY dcc.slot_index
                 """)
-                deck_cards_result = await session.execute(deck_cards_query, {"deck_id": deck_id})
+                deck_cards_result = await session.execute(
+                    deck_cards_query, {"deck_id": deck_id}
+                )
                 deck_cards = [
                     {
                         "card_id": r[0],
@@ -1350,8 +1426,12 @@ class DatabaseService:
                 opp_cards_by_deck: dict[str, list[dict]] = {}
 
                 if opponent_deck_ids:
-                    id_params = {f"odid_{i}": did for i, did in enumerate(opponent_deck_ids)}
-                    in_clause = ", ".join(f":odid_{i}" for i in range(len(opponent_deck_ids)))
+                    id_params = {
+                        f"odid_{i}": did for i, did in enumerate(opponent_deck_ids)
+                    }
+                    in_clause = ", ".join(
+                        f":odid_{i}" for i in range(len(opponent_deck_ids))
+                    )
                     opp_cards_query = f"""
                         SELECT dcc.deck_id, dcc.card_id, dc.name, dcc.variant::text, dcc.slot_index
                         FROM deck_card_config dcc
@@ -1359,17 +1439,21 @@ class DatabaseService:
                         WHERE dcc.deck_id IN ({in_clause})
                         ORDER BY dcc.deck_id, dcc.slot_index
                     """
-                    opp_cards_result = await session.execute(text(opp_cards_query), id_params)
+                    opp_cards_result = await session.execute(
+                        text(opp_cards_query), id_params
+                    )
                     for r in opp_cards_result.fetchall():
                         did = r[0]
                         if did not in opp_cards_by_deck:
                             opp_cards_by_deck[did] = []
-                        opp_cards_by_deck[did].append({
-                            "card_id": r[1],
-                            "card_name": r[2],
-                            "variant": r[3],
-                            "slot_index": r[4],
-                        })
+                        opp_cards_by_deck[did].append(
+                            {
+                                "card_id": r[1],
+                                "card_name": r[2],
+                                "variant": r[3],
+                                "slot_index": r[4],
+                            }
+                        )
 
                 matchups = []
                 for r in matchup_rows:
@@ -1377,14 +1461,18 @@ class DatabaseService:
                     games = int(r[1])
                     wins = int(r[2])
                     losses = int(r[3])
-                    matchups.append({
-                        "opponent_deck_id": opp_deck_id,
-                        "games_played": games,
-                        "wins": wins,
-                        "losses": losses,
-                        "win_rate": round(wins / games, 4) if games > 0 else None,
-                        "opponent_cards": opp_cards_by_deck.get(opp_deck_id, []) if opp_deck_id else [],
-                    })
+                    matchups.append(
+                        {
+                            "opponent_deck_id": opp_deck_id,
+                            "games_played": games,
+                            "wins": wins,
+                            "losses": losses,
+                            "win_rate": round(wins / games, 4) if games > 0 else None,
+                            "opponent_cards": opp_cards_by_deck.get(opp_deck_id, [])
+                            if opp_deck_id
+                            else [],
+                        }
+                    )
 
                 logger.info(
                     f"DB result: get_deck_matchups deck={deck_id} | "
@@ -1498,7 +1586,9 @@ class DatabaseService:
                 wins_a = int(stats_row[1]) if stats_row and stats_row[1] else 0
                 losses_a = int(stats_row[2]) if stats_row and stats_row[2] else 0
                 win_rate_a = round(wins_a / total_games, 4) if total_games > 0 else None
-                win_rate_b = round(losses_a / total_games, 4) if total_games > 0 else None
+                win_rate_b = (
+                    round(losses_a / total_games, 4) if total_games > 0 else None
+                )
 
                 if total_games == 0:
                     return {
@@ -1539,7 +1629,11 @@ class DatabaseService:
                 """)
                 top_a_result = await session.execute(
                     top_a_query,
-                    {"card_a_id": card_a_id, "card_b_id": card_b_id, "top_decks": top_decks},
+                    {
+                        "card_a_id": card_a_id,
+                        "card_b_id": card_b_id,
+                        "top_decks": top_decks,
+                    },
                 )
                 top_a_rows = top_a_result.fetchall()
 
@@ -1570,16 +1664,24 @@ class DatabaseService:
                 """)
                 top_b_result = await session.execute(
                     top_b_query,
-                    {"card_a_id": card_a_id, "card_b_id": card_b_id, "top_decks": top_decks},
+                    {
+                        "card_a_id": card_a_id,
+                        "card_b_id": card_b_id,
+                        "top_decks": top_decks,
+                    },
                 )
                 top_b_rows = top_b_result.fetchall()
 
                 # ── 5. Batch-fetch cards for all top decks ──
-                all_deck_ids = [r[0] for r in top_a_rows if r[0]] + [r[0] for r in top_b_rows if r[0]]
+                all_deck_ids = [r[0] for r in top_a_rows if r[0]] + [
+                    r[0] for r in top_b_rows if r[0]
+                ]
                 cards_by_deck: dict[str, list[dict]] = {}
 
                 if all_deck_ids:
-                    id_params: dict[str, Any] = {f"did_{i}": did for i, did in enumerate(all_deck_ids)}
+                    id_params: dict[str, Any] = {
+                        f"did_{i}": did for i, did in enumerate(all_deck_ids)
+                    }
                     in_clause = ", ".join(f":did_{i}" for i in range(len(all_deck_ids)))
                     deck_cards_query = f"""
                         SELECT dcc.deck_id, dcc.card_id, dc.name, dcc.variant::text, dcc.slot_index
@@ -1588,17 +1690,21 @@ class DatabaseService:
                         WHERE dcc.deck_id IN ({in_clause})
                         ORDER BY dcc.deck_id, dcc.slot_index
                     """
-                    deck_cards_result = await session.execute(text(deck_cards_query), id_params)
+                    deck_cards_result = await session.execute(
+                        text(deck_cards_query), id_params
+                    )
                     for r in deck_cards_result.fetchall():
                         did = r[0]
                         if did not in cards_by_deck:
                             cards_by_deck[did] = []
-                        cards_by_deck[did].append({
-                            "card_id": r[1],
-                            "card_name": r[2],
-                            "variant": r[3],
-                            "slot_index": r[4],
-                        })
+                        cards_by_deck[did].append(
+                            {
+                                "card_id": r[1],
+                                "card_name": r[2],
+                                "variant": r[3],
+                                "slot_index": r[4],
+                            }
+                        )
 
                 def _build_deck_list(rows: list) -> list[dict]:
                     result = []
@@ -1606,14 +1712,18 @@ class DatabaseService:
                         deck_id = r[0]
                         games = int(r[1])
                         wins = int(r[2])
-                        result.append({
-                            "deck_id": deck_id,
-                            "games": games,
-                            "wins": wins,
-                            "losses": games - wins,
-                            "win_rate": float(r[3]) if r[3] is not None else None,
-                            "cards": cards_by_deck.get(deck_id, []) if deck_id else [],
-                        })
+                        result.append(
+                            {
+                                "deck_id": deck_id,
+                                "games": games,
+                                "wins": wins,
+                                "losses": games - wins,
+                                "win_rate": float(r[3]) if r[3] is not None else None,
+                                "cards": cards_by_deck.get(deck_id, [])
+                                if deck_id
+                                else [],
+                            }
+                        )
                     return result
 
                 top_decks_a = _build_deck_list(top_a_rows)
@@ -1666,7 +1776,9 @@ class DatabaseService:
         Returns:
             The upserted row as a dict.
         """
-        logger.info(f"DB query: register_tracked_player | user_id={user_id}, player_tag={player_tag}")
+        logger.info(
+            f"DB query: register_tracked_player | user_id={user_id}, player_tag={player_tag}"
+        )
         normalised_tag = player_tag.upper().lstrip("#")
         normalised_tag = f"#{normalised_tag}"
         try:
@@ -1682,11 +1794,14 @@ class DatabaseService:
                         is_active     = TRUE
                     RETURNING user_id, player_tag, player_name, tracked_since, is_active
                 """)
-                result = await session.execute(stmt, {
-                    "user_id": user_id,
-                    "player_tag": normalised_tag,
-                    "player_name": player_name,
-                })
+                result = await session.execute(
+                    stmt,
+                    {
+                        "user_id": user_id,
+                        "player_tag": normalised_tag,
+                        "player_name": player_name,
+                    },
+                )
                 row = result.fetchone()
                 await session.commit()
                 if row:
@@ -1694,10 +1809,14 @@ class DatabaseService:
                         "user_id": row[0],
                         "player_tag": row[1],
                         "player_name": row[2],
-                        "tracked_since": row[3].isoformat() if hasattr(row[3], "isoformat") else str(row[3]),
+                        "tracked_since": row[3].isoformat()
+                        if hasattr(row[3], "isoformat")
+                        else str(row[3]),
                         "is_active": row[4],
                     }
-                raise DatabaseQueryError("Failed to upsert tracked player — no row returned.")
+                raise DatabaseQueryError(
+                    "Failed to upsert tracked player — no row returned."
+                )
         except DatabaseServiceError:
             raise
         except SQLAlchemyError as e:
@@ -1705,7 +1824,9 @@ class DatabaseService:
             raise DatabaseQueryError(f"Failed to register tracked player: {e!s}") from e
         except Exception as e:
             logger.exception("Unexpected error in register_tracked_player")
-            raise DatabaseServiceError(f"Unexpected error in register_tracked_player: {e!s}") from e
+            raise DatabaseServiceError(
+                f"Unexpected error in register_tracked_player: {e!s}"
+            ) from e
 
     async def get_tracked_player(self, user_id: str) -> dict | None:
         """
@@ -1726,7 +1847,9 @@ class DatabaseService:
                         "user_id": row[0],
                         "player_tag": row[1],
                         "player_name": row[2],
-                        "tracked_since": row[3].isoformat() if hasattr(row[3], "isoformat") else str(row[3]),
+                        "tracked_since": row[3].isoformat()
+                        if hasattr(row[3], "isoformat")
+                        else str(row[3]),
                         "is_active": row[4],
                     }
                 return None
@@ -1737,7 +1860,9 @@ class DatabaseService:
             raise DatabaseQueryError(f"Failed to fetch tracked player: {e!s}") from e
         except Exception as e:
             logger.exception("Unexpected error in get_tracked_player")
-            raise DatabaseServiceError(f"Unexpected error in get_tracked_player: {e!s}") from e
+            raise DatabaseServiceError(
+                f"Unexpected error in get_tracked_player: {e!s}"
+            ) from e
 
     async def get_tracker_stats(self, player_tag: str) -> dict:
         """
@@ -1778,8 +1903,12 @@ class DatabaseService:
                         "losses": losses,
                         "win_rate": float(row[3]) if row[3] is not None else None,
                         "avg_crowns": float(row[4]) if row[4] is not None else None,
-                        "avg_elixir_leaked": float(row[5]) if row[5] is not None else None,
-                        "last_seen": last_seen.isoformat() if hasattr(last_seen, "isoformat") else (str(last_seen) if last_seen else None),
+                        "avg_elixir_leaked": float(row[5])
+                        if row[5] is not None
+                        else None,
+                        "last_seen": last_seen.isoformat()
+                        if hasattr(last_seen, "isoformat")
+                        else (str(last_seen) if last_seen else None),
                     }
                 return {
                     "total_games": 0,
@@ -1797,7 +1926,9 @@ class DatabaseService:
             raise DatabaseQueryError(f"Failed to fetch tracker stats: {e!s}") from e
         except Exception as e:
             logger.exception("Unexpected error in get_tracker_stats")
-            raise DatabaseServiceError(f"Unexpected error in get_tracker_stats: {e!s}") from e
+            raise DatabaseServiceError(
+                f"Unexpected error in get_tracker_stats: {e!s}"
+            ) from e
 
     async def get_tracker_deck_breakdown(
         self,
@@ -1809,7 +1940,9 @@ class DatabaseService:
 
         Returns a list of dicts: deck_id, games, wins, win_rate, avg_elixir, cards.
         """
-        logger.info(f"DB query: get_tracker_deck_breakdown | player_tag={player_tag}, limit={limit}")
+        logger.info(
+            f"DB query: get_tracker_deck_breakdown | player_tag={player_tag}, limit={limit}"
+        )
         try:
             async with self.async_session() as session:
                 decks_query = text("""
@@ -1829,7 +1962,9 @@ class DatabaseService:
                     ORDER BY games DESC
                     LIMIT :limit
                 """)
-                decks_result = await session.execute(decks_query, {"tag": player_tag, "limit": limit})
+                decks_result = await session.execute(
+                    decks_query, {"tag": player_tag, "limit": limit}
+                )
                 deck_rows = decks_result.fetchall()
 
                 if not deck_rows:
@@ -1854,38 +1989,48 @@ class DatabaseService:
                     did = crow[0]
                     if did not in cards_by_deck:
                         cards_by_deck[did] = []
-                    cards_by_deck[did].append({
-                        "name": crow[1],
-                        "variant": crow[2],
-                        "slot_index": crow[3],
-                        "card_id": crow[4],
-                    })
+                    cards_by_deck[did].append(
+                        {
+                            "name": crow[1],
+                            "variant": crow[2],
+                            "slot_index": crow[3],
+                            "card_id": crow[4],
+                        }
+                    )
 
                 decks = []
                 for row in deck_rows:
                     deck_id = row[0]
                     games = int(row[1])
                     wins = int(row[2])
-                    decks.append({
-                        "deck_id": deck_id,
-                        "games": games,
-                        "wins": wins,
-                        "losses": games - wins,
-                        "win_rate": float(row[3]) if row[3] is not None else None,
-                        "avg_elixir": float(row[4]) if row[4] is not None else None,
-                        "cards": cards_by_deck.get(deck_id, []),
-                    })
+                    decks.append(
+                        {
+                            "deck_id": deck_id,
+                            "games": games,
+                            "wins": wins,
+                            "losses": games - wins,
+                            "win_rate": float(row[3]) if row[3] is not None else None,
+                            "avg_elixir": float(row[4]) if row[4] is not None else None,
+                            "cards": cards_by_deck.get(deck_id, []),
+                        }
+                    )
 
-                logger.info(f"DB result: get_tracker_deck_breakdown returned {len(decks)} decks")
+                logger.info(
+                    f"DB result: get_tracker_deck_breakdown returned {len(decks)} decks"
+                )
                 return decks
         except DatabaseServiceError:
             raise
         except SQLAlchemyError as e:
             logger.exception("DB query failed: get_tracker_deck_breakdown")
-            raise DatabaseQueryError(f"Failed to fetch tracker deck breakdown: {e!s}") from e
+            raise DatabaseQueryError(
+                f"Failed to fetch tracker deck breakdown: {e!s}"
+            ) from e
         except Exception as e:
             logger.exception("Unexpected error in get_tracker_deck_breakdown")
-            raise DatabaseServiceError(f"Unexpected error in get_tracker_deck_breakdown: {e!s}") from e
+            raise DatabaseServiceError(
+                f"Unexpected error in get_tracker_deck_breakdown: {e!s}"
+            ) from e
 
     async def get_tracker_worst_matchups(
         self,
@@ -1896,13 +2041,15 @@ class DatabaseService:
         """
         Get worst opponent win conditions for a tracked player.
         """
-        logger.info(f"DB query: get_tracker_worst_matchups | player_tag={player_tag}, limit={limit}")
+        logger.info(
+            f"DB query: get_tracker_worst_matchups | player_tag={player_tag}, limit={limit}"
+        )
         try:
             async with self.async_session() as session:
                 in_clause = ", ".join(map(str, WIN_CONDITION_CARD_IDS))
                 query = text(f"""
                     WITH opponent_win_conditions AS (
-                        SELECT 
+                        SELECT
                             fbp.battle_id,
                             fbp.is_win,
                             dcc.card_id AS win_con_card_id,
@@ -1913,7 +2060,7 @@ class DatabaseService:
                         WHERE fbp.player_tag = :tag
                           AND dcc.card_id IN ({in_clause})
                     )
-                    SELECT 
+                    SELECT
                         win_con_card_id,
                         win_con_name,
                         COUNT(*) AS games,
@@ -1928,30 +2075,40 @@ class DatabaseService:
                     ORDER BY win_rate ASC, games DESC
                     LIMIT :limit
                 """)
-                rows = await session.execute(query, {"tag": player_tag, "min_games": min_games, "limit": limit})
+                rows = await session.execute(
+                    query, {"tag": player_tag, "min_games": min_games, "limit": limit}
+                )
                 result = []
                 for row in rows.fetchall():
                     games = int(row[2])
                     wins = int(row[3])
-                    result.append({
-                        "card_id": row[0],
-                        "card_name": row[1],
-                        "games": games,
-                        "wins": wins,
-                        "losses": games - wins,
-                        "win_rate": float(row[4]) if row[4] is not None else None,
-                    })
-                
-                logger.info(f"DB result: get_tracker_worst_matchups returned {len(result)} win conditions")
+                    result.append(
+                        {
+                            "card_id": row[0],
+                            "card_name": row[1],
+                            "games": games,
+                            "wins": wins,
+                            "losses": games - wins,
+                            "win_rate": float(row[4]) if row[4] is not None else None,
+                        }
+                    )
+
+                logger.info(
+                    f"DB result: get_tracker_worst_matchups returned {len(result)} win conditions"
+                )
                 return result
         except DatabaseServiceError:
             raise
         except SQLAlchemyError as e:
             logger.exception("DB query failed: get_tracker_worst_matchups")
-            raise DatabaseQueryError(f"Failed to fetch tracker worst matchups: {e!s}") from e
+            raise DatabaseQueryError(
+                f"Failed to fetch tracker worst matchups: {e!s}"
+            ) from e
         except Exception as e:
             logger.exception("Unexpected error in get_tracker_worst_matchups")
-            raise DatabaseServiceError(f"Unexpected error in get_tracker_worst_matchups: {e!s}") from e
+            raise DatabaseServiceError(
+                f"Unexpected error in get_tracker_worst_matchups: {e!s}"
+            ) from e
 
     async def get_tracker_battles(
         self,
@@ -2001,15 +2158,21 @@ class DatabaseService:
                     ORDER BY pb.battle_time DESC
                     LIMIT :limit OFFSET :offset
                 """)
-                result = await session.execute(query, {"tag": player_tag, "limit": limit, "offset": offset})
+                result = await session.execute(
+                    query, {"tag": player_tag, "limit": limit, "offset": offset}
+                )
                 rows = result.fetchall()
 
                 # Batch-fetch opponent deck cards
                 opponent_deck_ids = [r[6] for r in rows if r[6] is not None]
                 opp_cards_by_deck: dict[str, list[dict]] = {}
                 if opponent_deck_ids:
-                    id_params = {f"odid_{i}": did for i, did in enumerate(opponent_deck_ids)}
-                    in_clause = ", ".join(f":odid_{i}" for i in range(len(opponent_deck_ids)))
+                    id_params = {
+                        f"odid_{i}": did for i, did in enumerate(opponent_deck_ids)
+                    }
+                    in_clause = ", ".join(
+                        f":odid_{i}" for i in range(len(opponent_deck_ids))
+                    )
                     opp_cards_query = f"""
                         SELECT dcc.deck_id, dcc.card_id, dc.name, dcc.variant::text, dcc.slot_index
                         FROM deck_card_config dcc
@@ -2017,32 +2180,46 @@ class DatabaseService:
                         WHERE dcc.deck_id IN ({in_clause})
                         ORDER BY dcc.deck_id, dcc.slot_index
                     """
-                    opp_cards_result = await session.execute(text(opp_cards_query), id_params)
+                    opp_cards_result = await session.execute(
+                        text(opp_cards_query), id_params
+                    )
                     for r in opp_cards_result.fetchall():
                         did = r[0]
                         if did not in opp_cards_by_deck:
                             opp_cards_by_deck[did] = []
-                        opp_cards_by_deck[did].append({
-                            "card_id": r[1],
-                            "card_name": r[2],
-                            "variant": r[3],
-                            "slot_index": r[4],
-                        })
+                        opp_cards_by_deck[did].append(
+                            {
+                                "card_id": r[1],
+                                "card_name": r[2],
+                                "variant": r[3],
+                                "slot_index": r[4],
+                            }
+                        )
 
                 battles = []
                 for row in rows:
-                    battles.append({
-                        "battle_time": row[0].isoformat() if hasattr(row[0], "isoformat") else (str(row[0]) if row[0] else None),
-                        "game_mode": row[1],
-                        "result": row[2],
-                        "crowns": int(row[3]) if row[3] is not None else None,
-                        "elixir_leaked": float(row[4]) if row[4] is not None else None,
-                        "opponent": row[5],
-                        "opponent_deck_id": row[6],
-                        "opponent_cards": opp_cards_by_deck.get(row[6], []) if row[6] else [],
-                    })
+                    battles.append(
+                        {
+                            "battle_time": row[0].isoformat()
+                            if hasattr(row[0], "isoformat")
+                            else (str(row[0]) if row[0] else None),
+                            "game_mode": row[1],
+                            "result": row[2],
+                            "crowns": int(row[3]) if row[3] is not None else None,
+                            "elixir_leaked": float(row[4])
+                            if row[4] is not None
+                            else None,
+                            "opponent": row[5],
+                            "opponent_deck_id": row[6],
+                            "opponent_cards": opp_cards_by_deck.get(row[6], [])
+                            if row[6]
+                            else [],
+                        }
+                    )
 
-                logger.info(f"DB result: get_tracker_battles returned {len(battles)} battles (total={total})")
+                logger.info(
+                    f"DB result: get_tracker_battles returned {len(battles)} battles (total={total})"
+                )
                 return {"total": total, "battles": battles}
         except DatabaseServiceError:
             raise
@@ -2051,7 +2228,9 @@ class DatabaseService:
             raise DatabaseQueryError(f"Failed to fetch tracker battles: {e!s}") from e
         except Exception as e:
             logger.exception("Unexpected error in get_tracker_battles")
-            raise DatabaseServiceError(f"Unexpected error in get_tracker_battles: {e!s}") from e
+            raise DatabaseServiceError(
+                f"Unexpected error in get_tracker_battles: {e!s}"
+            ) from e
 
     # ===== LOCATIONS ENDPOINTS =====
 
@@ -2069,14 +2248,18 @@ class DatabaseService:
                 locations = []
                 for row in rows:
                     try:
-                        locations.append(Location(
-                            id=row[0],
-                            name=row[1],
-                            is_country=row[2],
-                            country_code=row[3],
-                        ))
+                        locations.append(
+                            Location(
+                                id=row[0],
+                                name=row[1],
+                                is_country=row[2],
+                                country_code=row[3],
+                            )
+                        )
                     except Exception as e:
-                        logger.exception("Failed to parse location row in get_all_locations")
+                        logger.exception(
+                            "Failed to parse location row in get_all_locations"
+                        )
                         raise DatabaseDataError(
                             f"Failed to parse location row: {e!s}"
                         ) from e
@@ -2101,6 +2284,7 @@ class DatabaseService:
 
 # ===== MODULE-LEVEL HELPERS =====
 
+
 def _build_order_clause(sort_by: DeckSortBy) -> str:
     if sort_by == DeckSortBy.RECENT:
         return "ORDER BY dsa.last_seen DESC NULLS LAST"
@@ -2124,15 +2308,19 @@ def _rows_to_deck_with_stats(rows: Any) -> list[DeckWithStats]:
         wins = int(row[3])
         win_rate = (wins / games) if games > 0 else None
         last_seen = row[5]
-        decks.append(DeckWithStats(
-            deck_id=row[0],
-            avg_elixir=float(row[1]) if row[1] is not None else None,
-            games_played=games,
-            wins=wins,
-            losses=int(row[4]),
-            win_rate=win_rate,
-            last_seen=last_seen.isoformat() if hasattr(last_seen, "isoformat") else (str(last_seen) if last_seen else None),
-        ))
+        decks.append(
+            DeckWithStats(
+                deck_id=row[0],
+                avg_elixir=float(row[1]) if row[1] is not None else None,
+                games_played=games,
+                wins=wins,
+                losses=int(row[4]),
+                win_rate=win_rate,
+                last_seen=last_seen.isoformat()
+                if hasattr(last_seen, "isoformat")
+                else (str(last_seen) if last_seen else None),
+            )
+        )
     return decks
 
 
@@ -2165,13 +2353,15 @@ async def _attach_cards_to_decks(session: Any, decks: list[DeckWithStats]) -> No
         did = crow[0]
         if did not in cards_by_deck:
             cards_by_deck[did] = []
-        cards_by_deck[did].append(DeckCardConfig(
-            deck_id=crow[0],
-            card_id=crow[1],
-            slot_index=crow[2],
-            variant=crow[3],
-            card_name=crow[4],
-        ))
+        cards_by_deck[did].append(
+            DeckCardConfig(
+                deck_id=crow[0],
+                card_id=crow[1],
+                slot_index=crow[2],
+                variant=crow[3],
+                card_name=crow[4],
+            )
+        )
 
     for deck in decks:
         deck.cards = cards_by_deck.get(deck.deck_id, [])

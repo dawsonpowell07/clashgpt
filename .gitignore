@@ -222,3 +222,4 @@ clashgpt/GEMINI.md
 clashgpt/.claude
 supabase
 *.sql
+memory

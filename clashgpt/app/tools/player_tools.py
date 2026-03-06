@@ -22,7 +22,9 @@ Player-related tools for the Clash Royale agent.
 logger = logging.getLogger(__name__)
 
 
-async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQC") -> dict:
+async def get_player_info(
+    tool_context: ToolContext, player_tag: str = "#90UUQRQC"
+) -> dict:
     """
     Get Clash Royale player information.
 
@@ -42,13 +44,11 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
             return serialize_dataclass(player)
 
     except ClashRoyaleNotFoundError:
-        error_msg = f"Player not found: {player_tag}. Please verify the player tag is correct."
+        error_msg = (
+            f"Player not found: {player_tag}. Please verify the player tag is correct."
+        )
         logger.warning(f"Tool: get_player_info | {error_msg}")
-        return {
-            "error": error_msg,
-            "error_type": "not_found",
-            "player_tag": player_tag
-        }
+        return {"error": error_msg, "error_type": "not_found", "player_tag": player_tag}
 
     except ClashRoyaleAuthError as e:
         error_msg = f"Authentication failed when fetching player info: {e}"
@@ -56,7 +56,7 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
         return {
             "error": "Unable to access Clash Royale API due to authentication issues. Please contact support.",
             "error_type": "authentication",
-            "details": str(e)
+            "details": str(e),
         }
 
     except ClashRoyaleRateLimitError:
@@ -65,7 +65,7 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
         return {
             "error": error_msg,
             "error_type": "rate_limit",
-            "suggestion": "Please wait a moment before trying again."
+            "suggestion": "Please wait a moment before trying again.",
         }
 
     except ClashRoyaleTimeoutError:
@@ -74,7 +74,7 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
         return {
             "error": "The request took too long to complete. Please try again.",
             "error_type": "timeout",
-            "player_tag": player_tag
+            "player_tag": player_tag,
         }
 
     except ClashRoyaleNetworkError as e:
@@ -83,7 +83,7 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
         return {
             "error": "Unable to connect to Clash Royale API. Please check your internet connection and try again.",
             "error_type": "network",
-            "details": str(e)
+            "details": str(e),
         }
 
     except ClashRoyaleDataError as e:
@@ -92,7 +92,7 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
         return {
             "error": "Received invalid data from Clash Royale API. This may be a temporary issue.",
             "error_type": "data_error",
-            "details": str(e)
+            "details": str(e),
         }
 
     except ClashRoyaleAPIError as e:
@@ -101,7 +101,7 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
         return {
             "error": f"Failed to fetch player information: {e}",
             "error_type": "api_error",
-            "player_tag": player_tag
+            "player_tag": player_tag,
         }
 
     except Exception as e:
@@ -110,7 +110,7 @@ async def get_player_info(tool_context: ToolContext, player_tag: str = "#90UUQRQ
         return {
             "error": "An unexpected error occurred while fetching player information.",
             "error_type": "unexpected",
-            "details": str(e)
+            "details": str(e),
         }
 
 
@@ -126,8 +126,7 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
         Dictionary containing recent battle information including battle type, time, opponents, decks used, and trophy changes.
         On error, returns a dictionary with 'error' key containing the error message.
     """
-    logger.info(
-        f"Tool: get_player_battle_log | player_tag={player_tag}, limit={limit}")
+    logger.info(f"Tool: get_player_battle_log | player_tag={player_tag}, limit={limit}")
 
     try:
         async with ClashRoyaleService() as service:
@@ -135,13 +134,15 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
             return serialize_dataclass(battle_log)
 
     except ClashRoyaleNotFoundError:
-        error_msg = f"Player not found: {player_tag}. Please verify the player tag is correct."
+        error_msg = (
+            f"Player not found: {player_tag}. Please verify the player tag is correct."
+        )
         logger.warning(f"Tool: get_player_battle_log | {error_msg}")
         return {
             "error": error_msg,
             "error_type": "not_found",
             "player_tag": player_tag,
-            "battles": []
+            "battles": [],
         }
 
     except ClashRoyaleAuthError as e:
@@ -151,7 +152,7 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
             "error": "Unable to access Clash Royale API due to authentication issues. Please contact support.",
             "error_type": "authentication",
             "details": str(e),
-            "battles": []
+            "battles": [],
         }
 
     except ClashRoyaleRateLimitError:
@@ -161,7 +162,7 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
             "error": error_msg,
             "error_type": "rate_limit",
             "suggestion": "Please wait a moment before trying again.",
-            "battles": []
+            "battles": [],
         }
 
     except ClashRoyaleTimeoutError:
@@ -171,7 +172,7 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
             "error": "The request took too long to complete. Please try again.",
             "error_type": "timeout",
             "player_tag": player_tag,
-            "battles": []
+            "battles": [],
         }
 
     except ClashRoyaleNetworkError as e:
@@ -181,7 +182,7 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
             "error": "Unable to connect to Clash Royale API. Please check your internet connection and try again.",
             "error_type": "network",
             "details": str(e),
-            "battles": []
+            "battles": [],
         }
 
     except ClashRoyaleDataError as e:
@@ -191,7 +192,7 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
             "error": "Received invalid data from Clash Royale API. This may be a temporary issue.",
             "error_type": "data_error",
             "details": str(e),
-            "battles": []
+            "battles": [],
         }
 
     except ClashRoyaleAPIError as e:
@@ -201,18 +202,17 @@ async def get_player_battle_log(player_tag: str = "#90UUQRQC", limit: int = 3) -
             "error": f"Failed to fetch battle log: {e}",
             "error_type": "api_error",
             "player_tag": player_tag,
-            "battles": []
+            "battles": [],
         }
 
     except Exception as e:
         error_msg = f"Unexpected error in get_player_battle_log: {e}"
-        logger.error(
-            f"Tool: get_player_battle_log | {error_msg}", exc_info=True)
+        logger.error(f"Tool: get_player_battle_log | {error_msg}", exc_info=True)
         return {
             "error": "An unexpected error occurred while fetching battle log.",
             "error_type": "unexpected",
             "details": str(e),
-            "battles": []
+            "battles": [],
         }
 
 
@@ -221,7 +221,7 @@ async def get_top_players(location_id: int | str = 57000249, limit: int = 10) ->
     Get the top Path of Legend players for a specific location. use global as the loactionid for global rankings
 
     Args:
-    
+
         location_id: The location ID to get rankings for. Defaults to 57000249 (United States).
             Common location IDs:
             - 57000249: United States
@@ -242,8 +242,7 @@ async def get_top_players(location_id: int | str = 57000249, limit: int = 10) ->
         Dictionary containing the leaderboard with top players including their tags, names, ELO ratings, and clan information.
         On error, returns a dictionary with 'error' key containing the error message.
     """
-    logger.info(
-        f"Tool: get_top_players | location_id={location_id}, limit={limit}")
+    logger.info(f"Tool: get_top_players | location_id={location_id}, limit={limit}")
     limit = min(limit, 50)
 
     try:
@@ -258,7 +257,7 @@ async def get_top_players(location_id: int | str = 57000249, limit: int = 10) ->
             "error": error_msg,
             "error_type": "not_found",
             "location_id": location_id,
-            "entries": []
+            "entries": [],
         }
 
     except ClashRoyaleAuthError as e:
@@ -268,7 +267,7 @@ async def get_top_players(location_id: int | str = 57000249, limit: int = 10) ->
             "error": "Unable to access Clash Royale API due to authentication issues. Please contact support.",
             "error_type": "authentication",
             "details": str(e),
-            "entries": []
+            "entries": [],
         }
 
     except ClashRoyaleRateLimitError:
@@ -278,17 +277,19 @@ async def get_top_players(location_id: int | str = 57000249, limit: int = 10) ->
             "error": error_msg,
             "error_type": "rate_limit",
             "suggestion": "Please wait a moment before trying again.",
-            "entries": []
+            "entries": [],
         }
 
     except ClashRoyaleTimeoutError:
-        error_msg = f"Request timed out while fetching top players for location {location_id}."
+        error_msg = (
+            f"Request timed out while fetching top players for location {location_id}."
+        )
         logger.warning(f"Tool: get_top_players | {error_msg}")
         return {
             "error": "The request took too long to complete. Please try again.",
             "error_type": "timeout",
             "location_id": location_id,
-            "entries": []
+            "entries": [],
         }
 
     except ClashRoyaleNetworkError as e:
@@ -298,7 +299,7 @@ async def get_top_players(location_id: int | str = 57000249, limit: int = 10) ->
             "error": "Unable to connect to Clash Royale API. Please check your internet connection and try again.",
             "error_type": "network",
             "details": str(e),
-            "entries": []
+            "entries": [],
         }
 
     except ClashRoyaleDataError as e:
@@ -308,7 +309,7 @@ async def get_top_players(location_id: int | str = 57000249, limit: int = 10) ->
             "error": "Received invalid data from Clash Royale API. This may be a temporary issue.",
             "error_type": "data_error",
             "details": str(e),
-            "entries": []
+            "entries": [],
         }
 
     except ClashRoyaleAPIError as e:
@@ -318,7 +319,7 @@ async def get_top_players(location_id: int | str = 57000249, limit: int = 10) ->
             "error": f"Failed to fetch top players: {e}",
             "error_type": "api_error",
             "location_id": location_id,
-            "entries": []
+            "entries": [],
         }
 
     except Exception as e:
@@ -328,5 +329,5 @@ async def get_top_players(location_id: int | str = 57000249, limit: int = 10) ->
             "error": "An unexpected error occurred while fetching top players.",
             "error_type": "unexpected",
             "details": str(e),
-            "entries": []
+            "entries": [],
         }

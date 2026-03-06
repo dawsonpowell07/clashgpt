@@ -13,6 +13,7 @@ export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
   // When the sidebar populates pending input, set the value and focus
   useEffect(() => {
     if (pendingInput !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setValue(pendingInput);
       clearPendingInput();
       // Focus the input after a short delay to ensure it's rendered
