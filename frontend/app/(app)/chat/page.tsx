@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { CopilotChat, CopilotKitCSSProperties } from "@copilotkit/react-ui";
-import { AlertTriangle, X as XIcon, Loader2 } from "lucide-react";
+import { AlertTriangle, X as XIcon, Loader2, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { CopilotKit } from "@copilotkit/react-core";
 import "@copilotkit/react-ui/styles.css";
 import { cn } from "@/lib/utils";
@@ -46,15 +47,36 @@ export default function ChatPage() {
     return () => clearInterval(interval);
   }, [isSignedIn, getToken, userId]);
 
-  // Persist thread across page refreshes
-  const [threadId] = useState<string>(() => {
+  // Persist thread across page refreshes and sessions, expiring after 4 hours of inactivity
+  const [threadId, setThreadId] = useState<string>(() => {
     if (typeof window === "undefined") return crypto.randomUUID();
-    const existing = sessionStorage.getItem("copilotkit-thread-id");
-    if (existing) return existing;
-    const id = crypto.randomUUID();
-    sessionStorage.setItem("copilotkit-thread-id", id);
-    return id;
+    
+    const expiryMs = 4 * 60 * 60 * 1000; // 4 hours
+    const stored = localStorage.getItem("copilotkit-chat-session");
+    
+    if (stored) {
+      try {
+        const { id, timestamp } = JSON.parse(stored);
+        if (Date.now() - timestamp < expiryMs) {
+          // Update timestamp to extend session
+          localStorage.setItem("copilotkit-chat-session", JSON.stringify({ id, timestamp: Date.now() }));
+          return id;
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    
+    const newId = crypto.randomUUID();
+    localStorage.setItem("copilotkit-chat-session", JSON.stringify({ id: newId, timestamp: Date.now() }));
+    return newId;
   });
+
+  const handleClearChat = useCallback(() => {
+    const newId = crypto.randomUUID();
+    localStorage.setItem("copilotkit-chat-session", JSON.stringify({ id: newId, timestamp: Date.now() }));
+    setThreadId(newId);
+  }, []);
 
   // Also wait for the Bearer token to be ready before mounting CopilotKit.
   // Without this, CopilotKit fires its first request with headers={} (empty),
@@ -87,6 +109,7 @@ export default function ChatPage() {
       <Chat
         copilotError={copilotError}
         onDismissError={() => setCopilotError(null)}
+        onClearChat={handleClearChat}
       />
     </CopilotKit>
   );
@@ -95,9 +118,10 @@ export default function ChatPage() {
 interface ChatProps {
   copilotError: string | null;
   onDismissError: () => void;
+  onClearChat: () => void;
 }
 
-function Chat({ copilotError, onDismissError }: ChatProps) {
+function Chat({ copilotError, onDismissError, onClearChat }: ChatProps) {
   const [pendingInput] = useState<string | null>(null);
   const clearPendingInput = useCallback(() => {}, []);
 
@@ -138,7 +162,21 @@ function Chat({ copilotError, onDismissError }: ChatProps) {
             } as CopilotKitCSSProperties
           }
         >
-          <div className={cn("flex-1 w-full rounded-xl overflow-y-auto")}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--copilot-kit-separator-color)] bg-[color:var(--copilot-kit-background-color)]">
+            <span className="font-semibold text-sm text-[color:var(--copilot-kit-contrast-color)]">ClashGPT Chat</span>
+            <Button 
+              onClick={onClearChat} 
+              variant="destructive"
+              size="sm" 
+              className="h-8"
+            >
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              New Chat
+            </Button>
+          </div>
+
+          <div className={cn("flex-1 w-full bg-[color:var(--copilot-kit-background-color)] overflow-y-auto")}>
             <InputContext.Provider value={{ pendingInput, clearPendingInput }}>
               <CopilotChat
                 className="h-full w-full"
