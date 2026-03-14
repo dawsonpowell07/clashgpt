@@ -277,7 +277,7 @@ function BattleRow({ battle }: { battle: TrackerBattle }) {
           vs {battle.opponent ?? "Unknown"}
         </p>
         <p className="text-[10px] text-muted-foreground">
-          {battle.game_mode ?? "—"}
+          Ranked
         </p>
       </div>
 

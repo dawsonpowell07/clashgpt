@@ -61,7 +61,7 @@ export function RecentBattles({ battles }: RecentBattlesProps) {
                     {formatBattleTime(battle.battle_time)}
                   </td>
                   <td className="px-4 py-3 text-xs text-foreground/80 max-w-[150px] truncate">
-                    {battle.game_mode ?? "—"}
+                    Ranked
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className="inline-flex items-center gap-1 font-bold text-foreground tabular-nums">

@@ -169,7 +169,7 @@ function BattleCard({ battle, defaultOpen = false }: BattleCardProps) {
                 </span>
                 <span className="text-xs text-muted-foreground">•</span>
                 <span className="text-xs text-muted-foreground">
-                  {formatGameMode(battle.game_mode_name)}
+                  Ranked
                 </span>
                 <span className="text-xs text-muted-foreground">•</span>
                 <span className="text-xs text-muted-foreground">
