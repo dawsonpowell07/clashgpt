@@ -128,7 +128,7 @@ export default function ProfilesPage() {
 
       <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 relative z-10">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="space-y-2 pb-6 border-b border-border/40 relative">
           <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent battle-glow" />
           <h1 className="font-[family-name:var(--font-heading)] text-5xl sm:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-amber-300 to-primary/70 bg-clip-text text-transparent">
@@ -139,7 +139,7 @@ export default function ProfilesPage() {
           </p>
         </div>
 
-        {/* ── Search ── */}
+        {/* Search */}
         <div className="relative">
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -167,7 +167,7 @@ export default function ProfilesPage() {
           </div>
         </div>
 
-        {/* ── Search error ── */}
+        {/* Search error */}
         {searchError && (
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive">
             <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -178,7 +178,7 @@ export default function ProfilesPage() {
           </div>
         )}
 
-        {/* ── Empty state ── */}
+        {/* Empty state */}
         {!searchResults && !isSearching && !searchError && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="w-14 h-14 rounded-full border border-border/50 bg-card flex items-center justify-center mb-4">
@@ -193,15 +193,15 @@ export default function ProfilesPage() {
           </div>
         )}
 
-        {/* ── No results ── */}
+        {/* No results */}
         {searchResults && searchResults.length === 0 && !isSearching && <NoResults />}
 
-        {/* ── Multiple results ── */}
+        {/* Multiple results */}
         {searchResults && searchResults.length > 1 && !selectedPlayer && (
           <PlayerSearchResults results={searchResults} onSelect={selectPlayer} />
         )}
 
-        {/* ── Player detail ── */}
+        {/* Player detail */}
         {selectedPlayer && (
           <div className="space-y-6 arena-entrance">
 
@@ -216,7 +216,7 @@ export default function ProfilesPage() {
               </button>
             )}
 
-            {/* Hero card */}
+            {/* Hero card — always full width */}
             <PlayerHeroCard player={selectedPlayer} />
 
             {/* Loading */}
@@ -241,40 +241,51 @@ export default function ProfilesPage() {
               </div>
             )}
 
-            {/* Live CR Info */}
-            {!isLoadingDetails && crInfo && <LivePlayerData crInfo={crInfo} />}
+            {/* Two-column layout: left = live data + decks, right = sticky battles */}
+            {!isLoadingDetails && (crInfo != null || decks !== null || battles !== null) && (
+              <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6 items-start">
 
-            {/* Most Used Decks */}
-            {!isLoadingDetails && decks !== null && (
-              <div>
-                <SectionHeading
-                  icon={<Swords className="w-4 h-4" />}
-                  label="Most Used Decks"
-                  sub="Top 5 by games played"
-                />
-                {decks.length === 0 ? (
-                  <div className="text-sm text-muted-foreground/60 text-center py-10 rounded-xl border border-dashed border-border/40">
-                    No deck data available for this player.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {decks.map((deck, i) => (
-                      <DeckAccordion key={deck.deck_id} deck={deck} rank={i + 1} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                {/* Left column */}
+                <div className="space-y-6">
+                  {crInfo && <LivePlayerData crInfo={crInfo} />}
 
-            {/* Recent Battles */}
-            {!isLoadingDetails && battles !== null && (
-              <div>
-                <SectionHeading
-                  icon={<Trophy className="w-4 h-4" />}
-                  label="Recent Battles"
-                  sub="Last 20 battles from database"
-                />
-                <RecentBattles battles={battles} />
+                  {decks !== null && (
+                    <section className="space-y-3">
+                      <SectionHeading
+                        icon={<Swords className="w-4 h-4" />}
+                        label="Most Used Decks"
+                        sub="Top 5 by games played"
+                      />
+                      {decks.length === 0 ? (
+                        <div className="text-sm text-muted-foreground/60 text-center py-10 rounded-xl border border-dashed border-border/40">
+                          No deck data available for this player.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {decks.map((deck, i) => (
+                            <DeckAccordion key={deck.deck_id} deck={deck} rank={i + 1} />
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  )}
+                </div>
+
+                {/* Right column — sticky */}
+                <div className="xl:sticky xl:top-6">
+                  {battles !== null && (
+                    <section className="space-y-3">
+                      <SectionHeading
+                        icon={<Trophy className="w-4 h-4" />}
+                        label="Recent Battles"
+                        sub="Last 20 battles from database"
+                      />
+                      <div className="bg-card/40 border border-border/50 rounded-2xl p-4">
+                        <RecentBattles battles={battles} />
+                      </div>
+                    </section>
+                  )}
+                </div>
               </div>
             )}
           </div>

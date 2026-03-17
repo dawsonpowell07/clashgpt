@@ -17,74 +17,52 @@ export function RecentBattles({ battles }: RecentBattlesProps) {
   }
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card overflow-hidden shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border/50 bg-muted/20">
-              <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 w-4" />
-              <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                Time
-              </th>
-              <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                Mode
-              </th>
-              <th className="text-center px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                Crowns
-              </th>
-              <th className="text-center px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                Elixir
-              </th>
-              <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                Opponent
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {battles.map((battle, i) => {
-              const isWin = battle.result === "Win";
-              return (
-                <tr
-                  key={i}
-                  className="border-b border-border/25 last:border-0 hover:bg-muted/15 transition-colors group"
-                >
-                  {/* Color strip */}
-                  <td className="pl-0 pr-0 py-0 w-1">
-                    <div
-                      className={cn(
-                        "w-1 h-full min-h-[44px]",
-                        isWin ? "bg-emerald-500/70" : "bg-red-500/50"
-                      )}
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                    {formatBattleTime(battle.battle_time)}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-foreground/80 max-w-[150px] truncate">
-                    Ranked
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="inline-flex items-center gap-1 font-bold text-foreground tabular-nums">
-                      <Crown className="w-3 h-3 text-amber-400" />
-                      {battle.crowns ?? "—"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center text-xs text-muted-foreground tabular-nums">
-                    {battle.elixir_leaked !== null
-                      ? battle.elixir_leaked.toFixed(1)
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-foreground/70 max-w-[140px] truncate">
-                    {battle.opponent ?? (
-                      <span className="text-muted-foreground/40">Unknown</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+    <div className="flex flex-col gap-1.5">
+      {battles.map((battle, i) => {
+        const isWin = battle.result === "Win";
+        return (
+          <div
+            key={i}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm transition-colors",
+              isWin
+                ? "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10"
+                : "border-red-500/20 bg-red-500/5 hover:bg-red-500/10"
+            )}
+          >
+            <span
+              className={cn(
+                "shrink-0 w-10 text-center text-[10px] font-bold uppercase tracking-wider rounded-md px-1.5 py-1",
+                isWin
+                  ? "bg-emerald-500/20 text-emerald-400"
+                  : "bg-red-500/20 text-red-400"
+              )}
+            >
+              {battle.result}
+            </span>
+            <div className="flex items-center gap-1 text-amber-400 font-bold text-sm shrink-0 min-w-[2.25rem]">
+              <Crown className="w-3 h-3" />
+              {battle.crowns ?? "—"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-foreground truncate">
+                vs {battle.opponent ?? "Unknown"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {formatBattleTime(battle.battle_time)}
+              </p>
+            </div>
+            {battle.elixir_leaked !== null && (
+              <div className="text-right shrink-0">
+                <p className="text-xs font-semibold text-purple-400">
+                  {battle.elixir_leaked.toFixed(1)}
+                </p>
+                <p className="text-[9px] text-muted-foreground">elixir</p>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

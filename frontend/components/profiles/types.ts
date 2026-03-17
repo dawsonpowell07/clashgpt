@@ -20,6 +20,7 @@ export interface PlayerDeck {
   deck_id: string;
   games: number;
   wins: number;
+  losses: number;
   win_rate: number | null;
   avg_elixir: number | null;
   cards: DeckCard[];
