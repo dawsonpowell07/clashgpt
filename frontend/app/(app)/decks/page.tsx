@@ -48,7 +48,14 @@ export default function DecksPage() {
       const res = await fetch(`${API_BASE_URL}/api/cards`);
       if (!res.ok) throw new Error("Failed to fetch cards");
       const data = await res.json();
-      setCards(data.cards || []);
+      const TOWER_TROOP_NAMES = new Set(["Tower Princess", "Royal Chef", "Dagger Duchess", "Cannoneer"]);
+      setCards(
+        (data.cards || []).filter(
+          (card: Card) =>
+            !String(card.card_id).startsWith("159") &&
+            !TOWER_TROOP_NAMES.has(card.name)
+        )
+      );
     } catch (error) {
       console.error("Error fetching cards:", error);
       setCardsError("Failed to load cards. Please check your connection and try again.");
