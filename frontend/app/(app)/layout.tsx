@@ -2,7 +2,11 @@
 
 import "@copilotkit/react-ui/styles.css";
 import { AppSidebar } from "@/components/app-sidebar";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { usePathname } from "next/navigation";
 
@@ -27,7 +31,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 px-3">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
-            <span className="text-sm font-medium text-foreground">{pageTitle}</span>
+            <span className="text-sm font-medium text-foreground">
+              {pageTitle}
+            </span>
           </div>
         </header>
         <div>{children}</div>

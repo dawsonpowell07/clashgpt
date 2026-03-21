@@ -25,9 +25,15 @@ export default function DecksPage() {
   const [searchError, setSearchError] = useState<string | null>(null);
 
   // Selection State
-  const [includedVariants, setIncludedVariants] = useState<Set<string>>(new Set());
-  const [excludedVariants, setExcludedVariants] = useState<Set<string>>(new Set());
-  const [filterMode, setFilterMode] = useState<"INCLUDE" | "EXCLUDE">("INCLUDE");
+  const [includedVariants, setIncludedVariants] = useState<Set<string>>(
+    new Set(),
+  );
+  const [excludedVariants, setExcludedVariants] = useState<Set<string>>(
+    new Set(),
+  );
+  const [filterMode, setFilterMode] = useState<"INCLUDE" | "EXCLUDE">(
+    "INCLUDE",
+  );
 
   // Search Results State
   const [decksData, setDecksData] = useState<DecksResponse | null>(null);
@@ -48,17 +54,24 @@ export default function DecksPage() {
       const res = await fetch(`${API_BASE_URL}/api/cards`);
       if (!res.ok) throw new Error("Failed to fetch cards");
       const data = await res.json();
-      const TOWER_TROOP_NAMES = new Set(["Tower Princess", "Royal Chef", "Dagger Duchess", "Cannoneer"]);
+      const TOWER_TROOP_NAMES = new Set([
+        "Tower Princess",
+        "Royal Chef",
+        "Dagger Duchess",
+        "Cannoneer",
+      ]);
       setCards(
         (data.cards || []).filter(
           (card: Card) =>
             !String(card.card_id).startsWith("159") &&
-            !TOWER_TROOP_NAMES.has(card.name)
-        )
+            !TOWER_TROOP_NAMES.has(card.name),
+        ),
       );
     } catch (error) {
       console.error("Error fetching cards:", error);
-      setCardsError("Failed to load cards. Please check your connection and try again.");
+      setCardsError(
+        "Failed to load cards. Please check your connection and try again.",
+      );
     } finally {
       setIsLoadingCards(false);
     }
@@ -86,8 +99,12 @@ export default function DecksPage() {
       setRateLimitError(null);
       setSearchError(null);
       try {
-        const includeParam = Array.from(includedVariants).map(variantIdToApiParam).join(",");
-        const excludeParam = Array.from(excludedVariants).map(variantIdToApiParam).join(",");
+        const includeParam = Array.from(includedVariants)
+          .map(variantIdToApiParam)
+          .join(",");
+        const excludeParam = Array.from(excludedVariants)
+          .map(variantIdToApiParam)
+          .join(",");
 
         const queryParams = new URLSearchParams({
           page: pageNum.toString(),
@@ -100,10 +117,14 @@ export default function DecksPage() {
         if (includeParam) queryParams.set("include", includeParam);
         if (excludeParam) queryParams.set("exclude", excludeParam);
 
-        const res = await fetch(`${API_BASE_URL}/api/decks?${queryParams.toString()}`);
+        const res = await fetch(
+          `${API_BASE_URL}/api/decks?${queryParams.toString()}`,
+        );
 
         if (res.status === 429) {
-          setRateLimitError("Too many requests — please wait a moment before searching again.");
+          setRateLimitError(
+            "Too many requests — please wait a moment before searching again.",
+          );
           return;
         }
 
@@ -117,7 +138,7 @@ export default function DecksPage() {
         setIsSearching(false);
       }
     },
-    [includedVariants, excludedVariants, minGames]
+    [includedVariants, excludedVariants, minGames],
   );
 
   const hasFetchedRef = useRef(false);
@@ -191,7 +212,7 @@ export default function DecksPage() {
     <div
       className={cn(
         inter.className,
-        "min-h-screen bg-gradient-to-b from-background via-background to-background/95 text-foreground pb-20 relative overflow-hidden"
+        "min-h-screen bg-gradient-to-b from-background via-background to-background/95 text-foreground pb-20 relative overflow-hidden",
       )}
     >
       {/* Background */}
@@ -200,7 +221,6 @@ export default function DecksPage() {
       <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative z-10">
-
         {/* Header */}
         <div className="relative">
           <div className="w-12 h-0.5 bg-primary mb-4 rounded-full" />
@@ -242,7 +262,10 @@ export default function DecksPage() {
           minGames={minGames}
           onSetMinGames={setMinGames}
           isSearching={isSearching}
-          onSearch={() => { setPage(1); fetchDecks(1); }}
+          onSearch={() => {
+            setPage(1);
+            fetchDecks(1);
+          }}
           onClearFilters={clearFilters}
         />
 
@@ -257,8 +280,18 @@ export default function DecksPage() {
         {/* Rate Limit Warning */}
         {rateLimitError && (
           <div className="flex items-center gap-3 px-5 py-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-5 h-5 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <p className="text-sm font-medium">{rateLimitError}</p>
           </div>
@@ -270,7 +303,10 @@ export default function DecksPage() {
             <AlertTriangle className="w-5 h-5 flex-shrink-0" />
             <p className="text-sm font-medium flex-1">{searchError}</p>
             <button
-              onClick={() => { setSearchError(null); fetchDecks(page); }}
+              onClick={() => {
+                setSearchError(null);
+                fetchDecks(page);
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-destructive/10 hover:bg-destructive/20 rounded-md transition-colors"
             >
               <RefreshCw className="w-3 h-3" />

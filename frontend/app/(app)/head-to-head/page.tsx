@@ -3,7 +3,13 @@
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { Orbitron } from "next/font/google";
-import { AlertTriangle, RefreshCw, Swords, X, ArrowLeftRight } from "lucide-react";
+import {
+  AlertTriangle,
+  RefreshCw,
+  Swords,
+  X,
+  ArrowLeftRight,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WinConditionMatchup } from "@/components/win-condition-matchup";
 import { CardIcon, cardFileName } from "@/components/card-icon";
@@ -15,10 +21,10 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 // ─── Win Condition IDs ────────────────────────────────────────────────────────
 
 const WIN_CONDITION_IDS = new Set([
-  27000002, 26000024, 26000067, 26000036, 26000021, 26000003,
-  26000059, 26000058, 28000004, 27000013, 26000006, 26000060,
-  26000085, 27000008, 26000009, 26000032, 26000051, 28000010,
-  26000029, 26000028, 28000003, 26000056,
+  27000002, 26000024, 26000067, 26000036, 26000021, 26000003, 26000059,
+  26000058, 28000004, 27000013, 26000006, 26000060, 26000085, 27000008,
+  26000009, 26000032, 26000051, 28000010, 26000029, 26000028, 28000003,
+  26000056,
 ]);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -35,8 +41,16 @@ interface Card {
 }
 
 interface WinConditionMatchupData {
-  card_a: { card_id: number; name: string; icon_urls: Record<string, string> | null };
-  card_b: { card_id: number; name: string; icon_urls: Record<string, string> | null };
+  card_a: {
+    card_id: number;
+    name: string;
+    icon_urls: Record<string, string> | null;
+  };
+  card_b: {
+    card_id: number;
+    name: string;
+    icon_urls: Record<string, string> | null;
+  };
   total_games: number;
   wins_a: number;
   losses_a: number;
@@ -78,7 +92,11 @@ interface CardPickerTileProps {
   onSelect: () => void;
 }
 
-function CardPickerTile({ card, selectionState, onSelect }: CardPickerTileProps) {
+function CardPickerTile({
+  card,
+  selectionState,
+  onSelect,
+}: CardPickerTileProps) {
   const isSelectedA = selectionState === "selected-a";
   const isSelectedB = selectionState === "selected-b";
   const isDisabled = selectionState === "disabled";
@@ -91,7 +109,7 @@ function CardPickerTile({ card, selectionState, onSelect }: CardPickerTileProps)
         "relative flex flex-col items-center rounded-xl overflow-hidden transition-all duration-150",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         isDisabled && "opacity-30 cursor-not-allowed",
-        !isDisabled && "cursor-pointer"
+        !isDisabled && "cursor-pointer",
       )}
     >
       {/* Card image — CardIcon style with selection border override */}
@@ -99,16 +117,17 @@ function CardPickerTile({ card, selectionState, onSelect }: CardPickerTileProps)
         className={cn(
           "relative w-full aspect-[3/4] rounded-lg overflow-hidden border-2 bg-muted group shadow-md",
           "transition-all duration-300",
-          !isDisabled && "hover:scale-[1.15] hover:z-20 hover:rotate-2 hover:shadow-lg",
+          !isDisabled &&
+            "hover:scale-[1.15] hover:z-20 hover:rotate-2 hover:shadow-lg",
           isSelectedA && "shadow-[0_0_12px_rgba(59,130,246,0.5)]",
-          isSelectedB && "shadow-[0_0_12px_rgba(249,115,22,0.5)]"
+          isSelectedB && "shadow-[0_0_12px_rgba(249,115,22,0.5)]",
         )}
         style={{
           borderColor: isSelectedA
             ? "rgb(59,130,246)"
             : isSelectedB
-            ? "rgb(249,115,22)"
-            : "rgba(255,255,255,0.1)",
+              ? "rgb(249,115,22)"
+              : "rgba(255,255,255,0.1)",
         }}
         title={card.name}
       >
@@ -142,7 +161,11 @@ interface SelectedCardPreviewProps {
   onClear: () => void;
 }
 
-function SelectedCardPreview({ card, side, onClear }: SelectedCardPreviewProps) {
+function SelectedCardPreview({
+  card,
+  side,
+  onClear,
+}: SelectedCardPreviewProps) {
   const isA = side === "a";
   const accentText = isA ? "text-blue-400" : "text-orange-400";
   const accentBorder = isA ? "border-blue-500/40" : "border-orange-500/40";
@@ -158,20 +181,29 @@ function SelectedCardPreview({ card, side, onClear }: SelectedCardPreviewProps) 
         className={cn(
           "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 h-28",
           isA ? "border-blue-500/20" : "border-orange-500/20",
-          isA ? "bg-blue-500/3" : "bg-orange-500/3"
+          isA ? "bg-blue-500/3" : "bg-orange-500/3",
         )}
       >
         <div
           className={cn(
             "w-10 h-10 rounded-lg border-2 border-dashed flex items-center justify-center",
-            isA ? "border-blue-500/30" : "border-orange-500/30"
+            isA ? "border-blue-500/30" : "border-orange-500/30",
           )}
         >
-          <span className={cn("text-xl font-black", orbitron.className, accentText, "opacity-30")}>
+          <span
+            className={cn(
+              "text-xl font-black",
+              orbitron.className,
+              accentText,
+              "opacity-30",
+            )}
+          >
             {isA ? "A" : "B"}
           </span>
         </div>
-        <p className={cn("text-xs font-semibold", accentText, "opacity-50")}>{label}</p>
+        <p className={cn("text-xs font-semibold", accentText, "opacity-50")}>
+          {label}
+        </p>
       </div>
     );
   }
@@ -182,7 +214,7 @@ function SelectedCardPreview({ card, side, onClear }: SelectedCardPreviewProps) 
         "relative flex items-center gap-4 rounded-xl border-2 p-4 h-28 transition-all",
         accentBorder,
         accentBg,
-        accentShadow
+        accentShadow,
       )}
     >
       {/* Card image — shared CardIcon component */}
@@ -192,8 +224,17 @@ function SelectedCardPreview({ card, side, onClear }: SelectedCardPreviewProps) 
 
       {/* Info */}
       <div className="flex flex-col gap-1 min-w-0 flex-1">
-        <p className={cn("text-[10px] font-bold uppercase tracking-wider", accentText)}>{label}</p>
-        <p className="text-sm font-bold text-foreground leading-tight truncate">{card.name}</p>
+        <p
+          className={cn(
+            "text-[10px] font-bold uppercase tracking-wider",
+            accentText,
+          )}
+        >
+          {label}
+        </p>
+        <p className="text-sm font-bold text-foreground leading-tight truncate">
+          {card.name}
+        </p>
         {card.elixir_cost != null && (
           <p className="text-xs text-muted-foreground">
             {card.elixir_cost} elixir
@@ -223,14 +264,24 @@ interface CardGridProps {
   onSelect: (cardId: number) => void;
 }
 
-function CardGrid({ cards, selectedA, selectedB, side, onSelect }: CardGridProps) {
+function CardGrid({
+  cards,
+  selectedA,
+  selectedB,
+  side,
+  onSelect,
+}: CardGridProps) {
   return (
     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 gap-2 overflow-y-auto max-h-[320px] pr-1">
       {cards.map((card) => {
         const isThisSideSelected =
-          side === "a" ? selectedA === card.card_id : selectedB === card.card_id;
+          side === "a"
+            ? selectedA === card.card_id
+            : selectedB === card.card_id;
         const isOtherSideSelected =
-          side === "a" ? selectedB === card.card_id : selectedA === card.card_id;
+          side === "a"
+            ? selectedB === card.card_id
+            : selectedA === card.card_id;
 
         let state: "none" | "selected-a" | "selected-b" | "disabled";
         if (isThisSideSelected) {
@@ -265,7 +316,8 @@ export default function HeadToHeadPage() {
   const [selectedA, setSelectedA] = useState<number | null>(null);
   const [selectedB, setSelectedB] = useState<number | null>(null);
 
-  const [matchupData, setMatchupData] = useState<WinConditionMatchupData | null>(null);
+  const [matchupData, setMatchupData] =
+    useState<WinConditionMatchupData | null>(null);
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
@@ -278,9 +330,13 @@ export default function HeadToHeadPage() {
       const data = await res.json();
       const cards: Card[] = data.cards || [];
       setAllCards(cards);
-      setWinConditionCards(cards.filter((c) => WIN_CONDITION_IDS.has(c.card_id)));
+      setWinConditionCards(
+        cards.filter((c) => WIN_CONDITION_IDS.has(c.card_id)),
+      );
     } catch {
-      setCardsError("Failed to load win conditions. Please check your connection.");
+      setCardsError(
+        "Failed to load win conditions. Please check your connection.",
+      );
     } finally {
       setIsLoadingCards(false);
     }
@@ -333,9 +389,13 @@ export default function HeadToHeadPage() {
         card_a: selectedA.toString(),
         card_b: selectedB.toString(),
       });
-      const res = await fetch(`${API_BASE_URL}/api/win-condition-matchup?${params}`);
+      const res = await fetch(
+        `${API_BASE_URL}/api/win-condition-matchup?${params}`,
+      );
       if (res.status === 429) {
-        setSearchError("Too many requests — please wait before searching again.");
+        setSearchError(
+          "Too many requests — please wait before searching again.",
+        );
         return;
       }
       if (!res.ok) {
@@ -357,19 +417,27 @@ export default function HeadToHeadPage() {
       <div className="fixed inset-0 hexagon-pattern opacity-[0.025] pointer-events-none" />
       <div
         className="fixed top-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%)" }}
+        style={{
+          background:
+            "radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%)",
+        }}
       />
       <div
         className="fixed bottom-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(249,115,22,0.07) 0%, transparent 70%)" }}
+        style={{
+          background:
+            "radial-gradient(circle, rgba(249,115,22,0.07) 0%, transparent 70%)",
+        }}
       />
       <div
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(168,85,247,0.04) 0%, transparent 70%)" }}
+        style={{
+          background:
+            "radial-gradient(circle, rgba(168,85,247,0.04) 0%, transparent 70%)",
+        }}
       />
 
       <div className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10 space-y-10">
-
         {/* ── Header ──────────────────────────────────────────────────── */}
         <div className="relative">
           <div className="w-12 h-0.5 bg-primary mb-4 rounded-full" />
@@ -449,7 +517,7 @@ export default function HeadToHeadPage() {
                   "flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg transition-all",
                   "bg-gradient-to-r from-primary to-amber-500 text-primary-foreground shadow-lg",
                   "hover:from-primary/90 hover:to-amber-500/90 hover:shadow-primary/30 hover:-translate-y-0.5",
-                  "disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none"
+                  "disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none",
                 )}
               >
                 {isAnalysing ? (
@@ -464,22 +532,42 @@ export default function HeadToHeadPage() {
 
           {/* Selection previews */}
           <div className="grid grid-cols-2 gap-4 px-4 sm:px-6 pt-5 pb-4 border-b border-border/20 bg-muted/5">
-            <SelectedCardPreview card={cardA} side="a" onClear={() => { setSelectedA(null); setMatchupData(null); setSearchError(null); }} />
-            <SelectedCardPreview card={cardB} side="b" onClear={() => { setSelectedB(null); setMatchupData(null); setSearchError(null); }} />
+            <SelectedCardPreview
+              card={cardA}
+              side="a"
+              onClear={() => {
+                setSelectedA(null);
+                setMatchupData(null);
+                setSearchError(null);
+              }}
+            />
+            <SelectedCardPreview
+              card={cardB}
+              side="b"
+              onClear={() => {
+                setSelectedB(null);
+                setMatchupData(null);
+                setSearchError(null);
+              }}
+            />
           </div>
 
           {/* Card pickers */}
           {isLoadingCards ? (
             <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
               <RefreshCw className="w-5 h-5 animate-spin text-primary" />
-              <span className="text-sm font-medium">Loading win conditions…</span>
+              <span className="text-sm font-medium">
+                Loading win conditions…
+              </span>
             </div>
           ) : cardsError ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
                 <AlertTriangle className="w-7 h-7 text-destructive/70" />
               </div>
-              <p className="text-sm text-destructive font-medium">{cardsError}</p>
+              <p className="text-sm text-destructive font-medium">
+                {cardsError}
+              </p>
               <button
                 onClick={fetchCards}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-lg transition-colors"
@@ -528,12 +616,18 @@ export default function HeadToHeadPage() {
           {/* Bottom action row (mobile-friendly) */}
           {!isLoadingCards && !cardsError && (
             <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-border/20 bg-muted/5">
-              <p className={cn("text-xs tabular-nums font-semibold", orbitron.className, "text-muted-foreground")}>
+              <p
+                className={cn(
+                  "text-xs tabular-nums font-semibold",
+                  orbitron.className,
+                  "text-muted-foreground",
+                )}
+              >
                 {selectedA != null && selectedB != null
                   ? "Ready to analyse"
                   : selectedA != null || selectedB != null
-                  ? "Pick one more card"
-                  : "Select both cards to begin"}
+                    ? "Pick one more card"
+                    : "Select both cards to begin"}
               </p>
               <button
                 onClick={handleAnalyse}
@@ -542,7 +636,7 @@ export default function HeadToHeadPage() {
                   "flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl transition-all",
                   "bg-gradient-to-r from-primary to-amber-500 text-primary-foreground shadow-lg",
                   "hover:from-primary/90 hover:to-amber-500/90 hover:shadow-primary/30 hover:-translate-y-0.5",
-                  "disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none"
+                  "disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none",
                 )}
               >
                 {isAnalysing ? (
@@ -562,7 +656,10 @@ export default function HeadToHeadPage() {
             <AlertTriangle className="w-5 h-5 shrink-0" />
             <p className="text-sm font-medium flex-1">{searchError}</p>
             <button
-              onClick={() => { setSearchError(null); handleAnalyse(); }}
+              onClick={() => {
+                setSearchError(null);
+                handleAnalyse();
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-destructive/10 hover:bg-destructive/20 rounded-lg transition-colors shrink-0"
             >
               <RefreshCw className="w-3 h-3" /> Retry
@@ -584,21 +681,25 @@ export default function HeadToHeadPage() {
         )}
 
         {/* ── Empty prompt (no result yet, both selected) ───────────────── */}
-        {!matchupData && !isAnalysing && selectedA != null && selectedB != null && !searchError && (
-          <div className="flex flex-col items-center justify-center py-12 gap-4 rounded-2xl border border-dashed border-border/30 bg-muted/5 animate-fade-in">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Swords className="w-7 h-7 text-primary/60" />
+        {!matchupData &&
+          !isAnalysing &&
+          selectedA != null &&
+          selectedB != null &&
+          !searchError && (
+            <div className="flex flex-col items-center justify-center py-12 gap-4 rounded-2xl border border-dashed border-border/30 bg-muted/5 animate-fade-in">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <Swords className="w-7 h-7 text-primary/60" />
+              </div>
+              <div className="text-center space-y-1.5">
+                <p className="text-sm font-semibold text-foreground">
+                  {cardA?.name ?? ""} vs {cardB?.name ?? ""}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Press Analyse to see how these win conditions compare
+                </p>
+              </div>
             </div>
-            <div className="text-center space-y-1.5">
-              <p className="text-sm font-semibold text-foreground">
-                {cardA?.name ?? ""} vs {cardB?.name ?? ""}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Press Analyse to see how these win conditions compare
-              </p>
-            </div>
-          </div>
-        )}
+          )}
       </div>
     </div>
   );

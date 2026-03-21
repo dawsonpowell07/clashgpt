@@ -91,11 +91,7 @@ export function Leaderboard({
           </h3>
           <div className="space-y-2">
             {remaining.map((entry, index) => (
-              <PlayerListItem
-                key={entry.tag}
-                entry={entry}
-                rank={index + 4}
-              />
+              <PlayerListItem key={entry.tag} entry={entry} rank={index + 4} />
             ))}
           </div>
         </div>
@@ -130,17 +126,12 @@ function PodiumCard({ entry, rank, height, medal }: PodiumCardProps) {
       <div
         className={cn(
           "bg-card border-2 rounded-xl p-4 w-full mb-2 transition-all hover:shadow-lg",
-          medalColors[medal]
+          medalColors[medal],
         )}
       >
         {/* Medal Icon */}
         <div className="flex justify-center mb-3">
-          <div
-            className={cn(
-              "rounded-full p-2 border-2",
-              medalColors[medal]
-            )}
-          >
+          <div className={cn("rounded-full p-2 border-2", medalColors[medal])}>
             {medalIcons[medal]}
           </div>
         </div>
@@ -158,7 +149,12 @@ function PodiumCard({ entry, rank, height, medal }: PodiumCardProps) {
         {/* ELO Rating */}
         <div className="bg-muted/50 rounded-lg px-3 py-2 text-center border border-border/50">
           <p className="text-xs text-muted-foreground mb-1">ELO</p>
-          <p className={cn("text-lg font-bold", medalColors[medal].split(" ")[0])}>
+          <p
+            className={cn(
+              "text-lg font-bold",
+              medalColors[medal].split(" ")[0],
+            )}
+          >
             {entry.elo_rating.toLocaleString()}
           </p>
         </div>
@@ -166,7 +162,10 @@ function PodiumCard({ entry, rank, height, medal }: PodiumCardProps) {
         {/* Clan */}
         {entry.clan && (
           <div className="mt-2 text-center">
-            <p className="text-xs text-muted-foreground truncate" title={entry.clan.clan_name}>
+            <p
+              className="text-xs text-muted-foreground truncate"
+              title={entry.clan.clan_name}
+            >
               {entry.clan.clan_name}
             </p>
           </div>
@@ -179,10 +178,12 @@ function PodiumCard({ entry, rank, height, medal }: PodiumCardProps) {
           "w-full rounded-t-lg border-t-2 border-x-2 transition-all",
           height,
           medalColors[medal],
-          "flex items-center justify-center"
+          "flex items-center justify-center",
         )}
       >
-        <span className={cn("text-3xl font-bold", medalColors[medal].split(" ")[0])}>
+        <span
+          className={cn("text-3xl font-bold", medalColors[medal].split(" ")[0])}
+        >
           {rank}
         </span>
       </div>
@@ -220,7 +221,10 @@ function PlayerListItem({ entry, rank }: PlayerListItemProps) {
         {/* Clan */}
         {entry.clan && (
           <div className="hidden sm:block flex-shrink-0 max-w-[150px]">
-            <p className="text-xs text-muted-foreground truncate" title={entry.clan.clan_name}>
+            <p
+              className="text-xs text-muted-foreground truncate"
+              title={entry.clan.clan_name}
+            >
               {entry.clan.clan_name}
             </p>
           </div>

@@ -53,7 +53,10 @@ export function ClanInfo({ clan, className }: ClanInfoProps) {
     try {
       // API format: "20260105T202009.000Z"
       const date = new Date(
-        lastSeen.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, "$1-$2-$3T$4:$5:$6")
+        lastSeen.replace(
+          /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/,
+          "$1-$2-$3T$4:$5:$6",
+        ),
       );
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
@@ -89,7 +92,7 @@ export function ClanInfo({ clan, className }: ClanInfoProps) {
     <div
       className={cn(
         "bg-card border border-border rounded-xl shadow-lg overflow-hidden transition-all hover:shadow-xl w-full",
-        className
+        className,
       )}
     >
       {/* Header Section */}
@@ -107,8 +110,8 @@ export function ClanInfo({ clan, className }: ClanInfoProps) {
                   clan.type === "open"
                     ? "bg-green-500/20 text-green-400 border-green-500/40"
                     : clan.type === "inviteOnly"
-                    ? "bg-blue-500/20 text-blue-400 border-blue-500/40"
-                    : "bg-muted text-muted-foreground border-border"
+                      ? "bg-blue-500/20 text-blue-400 border-blue-500/40"
+                      : "bg-muted text-muted-foreground border-border",
                 )}
               >
                 {formatClanType(clan.type)}
@@ -143,7 +146,9 @@ export function ClanInfo({ clan, className }: ClanInfoProps) {
             Clan Score
           </p>
           <p className="text-xl font-bold text-foreground">
-            {clan.clan_score ? parseInt(clan.clan_score).toLocaleString() : "N/A"}
+            {clan.clan_score
+              ? parseInt(clan.clan_score).toLocaleString()
+              : "N/A"}
           </p>
         </div>
 
@@ -257,20 +262,21 @@ export function ClanInfo({ clan, className }: ClanInfoProps) {
                     <span
                       className={cn(
                         "px-2 py-1 text-xs font-medium rounded border",
-                        getRoleBadgeColor(member.role)
+                        getRoleBadgeColor(member.role),
                       )}
                     >
                       {formatRole(member.role)}
                     </span>
 
-                    {member.trophies !== null && member.trophies !== undefined && (
-                      <div className="flex items-center gap-1 px-2 py-1 bg-card/60 rounded border border-border/50">
-                        <span className="text-xs">🏆</span>
-                        <span className="text-xs font-medium text-foreground">
-                          {member.trophies.toLocaleString()}
-                        </span>
-                      </div>
-                    )}
+                    {member.trophies !== null &&
+                      member.trophies !== undefined && (
+                        <div className="flex items-center gap-1 px-2 py-1 bg-card/60 rounded border border-border/50">
+                          <span className="text-xs">🏆</span>
+                          <span className="text-xs font-medium text-foreground">
+                            {member.trophies.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
 
                     {member.last_seen && (
                       <span className="text-xs text-muted-foreground min-w-15 text-right">
@@ -323,7 +329,7 @@ function MemberPodiumCard({
       <div
         className={cn(
           "bg-card border-2 rounded-xl p-4 w-full mb-2 transition-all hover:shadow-lg",
-          medalColors[medal]
+          medalColors[medal],
         )}
       >
         {/* Medal Icon */}
@@ -348,7 +354,7 @@ function MemberPodiumCard({
           <span
             className={cn(
               "px-2 py-1 text-xs font-medium rounded border",
-              getRoleBadgeColor(member.role)
+              getRoleBadgeColor(member.role),
             )}
           >
             {formatRole(member.role)}
@@ -362,7 +368,7 @@ function MemberPodiumCard({
             <p
               className={cn(
                 "text-lg font-bold flex items-center justify-center gap-1",
-                medalColors[medal].split(" ")[0]
+                medalColors[medal].split(" ")[0],
               )}
             >
               <span className="text-sm">🏆</span>
@@ -378,7 +384,7 @@ function MemberPodiumCard({
           "w-full rounded-t-lg border-t-2 border-x-2 transition-all",
           height,
           medalColors[medal],
-          "flex items-center justify-center"
+          "flex items-center justify-center",
         )}
       >
         <span

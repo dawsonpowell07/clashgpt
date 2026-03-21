@@ -3,7 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, LayoutGrid, LogIn, Users, Swords, BarChart2 } from "lucide-react";
+import {
+  MessageSquare,
+  LayoutGrid,
+  LogIn,
+  Users,
+  Swords,
+  BarChart2,
+} from "lucide-react";
 import {
   SignInButton,
   SignedIn,
@@ -24,7 +31,10 @@ export function Navbar() {
   const pathname = usePathname();
   const { isSignedIn } = useAuth();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const [authDialogFeature, setAuthDialogFeature] = useState({ name: "", redirectUrl: "/" });
+  const [authDialogFeature, setAuthDialogFeature] = useState({
+    name: "",
+    redirectUrl: "/",
+  });
 
   const isActive = (path: string) => pathname === path;
 
@@ -65,7 +75,10 @@ export function Navbar() {
                 <span className="hidden sm:inline">Chat</span>
               </Link>
             ) : (
-              <button onClick={() => setShowAuthDialog(true)} className={chatLinkClasses}>
+              <button
+                onClick={() => setShowAuthDialog(true)}
+                className={chatLinkClasses}
+              >
                 <MessageSquare className="w-4 h-4" />
                 <span className="hidden sm:inline">Chat</span>
               </button>
@@ -88,7 +101,9 @@ export function Navbar() {
             </Link>
 
             {isSignedIn ? (
-              <Link href="/profiles" className={`
+              <Link
+                href="/profiles"
+                className={`
                 group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 ${
@@ -96,23 +111,29 @@ export function Navbar() {
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }
-              `}>
+              `}
+              >
                 <Users className="w-4 h-4" />
                 <span className="hidden sm:inline">Profiles</span>
               </Link>
             ) : (
-              <button onClick={() => openAuthDialog("Player Profiles", "/profiles")} className={`
+              <button
+                onClick={() => openAuthDialog("Player Profiles", "/profiles")}
+                className={`
                 group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 text-muted-foreground hover:bg-muted hover:text-foreground
-              `}>
+              `}
+              >
                 <Users className="w-4 h-4" />
                 <span className="hidden sm:inline">Profiles</span>
               </button>
             )}
 
             {isSignedIn ? (
-              <Link href="/matchups" className={`
+              <Link
+                href="/matchups"
+                className={`
                 group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 ${
@@ -120,23 +141,29 @@ export function Navbar() {
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }
-              `}>
+              `}
+              >
                 <Swords className="w-4 h-4" />
                 <span className="hidden sm:inline">Matchups</span>
               </Link>
             ) : (
-              <button onClick={() => openAuthDialog("Deck Matchups", "/matchups")} className={`
+              <button
+                onClick={() => openAuthDialog("Deck Matchups", "/matchups")}
+                className={`
                 group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 text-muted-foreground hover:bg-muted hover:text-foreground
-              `}>
+              `}
+              >
                 <Swords className="w-4 h-4" />
                 <span className="hidden sm:inline">Matchups</span>
               </button>
             )}
 
             {isSignedIn ? (
-              <Link href="/tracker" className={`
+              <Link
+                href="/tracker"
+                className={`
                 group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 ${
@@ -144,16 +171,20 @@ export function Navbar() {
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }
-              `}>
+              `}
+              >
                 <BarChart2 className="w-4 h-4" />
                 <span className="hidden sm:inline">Tracker</span>
               </Link>
             ) : (
-              <button onClick={() => openAuthDialog("Player Tracker", "/tracker")} className={`
+              <button
+                onClick={() => openAuthDialog("Player Tracker", "/tracker")}
+                className={`
                 group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 text-muted-foreground hover:bg-muted hover:text-foreground
-              `}>
+              `}
+              >
                 <BarChart2 className="w-4 h-4" />
                 <span className="hidden sm:inline">Tracker</span>
               </button>
@@ -179,8 +210,9 @@ export function Navbar() {
               <UserButton
                 appearance={{
                   elements: {
-                    avatarBox: "w-9 h-9 ring-2 ring-primary/50 ring-offset-2 ring-offset-card"
-                  }
+                    avatarBox:
+                      "w-9 h-9 ring-2 ring-primary/50 ring-offset-2 ring-offset-card",
+                  },
                 }}
               />
             </SignedIn>
@@ -194,7 +226,8 @@ export function Navbar() {
           <DialogHeader>
             <DialogTitle>Sign in required</DialogTitle>
             <DialogDescription>
-              You need an account to access {authDialogFeature.name}. Sign in or create an account to get started.
+              You need an account to access {authDialogFeature.name}. Sign in or
+              create an account to get started.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -204,7 +237,10 @@ export function Navbar() {
             >
               Cancel
             </button>
-            <SignInButton mode="modal" forceRedirectUrl={authDialogFeature.redirectUrl}>
+            <SignInButton
+              mode="modal"
+              forceRedirectUrl={authDialogFeature.redirectUrl}
+            >
               <button
                 onClick={() => setShowAuthDialog(false)}
                 className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"

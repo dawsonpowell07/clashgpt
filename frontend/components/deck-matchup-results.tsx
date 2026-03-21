@@ -65,19 +65,19 @@ function WinRateBadge({ winRate }: { winRate: number | null }) {
     pct == null
       ? "text-muted-foreground"
       : pct >= 60
-      ? "text-emerald-400"
-      : pct >= 40
-      ? "text-amber-400"
-      : "text-rose-400";
+        ? "text-emerald-400"
+        : pct >= 40
+          ? "text-amber-400"
+          : "text-rose-400";
 
   const bg =
     pct == null
       ? "bg-muted/30 ring-1 ring-border/30"
       : pct >= 60
-      ? "bg-emerald-500/10 ring-1 ring-emerald-500/25"
-      : pct >= 40
-      ? "bg-amber-500/10 ring-1 ring-amber-500/25"
-      : "bg-rose-500/10 ring-1 ring-rose-500/25";
+        ? "bg-emerald-500/10 ring-1 ring-emerald-500/25"
+        : pct >= 40
+          ? "bg-amber-500/10 ring-1 ring-amber-500/25"
+          : "bg-rose-500/10 ring-1 ring-rose-500/25";
 
   return (
     <div
@@ -86,7 +86,7 @@ function WinRateBadge({ winRate }: { winRate: number | null }) {
         orbitron.className,
         "text-xs font-black",
         color,
-        bg
+        bg,
       )}
     >
       {pct != null ? `${pct.toFixed(1)}%` : "—"}
@@ -97,11 +97,11 @@ function WinRateBadge({ winRate }: { winRate: number | null }) {
 // ─── MatchupSummary ───────────────────────────────────────────────────────────
 
 function MatchupSummary({ matchups }: { matchups: OpponentMatchup[] }) {
-  const counters = matchups.filter((m) => (m.win_rate ?? 0.5) < 0.40);
+  const counters = matchups.filter((m) => (m.win_rate ?? 0.5) < 0.4);
   const even = matchups.filter(
-    (m) => (m.win_rate ?? 0.5) >= 0.40 && (m.win_rate ?? 0.5) <= 0.60
+    (m) => (m.win_rate ?? 0.5) >= 0.4 && (m.win_rate ?? 0.5) <= 0.6,
   );
-  const favorable = matchups.filter((m) => (m.win_rate ?? 0.5) > 0.60);
+  const favorable = matchups.filter((m) => (m.win_rate ?? 0.5) > 0.6);
 
   const total = matchups.length || 1;
   const counterPct = (counters.length / total) * 100;
@@ -119,9 +119,9 @@ function MatchupSummary({ matchups }: { matchups: OpponentMatchup[] }) {
   const evenRange =
     even.length > 0
       ? `${Math.min(...even.map((m) => (m.win_rate ?? 0.5) * 100)).toFixed(
-          0
+          0,
         )}–${Math.max(...even.map((m) => (m.win_rate ?? 0.5) * 100)).toFixed(
-          0
+          0,
         )}%`
       : "45–55%";
 
@@ -132,7 +132,12 @@ function MatchupSummary({ matchups }: { matchups: OpponentMatchup[] }) {
           <span className="text-[10px] font-bold text-rose-400/70 uppercase tracking-wider">
             Counters
           </span>
-          <span className={cn("text-xl font-black text-rose-400", orbitron.className)}>
+          <span
+            className={cn(
+              "text-xl font-black text-rose-400",
+              orbitron.className,
+            )}
+          >
             {counters.length}
           </span>
           <span className="text-[10px] text-muted-foreground/60">
@@ -144,17 +149,29 @@ function MatchupSummary({ matchups }: { matchups: OpponentMatchup[] }) {
           <span className="text-[10px] font-bold text-amber-400/70 uppercase tracking-wider">
             Even
           </span>
-          <span className={cn("text-xl font-black text-amber-400", orbitron.className)}>
+          <span
+            className={cn(
+              "text-xl font-black text-amber-400",
+              orbitron.className,
+            )}
+          >
             {even.length}
           </span>
-          <span className="text-[10px] text-muted-foreground/60">{evenRange}</span>
+          <span className="text-[10px] text-muted-foreground/60">
+            {evenRange}
+          </span>
         </div>
 
         <div className="px-4 py-3 flex flex-col gap-0.5 items-end text-right">
           <span className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-wider">
             Favorable
           </span>
-          <span className={cn("text-xl font-black text-emerald-400", orbitron.className)}>
+          <span
+            className={cn(
+              "text-xl font-black text-emerald-400",
+              orbitron.className,
+            )}
+          >
             {favorable.length}
           </span>
           <span className="text-[10px] text-muted-foreground/60">
@@ -197,20 +214,23 @@ function MatchupEntry({
         variant === "favorable"
           ? "bg-emerald-500/5 border-emerald-500/15"
           : variant === "even"
-          ? "bg-amber-500/5 border-amber-500/15"
-          : "bg-rose-500/5 border-rose-500/15"
+            ? "bg-amber-500/5 border-amber-500/15"
+            : "bg-rose-500/5 border-rose-500/15",
       )}
     >
       <WinRateBadge winRate={matchup.win_rate} />
 
       <div className="flex-1 min-w-0 flex justify-center py-1">
-        <DeckGrid cards={toGridCards(matchup.opponent_cards)} className="grid-cols-4 gap-1 w-3/4" />
+        <DeckGrid
+          cards={toGridCards(matchup.opponent_cards)}
+          className="grid-cols-4 gap-1 w-3/4"
+        />
       </div>
 
       <div
         className={cn(
           "flex flex-col items-end gap-0.5 shrink-0 text-[10px] font-bold",
-          orbitron.className
+          orbitron.className,
         )}
       >
         <span className="text-emerald-400">{matchup.wins}W</span>
@@ -231,8 +251,18 @@ function MatchupSection({
   matchups: OpponentMatchup[];
   variant: "counter" | "even" | "favorable";
 }) {
-  const Icon = variant === "counter" ? TrendingDown : variant === "favorable" ? TrendingUp : Swords;
-  const iconColor = variant === "favorable" ? "text-emerald-400" : variant === "even" ? "text-amber-400" : "text-rose-400";
+  const Icon =
+    variant === "counter"
+      ? TrendingDown
+      : variant === "favorable"
+        ? TrendingUp
+        : Swords;
+  const iconColor =
+    variant === "favorable"
+      ? "text-emerald-400"
+      : variant === "even"
+        ? "text-amber-400"
+        : "text-rose-400";
   const titleColor = iconColor;
 
   return (
@@ -266,7 +296,10 @@ function MatchupSection({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function DeckMatchupResults({ results, className }: DeckMatchupResultsProps) {
+export function DeckMatchupResults({
+  results,
+  className,
+}: DeckMatchupResultsProps) {
   const stats = results.stats;
   const winRatePct = stats?.win_rate != null ? stats.win_rate * 100 : null;
 
@@ -274,24 +307,28 @@ export function DeckMatchupResults({ results, className }: DeckMatchupResultsPro
     winRatePct == null
       ? "text-muted-foreground"
       : winRatePct >= 60
-      ? "text-emerald-400"
-      : winRatePct >= 40
-      ? "text-amber-400"
-      : "text-rose-400";
+        ? "text-emerald-400"
+        : winRatePct >= 40
+          ? "text-amber-400"
+          : "text-rose-400";
 
   const sorted = [...results.matchups].sort(
-    (a, b) => (a.win_rate ?? 0.5) - (b.win_rate ?? 0.5)
+    (a, b) => (a.win_rate ?? 0.5) - (b.win_rate ?? 0.5),
   );
-  const counters = sorted.filter((m) => (m.win_rate ?? 0.5) < 0.40);
-  const even = sorted.filter((m) => (m.win_rate ?? 0.5) >= 0.40 && (m.win_rate ?? 0.5) <= 0.60);
-  const favorable = [...sorted.filter((m) => (m.win_rate ?? 0.5) > 0.60)].reverse();
+  const counters = sorted.filter((m) => (m.win_rate ?? 0.5) < 0.4);
+  const even = sorted.filter(
+    (m) => (m.win_rate ?? 0.5) >= 0.4 && (m.win_rate ?? 0.5) <= 0.6,
+  );
+  const favorable = [
+    ...sorted.filter((m) => (m.win_rate ?? 0.5) > 0.6),
+  ].reverse();
 
   if (!results.deck_id) {
     return (
       <div
         className={cn(
           "rounded-xl border border-border/40 bg-card p-5 my-4 flex items-center gap-3",
-          className
+          className,
         )}
       >
         <Swords className="w-5 h-5 text-muted-foreground/40 shrink-0" />
@@ -306,7 +343,7 @@ export function DeckMatchupResults({ results, className }: DeckMatchupResultsPro
     <div
       className={cn(
         "rounded-2xl border border-border/50 bg-card overflow-hidden my-4",
-        className
+        className,
       )}
     >
       {/* Top accent bar */}
@@ -329,7 +366,9 @@ export function DeckMatchupResults({ results, className }: DeckMatchupResultsPro
 
           {stats && (
             <div className="flex items-center gap-3">
-              <div className={cn("flex items-center gap-1.5", orbitron.className)}>
+              <div
+                className={cn("flex items-center gap-1.5", orbitron.className)}
+              >
                 <Trophy className={cn("w-3.5 h-3.5", ratingColor)} />
                 <span className={cn("text-xl font-black", ratingColor)}>
                   {winRatePct != null ? `${winRatePct.toFixed(1)}%` : "—"}
@@ -338,7 +377,7 @@ export function DeckMatchupResults({ results, className }: DeckMatchupResultsPro
               <div
                 className={cn(
                   "text-xs font-bold flex flex-col items-end gap-0.5",
-                  orbitron.className
+                  orbitron.className,
                 )}
               >
                 <span className="text-emerald-400">
@@ -353,7 +392,10 @@ export function DeckMatchupResults({ results, className }: DeckMatchupResultsPro
         </div>
 
         {/* Your deck */}
-        <DeckGrid cards={toGridCards(results.deck_cards)} className="grid-cols-4 gap-1 w-1/4 mx-auto" />
+        <DeckGrid
+          cards={toGridCards(results.deck_cards)}
+          className="grid-cols-4 gap-1 w-1/4 mx-auto"
+        />
       </div>
 
       {/* Matchup summary */}
@@ -373,11 +415,7 @@ export function DeckMatchupResults({ results, className }: DeckMatchupResultsPro
             matchups={counters}
             variant="counter"
           />
-          <MatchupSection
-            title="Even"
-            matchups={even}
-            variant="even"
-          />
+          <MatchupSection title="Even" matchups={even} variant="even" />
           <MatchupSection
             title="Favorable"
             matchups={favorable}

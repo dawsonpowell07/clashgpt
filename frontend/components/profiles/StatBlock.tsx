@@ -27,13 +27,15 @@ export function StatBlock({
       <span
         className={cn(
           "font-[family-name:var(--font-heading)] text-2xl font-bold leading-none",
-          accentClass
+          accentClass,
         )}
       >
         {value}
       </span>
       {sub && (
-        <span className="text-[11px] text-muted-foreground truncate">{sub}</span>
+        <span className="text-[11px] text-muted-foreground truncate">
+          {sub}
+        </span>
       )}
     </div>
   );

@@ -53,18 +53,40 @@ function winRateColor(pct: number | null): string {
 }
 
 const KEY_CARD_NAMES = [
-  "giant", "royal giant", "golem", "goblin giant", "hog rider",
-  "goblin drill", "goblin barrel", "mortar", "monk", "three musketeers",
-  "royal hogs", "sparky", "graveyard", "p.e.k.k.a", "elixir golem",
-  "balloon", "x-bow", "rocket", "ram rider", "boss bandit", "mega knight",
-  "lava hound", "miner", "electro giant", "battle ram",
+  "giant",
+  "royal giant",
+  "golem",
+  "goblin giant",
+  "hog rider",
+  "goblin drill",
+  "goblin barrel",
+  "mortar",
+  "monk",
+  "three musketeers",
+  "royal hogs",
+  "sparky",
+  "graveyard",
+  "p.e.k.k.a",
+  "elixir golem",
+  "balloon",
+  "x-bow",
+  "rocket",
+  "ram rider",
+  "boss bandit",
+  "mega knight",
+  "lava hound",
+  "miner",
+  "electro giant",
+  "battle ram",
 ];
 
 function getDeckName(cards: MatchupDeck["cards"]): string {
   const keys = cards
     .filter((c) => KEY_CARD_NAMES.includes(c.card_name.toLowerCase()))
     .slice(0, 2);
-  return keys.length > 0 ? keys.map((c) => c.card_name).join(" ") : "Mixed Deck";
+  return keys.length > 0
+    ? keys.map((c) => c.card_name).join(" ")
+    : "Mixed Deck";
 }
 
 // ─── DeckRow ──────────────────────────────────────────────────────────────────
@@ -93,11 +115,20 @@ function DeckRow({ deck, side, rank }: DeckRowProps) {
           <span className="text-[10px] font-black text-muted-foreground/30 tabular-nums shrink-0">
             #{rank}
           </span>
-          <span className="text-xs font-semibold text-foreground truncate" title={deckName}>
+          <span
+            className="text-xs font-semibold text-foreground truncate"
+            title={deckName}
+          >
             {deckName}
           </span>
         </div>
-        <span className={cn("text-sm font-black tabular-nums shrink-0", orbitron.className, color)}>
+        <span
+          className={cn(
+            "text-sm font-black tabular-nums shrink-0",
+            orbitron.className,
+            color,
+          )}
+        >
           {pct != null ? `${pct.toFixed(1)}%` : "—"}
         </span>
       </div>
@@ -115,9 +146,15 @@ function DeckRow({ deck, side, rank }: DeckRowProps) {
 
       {/* Footer: games + W/L */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-t border-border/20 bg-muted/15 text-[10px] tabular-nums">
-        <span className="text-muted-foreground/60">{deck.games.toLocaleString()}g</span>
-        <span className="text-emerald-400 font-semibold">{deck.wins.toLocaleString()}W</span>
-        <span className="text-rose-400 font-semibold">{deck.losses.toLocaleString()}L</span>
+        <span className="text-muted-foreground/60">
+          {deck.games.toLocaleString()}g
+        </span>
+        <span className="text-emerald-400 font-semibold">
+          {deck.wins.toLocaleString()}W
+        </span>
+        <span className="text-rose-400 font-semibold">
+          {deck.losses.toLocaleString()}L
+        </span>
       </div>
     </div>
   );
@@ -139,7 +176,7 @@ function TopDecksColumn({ decks, side, cardName }: TopDecksColumnProps) {
       <p
         className={cn(
           "text-[10px] font-bold uppercase tracking-wider mb-2",
-          titleColor
+          titleColor,
         )}
       >
         Top {cardName} Decks
@@ -151,7 +188,12 @@ function TopDecksColumn({ decks, side, cardName }: TopDecksColumnProps) {
       ) : (
         <div className="space-y-2">
           {decks.map((deck, i) => (
-            <DeckRow key={`${deck.deck_id}-${i}`} deck={deck} side={side} rank={i + 1} />
+            <DeckRow
+              key={`${deck.deck_id}-${i}`}
+              deck={deck}
+              side={side}
+              rank={i + 1}
+            />
           ))}
         </div>
       )}
@@ -226,13 +268,15 @@ function CardHero({ card, wins, losses, winRate, side }: CardHeroProps) {
   const fileName = cardFileName(card.name);
 
   const accentText = side === "a" ? "text-blue-400" : "text-orange-400";
-  const accentBorder = side === "a" ? "border-blue-500/30" : "border-orange-500/30";
+  const accentBorder =
+    side === "a" ? "border-blue-500/30" : "border-orange-500/30";
   const accentShadow =
     side === "a"
       ? "shadow-[0_0_16px_rgba(59,130,246,0.25)]"
       : "shadow-[0_0_16px_rgba(249,115,22,0.25)]";
 
-  const alignClass = side === "a" ? "items-start text-left" : "items-end text-right";
+  const alignClass =
+    side === "a" ? "items-start text-left" : "items-end text-right";
 
   return (
     <div className={cn("flex flex-col gap-2", alignClass)}>
@@ -241,7 +285,7 @@ function CardHero({ card, wins, losses, winRate, side }: CardHeroProps) {
           "relative w-16 h-[4.5rem] rounded-xl overflow-hidden border-2 bg-muted/50 shrink-0",
           accentBorder,
           accentShadow,
-          side === "b" && "self-end"
+          side === "b" && "self-end",
         )}
       >
         <Image
@@ -252,11 +296,22 @@ function CardHero({ card, wins, losses, winRate, side }: CardHeroProps) {
         />
       </div>
 
-      <p className={cn("text-sm font-bold text-foreground leading-tight", accentText)}>
+      <p
+        className={cn(
+          "text-sm font-bold text-foreground leading-tight",
+          accentText,
+        )}
+      >
         {card.name}
       </p>
 
-      <span className={cn("text-2xl font-black leading-none", orbitron.className, color)}>
+      <span
+        className={cn(
+          "text-2xl font-black leading-none",
+          orbitron.className,
+          color,
+        )}
+      >
         {pct != null ? `${pct.toFixed(1)}%` : "—"}
       </span>
 
@@ -285,7 +340,7 @@ export function WinConditionMatchup({
       <div
         className={cn(
           "rounded-xl border border-border/40 bg-card p-5 my-4 flex items-center gap-3",
-          className
+          className,
         )}
       >
         <Swords className="w-5 h-5 text-muted-foreground/40 shrink-0" />
@@ -301,7 +356,7 @@ export function WinConditionMatchup({
     <div
       className={cn(
         "rounded-2xl border border-border/50 bg-card overflow-hidden my-4",
-        className
+        className,
       )}
     >
       <div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500" />
@@ -336,7 +391,7 @@ export function WinConditionMatchup({
             <span
               className={cn(
                 "text-2xl font-black text-purple-400 leading-none",
-                orbitron.className
+                orbitron.className,
               )}
               style={{
                 textShadow:

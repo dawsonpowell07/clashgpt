@@ -7,7 +7,10 @@ interface DecksResultsGridProps {
   isSearching: boolean;
 }
 
-export function DecksResultsGrid({ decksData, isSearching }: DecksResultsGridProps) {
+export function DecksResultsGrid({
+  decksData,
+  isSearching,
+}: DecksResultsGridProps) {
   return (
     <div className="space-y-6">
       {/* Results Header */}
@@ -22,8 +25,8 @@ export function DecksResultsGrid({ decksData, isSearching }: DecksResultsGridPro
             {isSearching
               ? "Searching..."
               : decksData.total > 0
-              ? `Found ${decksData.total} Decks`
-              : "No Decks Found"}
+                ? `Found ${decksData.total} Decks`
+                : "No Decks Found"}
           </h2>
         </div>
         {!isSearching && decksData.total > 0 && (
@@ -52,7 +55,9 @@ export function DecksResultsGrid({ decksData, isSearching }: DecksResultsGridPro
       ) : (
         <div className="flex flex-col items-center justify-center py-16 px-4 bg-muted/20 rounded-2xl border border-dashed border-border">
           <Search className="w-12 h-12 text-muted-foreground/50 mb-4" />
-          <p className="text-lg font-semibold text-muted-foreground mb-2">No decks found</p>
+          <p className="text-lg font-semibold text-muted-foreground mb-2">
+            No decks found
+          </p>
           <p className="text-sm text-muted-foreground/70 text-center max-w-md">
             Try adjusting your filters or search criteria to find more decks.
           </p>

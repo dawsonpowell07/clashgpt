@@ -37,6 +37,10 @@ export function formatTag(tag: string): string {
 export function cardImagePath(name: string, variant: string): string {
   const base = name.toLowerCase().replace(/ /g, "_").replace(/\./g, "");
   const suffix =
-    variant === "evolution" ? "_evolution" : variant === "heroic" ? "_hero" : "";
+    variant === "evolution"
+      ? "_evolution"
+      : variant === "heroic"
+        ? "_hero"
+        : "";
   return `/cards/${base}/${base}${suffix}.png`;
 }

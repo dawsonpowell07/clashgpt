@@ -53,7 +53,12 @@ const NAV_SECTIONS = [
     title: "Players",
     items: [
       { title: "Profiles", url: "/profiles", icon: Users, requiresAuth: true },
-      { title: "Tracker", url: "/tracker", icon: BarChart2, requiresAuth: true },
+      {
+        title: "Tracker",
+        url: "/tracker",
+        icon: BarChart2,
+        requiresAuth: true,
+      },
     ],
   },
   {
@@ -66,7 +71,12 @@ const NAV_SECTIONS = [
     title: "Deck Analysis",
     items: [
       { title: "Matchups", url: "/matchups", icon: Swords, requiresAuth: true },
-      { title: "Head to Head", url: "/head-to-head", icon: ArrowLeftRight, requiresAuth: false },
+      {
+        title: "Head to Head",
+        url: "/head-to-head",
+        icon: ArrowLeftRight,
+        requiresAuth: false,
+      },
     ],
   },
 ];

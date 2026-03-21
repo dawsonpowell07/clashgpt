@@ -55,7 +55,7 @@ function evolToVariant(level: number): "normal" | "evolution" | "heroic" {
 export function BattleLog({ battleLog, className }: BattleLogProps) {
   const wins = battleLog.battles.filter((b) => b.user_trophy_change > 0).length;
   const draws = battleLog.battles.filter(
-    (b) => b.user_trophy_change === 0
+    (b) => b.user_trophy_change === 0,
   ).length;
   const losses = battleLog.battles.length - wins - draws;
   const winRate = Math.round((wins / (battleLog.battles.length || 1)) * 100);
@@ -141,7 +141,7 @@ function BattleCard({ battle, defaultOpen = false }: BattleCardProps) {
       <div
         className={cn(
           "px-4 py-3 border-b border-transparent cursor-pointer hover:bg-muted/50 transition-colors",
-          isOpen && "border-border"
+          isOpen && "border-border",
         )}
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -150,13 +150,12 @@ function BattleCard({ battle, defaultOpen = false }: BattleCardProps) {
             <div
               className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border",
-                isWin &&
-                  "bg-green-500/20 text-green-500 border-green-500/30",
+                isWin && "bg-green-500/20 text-green-500 border-green-500/30",
                 isDraw &&
                   "bg-yellow-500/20 text-yellow-500 border-yellow-500/30",
                 !isWin &&
                   !isDraw &&
-                  "bg-destructive/20 text-destructive border-destructive/30"
+                  "bg-destructive/20 text-destructive border-destructive/30",
               )}
             >
               {isWin ? "W" : isDraw ? "D" : "L"}
@@ -168,9 +167,7 @@ function BattleCard({ battle, defaultOpen = false }: BattleCardProps) {
                   {isWin ? "Victory" : isDraw ? "Draw" : "Defeat"}
                 </span>
                 <span className="text-xs text-muted-foreground">•</span>
-                <span className="text-xs text-muted-foreground">
-                  Ranked
-                </span>
+                <span className="text-xs text-muted-foreground">Ranked</span>
                 <span className="text-xs text-muted-foreground">•</span>
                 <span className="text-xs text-muted-foreground">
                   {battle.arena.name}
@@ -182,7 +179,7 @@ function BattleCard({ battle, defaultOpen = false }: BattleCardProps) {
                   <span
                     className={cn(
                       "ml-1 font-medium",
-                      isWin ? "text-green-500" : "text-destructive"
+                      isWin ? "text-green-500" : "text-destructive",
                     )}
                   >
                     {isWin && "+"}

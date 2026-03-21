@@ -76,9 +76,18 @@ export function ChatToolRenderers() {
     parameters: [{ name: "player_tag", type: "string", required: true }],
     render: ({ args, result, status }) => {
       if (status !== "complete")
-        return <ToolLoading label={`Looking up player ${args.player_tag || "..."}...`} />;
+        return (
+          <ToolLoading
+            label={`Looking up player ${args.player_tag || "..."}...`}
+          />
+        );
       if (hasToolError(result)) return <ToolError label="Error Occurred" />;
-      if (!result) return <ToolError label={`Could not fetch player data for ${args.player_tag}`} />;
+      if (!result)
+        return (
+          <ToolError
+            label={`Could not fetch player data for ${args.player_tag}`}
+          />
+        );
       return <PlayerProfile player={result} className="my-4" />;
     },
   });
@@ -87,10 +96,18 @@ export function ChatToolRenderers() {
     name: "get_player_battle_log",
     render: ({ args, result, status }) => {
       if (status !== "complete")
-        return <ToolLoading label={`Loading battle history for ${args.player_tag || "..."}...`} />;
+        return (
+          <ToolLoading
+            label={`Loading battle history for ${args.player_tag || "..."}...`}
+          />
+        );
       if (hasToolError(result)) return <ToolError label="Error Occurred" />;
       if (!result || !result.battles)
-        return <ToolError label={`Could not fetch battle log for ${args.player_tag}`} />;
+        return (
+          <ToolError
+            label={`Could not fetch battle log for ${args.player_tag}`}
+          />
+        );
       return <BattleLog battleLog={result} className="my-4" />;
     },
   });
@@ -99,10 +116,16 @@ export function ChatToolRenderers() {
     name: "get_clan_info",
     render: ({ args, result, status }) => {
       if (status !== "complete")
-        return <ToolLoading label={`Fetching clan info for ${args.clan_tag || "..."}...`} />;
+        return (
+          <ToolLoading
+            label={`Fetching clan info for ${args.clan_tag || "..."}...`}
+          />
+        );
       if (hasToolError(result)) return <ToolError label="Error Occurred" />;
       if (!result || !result.members_list)
-        return <ToolError label={`Could not fetch clan data for ${args.clan_tag}`} />;
+        return (
+          <ToolError label={`Could not fetch clan data for ${args.clan_tag}`} />
+        );
       return <ClanInfo clan={result} className="my-4" />;
     },
   });
@@ -110,10 +133,13 @@ export function ChatToolRenderers() {
   useRenderToolCall({
     name: "search_clans",
     render: ({ args: _args, result, status }) => {
-      if (status !== "complete") return <ToolLoading label="Searching for matching clans..." />;
+      if (status !== "complete")
+        return <ToolLoading label="Searching for matching clans..." />;
       if (hasToolError(result)) return <ToolError label="Error Occurred" />;
       if (!result || !result.items)
-        return <ToolError label="Could not find any clans matching your criteria" />;
+        return (
+          <ToolError label="Could not find any clans matching your criteria" />
+        );
       return <ClanSearchResults results={result} className="my-4" />;
     },
   });
@@ -123,14 +149,19 @@ export function ChatToolRenderers() {
     render: ({ args, result, status }) => {
       if (status !== "complete") {
         let loadingMessage = "Finding decks for you";
-        if (args.sort_by === "WIN_RATE") loadingMessage = "Finding highest win rate decks";
-        else if (args.sort_by === "GAMES_PLAYED") loadingMessage = "Finding most popular decks";
-        else if (args.sort_by === "WINS") loadingMessage = "Finding decks with most wins";
+        if (args.sort_by === "WIN_RATE")
+          loadingMessage = "Finding highest win rate decks";
+        else if (args.sort_by === "GAMES_PLAYED")
+          loadingMessage = "Finding most popular decks";
+        else if (args.sort_by === "WINS")
+          loadingMessage = "Finding decks with most wins";
         return <ToolLoading label={`${loadingMessage}...`} />;
       }
       if (hasToolError(result)) return <ToolError label="Error Occurred" />;
       if (!result || !result.decks)
-        return <ToolError label="Could not find any decks matching your criteria" />;
+        return (
+          <ToolError label="Could not find any decks matching your criteria" />
+        );
       return <DeckSearchResults results={result} className="my-4" />;
     },
   });
@@ -145,15 +176,23 @@ export function ChatToolRenderers() {
         return <ToolError label="Could not fetch leaderboard data" />;
       const locationId = args.location_id?.toString() || "57000249";
       const locationName =
-        LOCATION_MAP[locationId] || (locationId === "global" ? "Global" : locationId);
-      return <Leaderboard leaderboard={result} location={locationName} className="my-4" />;
+        LOCATION_MAP[locationId] ||
+        (locationId === "global" ? "Global" : locationId);
+      return (
+        <Leaderboard
+          leaderboard={result}
+          location={locationName}
+          className="my-4"
+        />
+      );
     },
   });
 
   useRenderToolCall({
     name: "get_card_stats",
     render: ({ args: _args, result, status }) => {
-      if (status !== "complete") return <ToolLoading label="Crunching card statistics..." />;
+      if (status !== "complete")
+        return <ToolLoading label="Crunching card statistics..." />;
       if (hasToolError(result)) return <ToolError label="Error Occurred" />;
       if (!result || !result.card_name)
         return <ToolError label="Could not fetch card statistics" />;
@@ -166,9 +205,9 @@ export function ChatToolRenderers() {
     render: ({ args, result, status }) => {
       if (status !== "complete")
         return <ToolLoading label="Analysing deck matchups..." />;
-      if (hasToolError(result)) return <ToolError label="Error loading matchup data" />;
-      if (!result)
-        return <ToolError label="Could not load matchup data" />;
+      if (hasToolError(result))
+        return <ToolError label="Error loading matchup data" />;
+      if (!result) return <ToolError label="Could not load matchup data" />;
       return <DeckMatchupResults results={result} className="my-4" />;
     },
   });
@@ -179,7 +218,8 @@ export function ChatToolRenderers() {
       if (status !== "complete") {
         return <ToolLoading label="Comparing win conditions..." />;
       }
-      if (hasToolError(result)) return <ToolError label="Error loading matchup data" />;
+      if (hasToolError(result))
+        return <ToolError label="Error loading matchup data" />;
       if (!result || !result.card_a)
         return <ToolError label="Could not load win condition matchup data" />;
       return <WinConditionMatchup data={result} className="my-4" />;
@@ -196,7 +236,8 @@ export function ChatToolRenderers() {
       {
         name: "prompt",
         type: "string",
-        description: "Short context explaining why the deck is needed (shown to user)",
+        description:
+          "Short context explaining why the deck is needed (shown to user)",
         required: false,
       },
     ],
@@ -217,9 +258,13 @@ export function ChatToolRenderers() {
       if (HANDLED_TOOLS.includes(name)) return <></>;
       return (
         <div className="bg-muted border border-border p-4 rounded-xl my-4">
-          <p className="font-bold text-sm text-muted-foreground mb-2">Tool: {name}</p>
+          <p className="font-bold text-sm text-muted-foreground mb-2">
+            Tool: {name}
+          </p>
           {status !== "complete" && <p className="text-sm">Processing...</p>}
-          {status === "complete" && hasToolError(result) && <ToolError label="Error Occurred" />}
+          {status === "complete" && hasToolError(result) && (
+            <ToolError label="Error Occurred" />
+          )}
           {status === "complete" && result && (
             <pre className="bg-background p-2 rounded text-xs overflow-auto max-h-96">
               {JSON.stringify(result, null, 2)}

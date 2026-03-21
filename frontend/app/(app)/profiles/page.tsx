@@ -16,8 +16,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import type { PlayerSearchResult, PlayerDeck, Battle, CRPlayerInfo } from "@/components/profiles/types";
-import { PlayerSearchResults, NoResults } from "@/components/profiles/PlayerSearchResults";
+import type {
+  PlayerSearchResult,
+  PlayerDeck,
+  Battle,
+  CRPlayerInfo,
+} from "@/components/profiles/types";
+import {
+  PlayerSearchResults,
+  NoResults,
+} from "@/components/profiles/PlayerSearchResults";
 import { PlayerHeroCard } from "@/components/profiles/PlayerHeroCard";
 import { LivePlayerData } from "@/components/profiles/LivePlayerData";
 import { DeckAccordion } from "@/components/profiles/DeckAccordion";
@@ -39,9 +47,12 @@ export default function ProfilesPage() {
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [searchResults, setSearchResults] = useState<PlayerSearchResult[] | null>(null);
+  const [searchResults, setSearchResults] = useState<
+    PlayerSearchResult[] | null
+  >(null);
 
-  const [selectedPlayer, setSelectedPlayer] = useState<PlayerSearchResult | null>(null);
+  const [selectedPlayer, setSelectedPlayer] =
+    useState<PlayerSearchResult | null>(null);
   const [crInfo, setCrInfo] = useState<CRPlayerInfo | null>(null);
   const [decks, setDecks] = useState<PlayerDeck[] | null>(null);
   const [battles, setBattles] = useState<Battle[] | null>(null);
@@ -70,7 +81,7 @@ export default function ProfilesPage() {
       const token = await getToken();
       const res = await fetch(
         `${API_BASE_URL}/api/players?name=${encodeURIComponent(trimmed)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const data = await res.json();
@@ -84,34 +95,47 @@ export default function ProfilesPage() {
     }
   }, [query, getToken]);
 
-  const selectPlayer = useCallback(async (player: PlayerSearchResult) => {
-    setSelectedPlayer(player);
-    setCrInfo(null);
-    setDecks(null);
-    setBattles(null);
-    setDetailsError(null);
-    setIsLoadingDetails(true);
+  const selectPlayer = useCallback(
+    async (player: PlayerSearchResult) => {
+      setSelectedPlayer(player);
+      setCrInfo(null);
+      setDecks(null);
+      setBattles(null);
+      setDetailsError(null);
+      setIsLoadingDetails(true);
 
-    try {
-      const token = await getToken();
-      const authHeader = { Authorization: `Bearer ${token}` };
-      const tag = encodeURIComponent(player.player_tag);
-      const [crRes, decksRes, battlesRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/players/${tag}/info`, { headers: authHeader }),
-        fetch(`${API_BASE_URL}/api/players/${tag}/decks`, { headers: authHeader }),
-        fetch(`${API_BASE_URL}/api/players/${tag}/battles`, { headers: authHeader }),
-      ]);
-      if (!decksRes.ok || !battlesRes.ok) throw new Error("Failed to fetch player details");
-      const [decksData, battlesData] = await Promise.all([decksRes.json(), battlesRes.json()]);
-      setDecks(decksData.decks ?? []);
-      setBattles(battlesData.battles ?? []);
-      if (crRes.ok) setCrInfo(await crRes.json());
-    } catch {
-      setDetailsError("Failed to load player details. Please try again.");
-    } finally {
-      setIsLoadingDetails(false);
-    }
-  }, [getToken]);
+      try {
+        const token = await getToken();
+        const authHeader = { Authorization: `Bearer ${token}` };
+        const tag = encodeURIComponent(player.player_tag);
+        const [crRes, decksRes, battlesRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/players/${tag}/info`, {
+            headers: authHeader,
+          }),
+          fetch(`${API_BASE_URL}/api/players/${tag}/decks`, {
+            headers: authHeader,
+          }),
+          fetch(`${API_BASE_URL}/api/players/${tag}/battles`, {
+            headers: authHeader,
+          }),
+        ]);
+        if (!decksRes.ok || !battlesRes.ok)
+          throw new Error("Failed to fetch player details");
+        const [decksData, battlesData] = await Promise.all([
+          decksRes.json(),
+          battlesRes.json(),
+        ]);
+        setDecks(decksData.decks ?? []);
+        setBattles(battlesData.battles ?? []);
+        if (crRes.ok) setCrInfo(await crRes.json());
+      } catch {
+        setDetailsError("Failed to load player details. Please try again.");
+      } finally {
+        setIsLoadingDetails(false);
+      }
+    },
+    [getToken],
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24 relative overflow-hidden">
@@ -127,7 +151,6 @@ export default function ProfilesPage() {
       <div className="fixed bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-accent/6 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 relative z-10">
-
         {/* Header */}
         <div className="space-y-2 pb-6 border-b border-border/40 relative">
           <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent battle-glow" />
@@ -135,7 +158,8 @@ export default function ProfilesPage() {
             Player Profiles
           </h1>
           <p className="text-muted-foreground text-sm max-w-xl">
-            Search top-ranked players from our battle database and explore their stats, decks, and recent history.
+            Search top-ranked players from our battle database and explore their
+            stats, decks, and recent history.
           </p>
         </div>
 
@@ -172,7 +196,10 @@ export default function ProfilesPage() {
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <p className="text-sm flex-1">{searchError}</p>
-            <button onClick={handleSearch} className="text-xs flex items-center gap-1 hover:opacity-80">
+            <button
+              onClick={handleSearch}
+              className="text-xs flex items-center gap-1 hover:opacity-80"
+            >
               <RefreshCw className="w-3 h-3" /> Retry
             </button>
           </div>
@@ -194,17 +221,21 @@ export default function ProfilesPage() {
         )}
 
         {/* No results */}
-        {searchResults && searchResults.length === 0 && !isSearching && <NoResults />}
+        {searchResults && searchResults.length === 0 && !isSearching && (
+          <NoResults />
+        )}
 
         {/* Multiple results */}
         {searchResults && searchResults.length > 1 && !selectedPlayer && (
-          <PlayerSearchResults results={searchResults} onSelect={selectPlayer} />
+          <PlayerSearchResults
+            results={searchResults}
+            onSelect={selectPlayer}
+          />
         )}
 
         {/* Player detail */}
         {selectedPlayer && (
           <div className="space-y-6 arena-entrance">
-
             {/* Back */}
             {searchResults && searchResults.length > 1 && (
               <button
@@ -242,52 +273,56 @@ export default function ProfilesPage() {
             )}
 
             {/* Two-column layout: left = live data + decks, right = sticky battles */}
-            {!isLoadingDetails && (crInfo != null || decks !== null || battles !== null) && (
-              <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6 items-start">
+            {!isLoadingDetails &&
+              (crInfo != null || decks !== null || battles !== null) && (
+                <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6 items-start">
+                  {/* Left column */}
+                  <div className="space-y-6">
+                    {crInfo && <LivePlayerData crInfo={crInfo} />}
 
-                {/* Left column */}
-                <div className="space-y-6">
-                  {crInfo && <LivePlayerData crInfo={crInfo} />}
+                    {decks !== null && (
+                      <section className="space-y-3">
+                        <SectionHeading
+                          icon={<Swords className="w-4 h-4" />}
+                          label="Most Used Decks"
+                          sub="Top 5 by games played"
+                        />
+                        {decks.length === 0 ? (
+                          <div className="text-sm text-muted-foreground/60 text-center py-10 rounded-xl border border-dashed border-border/40">
+                            No deck data available for this player.
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {decks.map((deck, i) => (
+                              <DeckAccordion
+                                key={deck.deck_id}
+                                deck={deck}
+                                rank={i + 1}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    )}
+                  </div>
 
-                  {decks !== null && (
-                    <section className="space-y-3">
-                      <SectionHeading
-                        icon={<Swords className="w-4 h-4" />}
-                        label="Most Used Decks"
-                        sub="Top 5 by games played"
-                      />
-                      {decks.length === 0 ? (
-                        <div className="text-sm text-muted-foreground/60 text-center py-10 rounded-xl border border-dashed border-border/40">
-                          No deck data available for this player.
+                  {/* Right column — sticky */}
+                  <div className="xl:sticky xl:top-6">
+                    {battles !== null && (
+                      <section className="space-y-3">
+                        <SectionHeading
+                          icon={<Trophy className="w-4 h-4" />}
+                          label="Recent Battles"
+                          sub="Last 20 battles from database"
+                        />
+                        <div className="bg-card/40 border border-border/50 rounded-2xl p-4">
+                          <RecentBattles battles={battles} />
                         </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {decks.map((deck, i) => (
-                            <DeckAccordion key={deck.deck_id} deck={deck} rank={i + 1} />
-                          ))}
-                        </div>
-                      )}
-                    </section>
-                  )}
+                      </section>
+                    )}
+                  </div>
                 </div>
-
-                {/* Right column — sticky */}
-                <div className="xl:sticky xl:top-6">
-                  {battles !== null && (
-                    <section className="space-y-3">
-                      <SectionHeading
-                        icon={<Trophy className="w-4 h-4" />}
-                        label="Recent Battles"
-                        sub="Last 20 battles from database"
-                      />
-                      <div className="bg-card/40 border border-border/50 rounded-2xl p-4">
-                        <RecentBattles battles={battles} />
-                      </div>
-                    </section>
-                  )}
-                </div>
-              </div>
-            )}
+              )}
           </div>
         )}
       </div>

@@ -25,7 +25,10 @@ interface ClanSearchResultsProps {
   className?: string;
 }
 
-export function ClanSearchResults({ results, className }: ClanSearchResultsProps) {
+export function ClanSearchResults({
+  results,
+  className,
+}: ClanSearchResultsProps) {
   // Format clan type for display
   const formatClanType = (type: string | null | undefined): string => {
     if (!type) return "Unknown";
@@ -48,7 +51,7 @@ export function ClanSearchResults({ results, className }: ClanSearchResultsProps
       <div
         className={cn(
           "bg-card border border-border rounded-xl p-8 text-center",
-          className
+          className,
         )}
       >
         <div className="text-muted-foreground">
@@ -87,7 +90,7 @@ export function ClanSearchResults({ results, className }: ClanSearchResultsProps
                   <span
                     className={cn(
                       "px-2 py-0.5 text-xs font-medium rounded border",
-                      getTypeBadgeColor(clan.type)
+                      getTypeBadgeColor(clan.type),
                     )}
                   >
                     {formatClanType(clan.type)}
@@ -129,24 +132,26 @@ export function ClanSearchResults({ results, className }: ClanSearchResultsProps
                 )}
 
                 {/* War Trophies */}
-                {clan.clan_war_trophies !== null && clan.clan_war_trophies !== undefined && (
-                  <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-500/10 rounded border border-orange-500/30">
-                    <span className="text-xs">⚔️</span>
-                    <span className="text-xs font-semibold text-orange-400">
-                      {clan.clan_war_trophies.toLocaleString()}
-                    </span>
-                  </div>
-                )}
+                {clan.clan_war_trophies !== null &&
+                  clan.clan_war_trophies !== undefined && (
+                    <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-500/10 rounded border border-orange-500/30">
+                      <span className="text-xs">⚔️</span>
+                      <span className="text-xs font-semibold text-orange-400">
+                        {clan.clan_war_trophies.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
 
                 {/* Required Trophies */}
-                {clan.required_trophies !== null && clan.required_trophies !== undefined && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted/30 rounded border border-border/50">
-                    <span className="text-xs">🏆</span>
-                    <span className="text-xs font-medium text-foreground">
-                      {clan.required_trophies.toLocaleString()}
-                    </span>
-                  </div>
-                )}
+                {clan.required_trophies !== null &&
+                  clan.required_trophies !== undefined && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted/30 rounded border border-border/50">
+                      <span className="text-xs">🏆</span>
+                      <span className="text-xs font-medium text-foreground">
+                        {clan.required_trophies.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
               </div>
             </div>
           </div>
@@ -157,7 +162,8 @@ export function ClanSearchResults({ results, className }: ClanSearchResultsProps
       {results.items.length > 0 && (
         <div className="mt-4 text-center">
           <p className="text-xs text-muted-foreground">
-            Showing {results.items.length} clan{results.items.length !== 1 ? 's' : ''}
+            Showing {results.items.length} clan
+            {results.items.length !== 1 ? "s" : ""}
           </p>
         </div>
       )}

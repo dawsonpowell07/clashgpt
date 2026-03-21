@@ -2,12 +2,18 @@ import { cn } from "@/lib/utils";
 import { CardIcon } from "./card-icon";
 
 interface DeckGridProps {
-  cards: Array<{ cardName: string; variant?: "normal" | "evolution" | "heroic" }>;
+  cards: Array<{
+    cardName: string;
+    variant?: "normal" | "evolution" | "heroic";
+  }>;
   className?: string;
 }
 
 function sortCards(
-  cards: Array<{ cardName: string; variant?: "normal" | "evolution" | "heroic" }>
+  cards: Array<{
+    cardName: string;
+    variant?: "normal" | "evolution" | "heroic";
+  }>,
 ) {
   const evoCards = cards.filter((c) => c.variant === "evolution");
   const heroCards = cards.filter((c) => c.variant === "heroic");

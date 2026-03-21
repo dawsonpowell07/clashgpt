@@ -13,7 +13,8 @@ export function ActiveFilterTags({
   minGames,
   getCardLabel,
 }: ActiveFilterTagsProps) {
-  const hasFilters = includedVariants.size > 0 || excludedVariants.size > 0 || minGames > 0;
+  const hasFilters =
+    includedVariants.size > 0 || excludedVariants.size > 0 || minGames > 0;
   if (!hasFilters) return null;
 
   return (

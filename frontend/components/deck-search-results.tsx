@@ -43,7 +43,7 @@ export function DeckSearchResults({
       <div
         className={cn(
           "flex items-center justify-between bg-card border border-border p-4 rounded-xl cursor-pointer hover:bg-accent/50 transition-colors",
-          isOpen ? "rounded-b-none border-b-0" : "rounded-xl"
+          isOpen ? "rounded-b-none border-b-0" : "rounded-xl",
         )}
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -88,11 +88,31 @@ interface DeckCardComponentProps {
 
 function getKeyCards(cards: DeckCard[], avgElixir: number): string {
   const keyCardNames = [
-    "giant", "royal giant", "golem", "goblin giant", "hog rider",
-    "goblin drill", "goblin barrel", "mortar", "monk", "three musketeers",
-    "royal hogs", "sparky", "graveyard", "p.e.k.k.a", "elixir golem",
-    "balloon", "x-bow", "rocket", "ram rider", "boss bandit", "mega knight",
-    "lava hound", "miner", "electro giant", "battle ram",
+    "giant",
+    "royal giant",
+    "golem",
+    "goblin giant",
+    "hog rider",
+    "goblin drill",
+    "goblin barrel",
+    "mortar",
+    "monk",
+    "three musketeers",
+    "royal hogs",
+    "sparky",
+    "graveyard",
+    "p.e.k.k.a",
+    "elixir golem",
+    "balloon",
+    "x-bow",
+    "rocket",
+    "ram rider",
+    "boss bandit",
+    "mega knight",
+    "lava hound",
+    "miner",
+    "electro giant",
+    "battle ram",
   ];
 
   const foundKeyCards = cards
@@ -124,10 +144,10 @@ function DeckCardComponent({ deck }: DeckCardComponentProps) {
     winRate === null
       ? "text-muted-foreground"
       : parseFloat(winRate) >= 55
-      ? "text-green-400"
-      : parseFloat(winRate) >= 50
-      ? "text-yellow-400"
-      : "text-red-400";
+        ? "text-green-400"
+        : parseFloat(winRate) >= 50
+          ? "text-yellow-400"
+          : "text-red-400";
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-border/80 transition-all flex flex-col gap-0">

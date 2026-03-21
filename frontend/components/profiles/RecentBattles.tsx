@@ -27,7 +27,7 @@ export function RecentBattles({ battles }: RecentBattlesProps) {
               "flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm transition-colors",
               isWin
                 ? "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10"
-                : "border-red-500/20 bg-red-500/5 hover:bg-red-500/10"
+                : "border-red-500/20 bg-red-500/5 hover:bg-red-500/10",
             )}
           >
             <span
@@ -35,7 +35,7 @@ export function RecentBattles({ battles }: RecentBattlesProps) {
                 "shrink-0 w-10 text-center text-[10px] font-bold uppercase tracking-wider rounded-md px-1.5 py-1",
                 isWin
                   ? "bg-emerald-500/20 text-emerald-400"
-                  : "bg-red-500/20 text-red-400"
+                  : "bg-red-500/20 text-red-400",
               )}
             >
               {battle.result}

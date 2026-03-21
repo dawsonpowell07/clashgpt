@@ -62,11 +62,31 @@ function formatLastSeen(timestamp: string): string {
 
 function getKeyCards(cards: DeckCard[], avgElixir: number): string {
   const keyCardNames = [
-    "giant", "royal giant", "golem", "goblin giant", "hog rider",
-    "goblin drill", "goblin barrel", "mortar", "monk", "three musketeers",
-    "royal hogs", "sparky", "graveyard", "p.e.k.k.a", "elixir golem",
-    "balloon", "x-bow", "rocket", "ram rider", "boss bandit", "mega knight",
-    "lava hound", "miner", "electro giant", "battle ram",
+    "giant",
+    "royal giant",
+    "golem",
+    "goblin giant",
+    "hog rider",
+    "goblin drill",
+    "goblin barrel",
+    "mortar",
+    "monk",
+    "three musketeers",
+    "royal hogs",
+    "sparky",
+    "graveyard",
+    "p.e.k.k.a",
+    "elixir golem",
+    "balloon",
+    "x-bow",
+    "rocket",
+    "ram rider",
+    "boss bandit",
+    "mega knight",
+    "lava hound",
+    "miner",
+    "electro giant",
+    "battle ram",
   ];
 
   const foundKeyCards = cards
@@ -105,7 +125,7 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
     <div
       className={cn(
         "group relative bg-card border border-border/50 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1",
-        className
+        className,
       )}
     >
       {/* Header */}
@@ -137,8 +157,8 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
                   winRateTier === "high"
                     ? "text-green-500"
                     : winRateTier === "medium"
-                    ? "text-yellow-500"
-                    : "text-red-500"
+                      ? "text-yellow-500"
+                      : "text-red-500",
                 )}
               />
               <div className="flex items-baseline gap-1">
@@ -149,8 +169,8 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
                     winRateTier === "high"
                       ? "text-green-500 dark:text-green-400"
                       : winRateTier === "medium"
-                      ? "text-yellow-500 dark:text-yellow-400"
-                      : "text-red-500 dark:text-red-400"
+                        ? "text-yellow-500 dark:text-yellow-400"
+                        : "text-red-500 dark:text-red-400",
                   )}
                 >
                   {winRate}%

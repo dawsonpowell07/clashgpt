@@ -1,6 +1,14 @@
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, Label } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Label,
+} from "recharts";
 
 interface Card {
   id: string;
@@ -73,7 +81,7 @@ export function PlayerProfile({ player, className }: PlayerProfileProps) {
     <div
       className={cn(
         "bg-card border border-border rounded-xl shadow-lg overflow-hidden transition-all hover:shadow-xl w-full",
-        className
+        className,
       )}
     >
       {/* Header Section - Horizontal Layout */}
@@ -131,7 +139,11 @@ export function PlayerProfile({ player, className }: PlayerProfileProps) {
           <div className="flex flex-col lg:flex-row gap-4 items-center">
             {/* Pie chart */}
             <div className="w-full lg:w-56 shrink-0 h-48">
-              <WinsLossesPieChart wins={player.wins} losses={player.losses} winRate={winRate} />
+              <WinsLossesPieChart
+                wins={player.wins}
+                losses={player.losses}
+                winRate={winRate}
+              />
             </div>
             {/* Remaining stats */}
             <div className="flex flex-col gap-4 flex-1 w-full">
@@ -162,7 +174,7 @@ export function PlayerProfile({ player, className }: PlayerProfileProps) {
                     <StatCard
                       label="Current League"
                       value={getLeagueName(
-                        player.current_path_of_legends_league
+                        player.current_path_of_legends_league,
                       )}
                       icon="🏆"
                     />
@@ -293,7 +305,11 @@ interface WinsLossesPieChartProps {
   winRate: string;
 }
 
-function WinsLossesPieChart({ wins, losses, winRate }: WinsLossesPieChartProps) {
+function WinsLossesPieChart({
+  wins,
+  losses,
+  winRate,
+}: WinsLossesPieChartProps) {
   const data = [
     { name: "Wins", value: wins },
     { name: "Losses", value: losses },
@@ -316,7 +332,13 @@ function WinsLossesPieChart({ wins, losses, winRate }: WinsLossesPieChartProps) 
           x="50%"
           y={14}
           textAnchor="middle"
-          style={{ fontSize: "11px", fontWeight: 600, fill: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em" }}
+          style={{
+            fontSize: "11px",
+            fontWeight: 600,
+            fill: "#9ca3af",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
         >
           Win / Loss
         </text>
@@ -342,7 +364,10 @@ function WinsLossesPieChart({ wins, losses, winRate }: WinsLossesPieChartProps) 
         </Pie>
         <Tooltip
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          formatter={(value: any, name: any) => [value?.toLocaleString() ?? "", name]}
+          formatter={(value: any, name: any) => [
+            value?.toLocaleString() ?? "",
+            name,
+          ]}
           contentStyle={{
             background: "#1e2433",
             border: "1px solid #3d4560",
@@ -375,7 +400,7 @@ function StatCard({ label, value, icon, highlight }: StatCardProps) {
               "text-lg font-bold truncate",
               highlight === "success" && "text-green-400",
               highlight === "destructive" && "text-destructive",
-              !highlight && "text-foreground"
+              !highlight && "text-foreground",
             )}
           >
             {value}

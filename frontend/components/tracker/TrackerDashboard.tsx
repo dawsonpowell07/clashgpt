@@ -48,7 +48,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 function cardImagePath(name: string, variant: string | null) {
   const base = name.toLowerCase().replace(/ /g, "_").replace(/\./g, "");
   const suffix =
-    variant === "evolution" ? "_evolution" : variant === "heroic" ? "_hero" : "";
+    variant === "evolution"
+      ? "_evolution"
+      : variant === "heroic"
+        ? "_hero"
+        : "";
   return `/cards/${base}/${base}${suffix}.png`;
 }
 
@@ -118,7 +122,12 @@ function StatCard({
         <Icon className="w-3 h-3" />
         {label}
       </span>
-      <span className={cn("font-[family-name:var(--font-heading)] text-2xl font-black leading-none", valueColor)}>
+      <span
+        className={cn(
+          "font-[family-name:var(--font-heading)] text-2xl font-black leading-none",
+          valueColor,
+        )}
+      >
         {value}
       </span>
       {sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}
@@ -132,7 +141,11 @@ function DeckRow({ deck, rank }: { deck: TrackerDeck; rank: number }) {
   const [isOpen, setIsOpen] = useState(false);
   const wr = deck.win_rate ?? 0;
   const wrColor =
-    wr >= 55 ? "text-emerald-400" : wr >= 50 ? "text-amber-400" : "text-red-400";
+    wr >= 55
+      ? "text-emerald-400"
+      : wr >= 50
+        ? "text-amber-400"
+        : "text-red-400";
   const wrBarColor =
     wr >= 55 ? "bg-emerald-500" : wr >= 50 ? "bg-amber-500" : "bg-red-500";
 
@@ -161,14 +174,19 @@ function DeckRow({ deck, rank }: { deck: TrackerDeck; rank: number }) {
         {/* 1×8 card row */}
         <div className="flex gap-1 flex-1 min-w-0">
           {cards.map((card, i) => (
-            <CardIcon key={i} cardName={card.cardName} variant={card.variant} className="flex-1 min-w-0" />
+            <CardIcon
+              key={i}
+              cardName={card.cardName}
+              variant={card.variant}
+              className="flex-1 min-w-0"
+            />
           ))}
         </div>
 
         <ChevronDown
           className={cn(
             "w-4 h-4 text-muted-foreground/60 shrink-0 transition-transform duration-200 ml-1",
-            isOpen && "rotate-180"
+            isOpen && "rotate-180",
           )}
         />
       </button>
@@ -182,13 +200,21 @@ function DeckRow({ deck, rank }: { deck: TrackerDeck; rank: number }) {
                 <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1">
                   <Trophy className="w-3 h-3" /> Win Rate
                 </span>
-                <span className={cn("text-base font-black font-[family-name:var(--font-heading)]", wrColor)}>
+                <span
+                  className={cn(
+                    "text-base font-black font-[family-name:var(--font-heading)]",
+                    wrColor,
+                  )}
+                >
                   {deck.win_rate !== null ? `${deck.win_rate}%` : "—"}
                 </span>
               </div>
               <div className="h-2 w-full bg-muted/80 rounded-full overflow-hidden">
                 <div
-                  className={cn("h-full rounded-full transition-all", wrBarColor)}
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    wrBarColor,
+                  )}
                   style={{ width: `${Math.min(wr, 100)}%` }}
                 />
               </div>
@@ -202,15 +228,23 @@ function DeckRow({ deck, rank }: { deck: TrackerDeck; rank: number }) {
               <div className="flex items-center gap-2.5 bg-muted/30 border border-border/40 rounded-lg px-3 py-2.5">
                 <Zap className="w-4 h-4 text-purple-400 shrink-0" />
                 <div>
-                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide font-bold block">Elixir</span>
-                  <span className="text-sm font-bold text-foreground">{deck.avg_elixir ?? "—"}</span>
+                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide font-bold block">
+                    Elixir
+                  </span>
+                  <span className="text-sm font-bold text-foreground">
+                    {deck.avg_elixir ?? "—"}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-2.5 bg-muted/30 border border-border/40 rounded-lg px-3 py-2.5">
                 <Swords className="w-4 h-4 text-blue-400 shrink-0" />
                 <div>
-                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide font-bold block">Games</span>
-                  <span className="text-sm font-bold text-foreground">{deck.games.toLocaleString()}</span>
+                  <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide font-bold block">
+                    Games
+                  </span>
+                  <span className="text-sm font-bold text-foreground">
+                    {deck.games.toLocaleString()}
+                  </span>
                 </div>
               </div>
             </div>
@@ -226,7 +260,11 @@ function DeckRow({ deck, rank }: { deck: TrackerDeck; rank: number }) {
 function WorstMatchupRow({ matchup }: { matchup: TrackerWorstMatchup }) {
   const wr = matchup.win_rate ?? 0;
   const wrColor =
-    wr >= 55 ? "text-emerald-400" : wr >= 50 ? "text-amber-400" : "text-red-400";
+    wr >= 55
+      ? "text-emerald-400"
+      : wr >= 50
+        ? "text-amber-400"
+        : "text-red-400";
 
   return (
     <div className="relative flex flex-col gap-3 p-4 rounded-2xl border border-border/40 bg-card/60 hover:bg-card/80 hover:border-border/60 transition-all shrink-0 w-[160px] sm:w-[176px] h-full group overflow-hidden">
@@ -244,16 +282,27 @@ function WorstMatchupRow({ matchup }: { matchup: TrackerWorstMatchup }) {
         <p className="text-sm font-bold text-foreground font-[family-name:var(--font-heading)] tracking-wide truncate px-1">
           {matchup.card_name}
         </p>
-        <span className={cn("font-[family-name:var(--font-heading)] text-2xl font-black", wrColor)}>
+        <span
+          className={cn(
+            "font-[family-name:var(--font-heading)] text-2xl font-black",
+            wrColor,
+          )}
+        >
           {matchup.win_rate !== null ? `${Math.round(matchup.win_rate)}%` : "—"}
         </span>
-        <span className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold">Win Rate</span>
+        <span className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold">
+          Win Rate
+        </span>
       </div>
 
       <div className="flex items-center justify-between w-full mt-auto z-10 pt-3 border-t border-border/30">
         <div className="flex flex-col items-start gap-0.5">
-          <span className="text-xs font-bold font-mono text-foreground leading-none">{matchup.games.toLocaleString()}</span>
-          <span className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold leading-none">Games</span>
+          <span className="text-xs font-bold font-mono text-foreground leading-none">
+            {matchup.games.toLocaleString()}
+          </span>
+          <span className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold leading-none">
+            Games
+          </span>
         </div>
         <div className="flex flex-col items-end gap-0.5">
           <div className="flex items-center font-mono text-xs font-bold leading-none">
@@ -261,7 +310,9 @@ function WorstMatchupRow({ matchup }: { matchup: TrackerWorstMatchup }) {
             <span className="text-muted-foreground/40 mx-0.5">-</span>
             <span className="text-red-400">{matchup.losses}</span>
           </div>
-          <span className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold leading-none">Record</span>
+          <span className="text-[9px] uppercase tracking-widest text-muted-foreground/70 font-semibold leading-none">
+            Record
+          </span>
         </div>
       </div>
     </div>
@@ -278,13 +329,15 @@ function BattleRow({ battle }: { battle: TrackerBattle }) {
         "flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm transition-colors shrink-0",
         isWin
           ? "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10"
-          : "border-red-500/20 bg-red-500/5 hover:bg-red-500/10"
+          : "border-red-500/20 bg-red-500/5 hover:bg-red-500/10",
       )}
     >
       <span
         className={cn(
           "shrink-0 w-10 text-center text-[10px] font-bold uppercase tracking-wider rounded-md px-1.5 py-1",
-          isWin ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
+          isWin
+            ? "bg-emerald-500/20 text-emerald-400"
+            : "bg-red-500/20 text-red-400",
         )}
       >
         {battle.result}
@@ -297,11 +350,15 @@ function BattleRow({ battle }: { battle: TrackerBattle }) {
         <p className="text-xs font-medium text-foreground truncate">
           vs {battle.opponent ?? "Unknown"}
         </p>
-        <p className="text-[10px] text-muted-foreground">{fmtDate(battle.battle_time)}</p>
+        <p className="text-[10px] text-muted-foreground">
+          {fmtDate(battle.battle_time)}
+        </p>
       </div>
       {battle.elixir_leaked !== null && (
         <div className="text-right shrink-0 hidden sm:block">
-          <p className="text-xs font-semibold text-purple-400">{battle.elixir_leaked.toFixed(1)}</p>
+          <p className="text-xs font-semibold text-purple-400">
+            {battle.elixir_leaked.toFixed(1)}
+          </p>
           <p className="text-[9px] text-muted-foreground">elixir</p>
         </div>
       )}
@@ -342,7 +399,15 @@ const CHART_TOOLTIP_STYLE = {
 const CHART_ITEM_STYLE = { color: "#e5e7eb" };
 const CHART_LABEL_STYLE = { color: "#9ca3af" };
 
-function WinLossDonut({ wins, losses, winRate }: { wins: number; losses: number; winRate: number | null }) {
+function WinLossDonut({
+  wins,
+  losses,
+  winRate,
+}: {
+  wins: number;
+  losses: number;
+  winRate: number | null;
+}) {
   const pct = winRate !== null ? `${winRate}%` : "—";
   const data = [
     { name: "Wins", value: wins },
@@ -420,7 +485,12 @@ function GamesPerDayChart({ battles }: { battles: TrackerBattle[] }) {
       </p>
       <div className="h-44">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} maxBarSize={28} barCategoryGap="25%" margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+          <BarChart
+            data={data}
+            maxBarSize={28}
+            barCategoryGap="25%"
+            margin={{ top: 4, right: 4, left: -24, bottom: 0 }}
+          >
             <defs>
               <linearGradient id="barBlueGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#60a5fa" />
@@ -431,23 +501,58 @@ function GamesPerDayChart({ battles }: { battles: TrackerBattle[] }) {
                 <stop offset="100%" stopColor="#dc2626" />
               </linearGradient>
             </defs>
-            <CartesianGrid vertical={false} stroke="#3d4560" strokeOpacity={0.4} />
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} dy={5} />
-            <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+            <CartesianGrid
+              vertical={false}
+              stroke="#3d4560"
+              strokeOpacity={0.4}
+            />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10, fill: "#6b7280" }}
+              axisLine={false}
+              tickLine={false}
+              dy={5}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 10, fill: "#6b7280" }}
+              axisLine={false}
+              tickLine={false}
+            />
             <Tooltip
               contentStyle={CHART_TOOLTIP_STYLE}
               itemStyle={CHART_ITEM_STYLE}
               labelStyle={CHART_LABEL_STYLE}
               cursor={{ fill: "rgba(255,255,255,0.04)" }}
             />
-            <Bar dataKey="wins" name="Wins" stackId="a" fill="url(#barBlueGrad)" radius={[0, 0, 0, 0]} isAnimationActive={false} />
-            <Bar dataKey="losses" name="Losses" stackId="a" fill="url(#barRedGrad)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+            <Bar
+              dataKey="wins"
+              name="Wins"
+              stackId="a"
+              fill="url(#barBlueGrad)"
+              radius={[0, 0, 0, 0]}
+              isAnimationActive={false}
+            />
+            <Bar
+              dataKey="losses"
+              name="Losses"
+              stackId="a"
+              fill="url(#barRedGrad)"
+              radius={[4, 4, 0, 0]}
+              isAnimationActive={false}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
       <div className="flex justify-end gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-blue-500 inline-block" />Wins</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-red-500 inline-block" />Losses</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-sm bg-blue-500 inline-block" />
+          Wins
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-sm bg-red-500 inline-block" />
+          Losses
+        </span>
       </div>
     </div>
   );
@@ -488,7 +593,11 @@ function DeckWinRateChart({ decks }: { decks: TrackerDeck[] }) {
                 <stop offset="100%" stopColor="#dc2626" />
               </linearGradient>
             </defs>
-            <CartesianGrid horizontal={false} stroke="#3d4560" strokeOpacity={0.4} />
+            <CartesianGrid
+              horizontal={false}
+              stroke="#3d4560"
+              strokeOpacity={0.4}
+            />
             <XAxis
               type="number"
               domain={[0, 100]}
@@ -522,12 +631,24 @@ function DeckWinRateChart({ decks }: { decks: TrackerDeck[] }) {
               radius={[0, 4, 4, 0]}
               isAnimationActive={false}
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              label={{ position: "right", fontSize: 11, fill: "#d1d5db", fontWeight: 600, formatter: (v: any) => `${v}%` }}
+              label={{
+                position: "right",
+                fontSize: 11,
+                fill: "#d1d5db",
+                fontWeight: 600,
+                formatter: (v: any) => `${v}%`,
+              }}
             >
               {data.map((d, i) => (
                 <Cell
                   key={i}
-                  fill={d.wr >= 55 ? "url(#deckGreenGrad)" : d.wr >= 50 ? "url(#deckAmberGrad)" : "url(#deckRedGrad)"}
+                  fill={
+                    d.wr >= 55
+                      ? "url(#deckGreenGrad)"
+                      : d.wr >= 50
+                        ? "url(#deckAmberGrad)"
+                        : "url(#deckRedGrad)"
+                  }
                 />
               ))}
             </Bar>
@@ -546,13 +667,19 @@ interface TrackerDashboardProps {
   onChangeTag: () => void;
 }
 
-export function TrackerDashboard({ playerTag, playerName, onChangeTag }: TrackerDashboardProps) {
+export function TrackerDashboard({
+  playerTag,
+  playerName,
+  onChangeTag,
+}: TrackerDashboardProps) {
   const { getToken } = useAuth();
 
   const [stats, setStats] = useState<TrackerStats | null>(null);
   const [decks, setDecks] = useState<TrackerDeck[]>([]);
   const [worstMatchups, setWorstMatchups] = useState<TrackerWorstMatchup[]>([]);
-  const [battlesData, setBattlesData] = useState<TrackerBattlesResponse | null>(null);
+  const [battlesData, setBattlesData] = useState<TrackerBattlesResponse | null>(
+    null,
+  );
   const [chartBattles, setChartBattles] = useState<TrackerBattle[]>([]);
   const [page, setPage] = useState(1);
 
@@ -565,14 +692,16 @@ export function TrackerDashboard({ playerTag, playerName, onChangeTag }: Tracker
   const authFetch = useCallback(
     async (url: string) => {
       const token = await getToken();
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.detail ?? `Request failed (${res.status})`);
       }
       return res.json();
     },
-    [getToken]
+    [getToken],
   );
 
   useEffect(() => {
@@ -614,7 +743,6 @@ export function TrackerDashboard({ playerTag, playerName, onChangeTag }: Tracker
 
   return (
     <div className="w-full min-w-0 space-y-8">
-
       {/* ── Header ── */}
       <div className="relative pb-6 border-b border-border/40">
         <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
@@ -623,7 +751,9 @@ export function TrackerDashboard({ playerTag, playerName, onChangeTag }: Tracker
             <h1 className="font-[family-name:var(--font-heading)] text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-amber-300 to-primary/70 bg-clip-text text-transparent">
               {playerName}
             </h1>
-            <p className="text-sm font-mono text-muted-foreground/60 mt-1.5">{playerTag}</p>
+            <p className="text-sm font-mono text-muted-foreground/60 mt-1.5">
+              {playerTag}
+            </p>
           </div>
           <button
             onClick={onChangeTag}
@@ -651,7 +781,8 @@ export function TrackerDashboard({ playerTag, playerName, onChangeTag }: Tracker
             Your battles are being processed…
           </p>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            Your tag has been registered. Battle data will appear after the next ETL run.
+            Your tag has been registered. Battle data will appear after the next
+            ETL run.
           </p>
         </div>
       )}
@@ -659,7 +790,10 @@ export function TrackerDashboard({ playerTag, playerName, onChangeTag }: Tracker
       {/* ── Stats grid ── */}
       {(hasData || loadingStats) && (
         <section className="space-y-3">
-          <SectionHeading icon={<BarChart2 className="w-4 h-4" />} label="Overview" />
+          <SectionHeading
+            icon={<BarChart2 className="w-4 h-4" />}
+            label="Overview"
+          />
           {loadingStats ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 animate-pulse">
               {[...Array(4)].map((_, i) => (
@@ -679,20 +813,28 @@ export function TrackerDashboard({ playerTag, playerName, onChangeTag }: Tracker
                 sub={`${stats.wins}W / ${stats.losses}L`}
                 icon={Trophy}
                 accent={
-                  (stats.win_rate ?? 0) >= 55 ? "green"
-                  : (stats.win_rate ?? 0) >= 50 ? "amber"
-                  : "red"
+                  (stats.win_rate ?? 0) >= 55
+                    ? "green"
+                    : (stats.win_rate ?? 0) >= 50
+                      ? "amber"
+                      : "red"
                 }
               />
               <StatCard
                 label="Avg Crowns"
-                value={stats.avg_crowns !== null ? stats.avg_crowns.toFixed(1) : "—"}
+                value={
+                  stats.avg_crowns !== null ? stats.avg_crowns.toFixed(1) : "—"
+                }
                 icon={Crown}
                 accent="amber"
               />
               <StatCard
                 label="Avg Elixir Leaked"
-                value={stats.avg_elixir_leaked !== null ? stats.avg_elixir_leaked.toFixed(1) : "—"}
+                value={
+                  stats.avg_elixir_leaked !== null
+                    ? stats.avg_elixir_leaked.toFixed(1)
+                    : "—"
+                }
                 icon={Zap}
                 accent="blue"
               />
@@ -706,7 +848,11 @@ export function TrackerDashboard({ playerTag, playerName, onChangeTag }: Tracker
         <section className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {stats && (
-              <WinLossDonut wins={stats.wins} losses={stats.losses} winRate={stats.win_rate} />
+              <WinLossDonut
+                wins={stats.wins}
+                losses={stats.losses}
+                winRate={stats.win_rate}
+              />
             )}
             {chartBattles.length > 0 && (
               <div className="md:col-span-2 min-w-0">
@@ -720,10 +866,8 @@ export function TrackerDashboard({ playerTag, playerName, onChangeTag }: Tracker
 
       {/* ── Two-column: decks + matchups left, battles right ── */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6 items-start">
-
         {/* Left column */}
         <div className="flex flex-col gap-6 min-w-0">
-
           {/* Top Decks */}
           {(hasData || loadingDecks) && (
             <section className="space-y-3">
@@ -763,13 +907,19 @@ export function TrackerDashboard({ playerTag, playerName, onChangeTag }: Tracker
               {loadingWorstMatchups ? (
                 <div className="flex gap-3 animate-pulse">
                   {[...Array(5)].map((_, i) => (
-                    <div key={i} className="h-48 w-40 rounded-2xl bg-muted/40 shrink-0" />
+                    <div
+                      key={i}
+                      className="h-48 w-40 rounded-2xl bg-muted/40 shrink-0"
+                    />
                   ))}
                 </div>
               ) : worstMatchups.length > 0 ? (
                 <div className="flex overflow-x-auto gap-3 pb-2 snap-x scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent h-[280px]">
                   {worstMatchups.map((matchup) => (
-                    <div key={matchup.card_id} className="snap-start shrink-0 h-full">
+                    <div
+                      key={matchup.card_id}
+                      className="snap-start shrink-0 h-full"
+                    >
                       <WorstMatchupRow matchup={matchup} />
                     </div>
                   ))}
@@ -824,29 +974,32 @@ export function TrackerDashboard({ playerTag, playerName, onChangeTag }: Tracker
                 </div>
 
                 {/* Pagination */}
-                {!loadingBattles && battlesData && battlesData.total_pages > 1 && (
-                  <div className="flex items-center justify-between pt-3 border-t border-border/40 mt-1">
-                    <button
-                      disabled={!battlesData.has_previous}
-                      onClick={() => setPage((p) => p - 1)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-card hover:bg-muted text-xs font-medium text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Prev</span>
-                    </button>
-                    <span className="text-xs font-bold text-muted-foreground">
-                      {page} <span className="font-normal mx-0.5">/</span> {battlesData.total_pages}
-                    </span>
-                    <button
-                      disabled={!battlesData.has_next}
-                      onClick={() => setPage((p) => p + 1)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-card hover:bg-muted text-xs font-medium text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <span className="hidden sm:inline">Next</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
+                {!loadingBattles &&
+                  battlesData &&
+                  battlesData.total_pages > 1 && (
+                    <div className="flex items-center justify-between pt-3 border-t border-border/40 mt-1">
+                      <button
+                        disabled={!battlesData.has_previous}
+                        onClick={() => setPage((p) => p - 1)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-card hover:bg-muted text-xs font-medium text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Prev</span>
+                      </button>
+                      <span className="text-xs font-bold text-muted-foreground">
+                        {page} <span className="font-normal mx-0.5">/</span>{" "}
+                        {battlesData.total_pages}
+                      </span>
+                      <button
+                        disabled={!battlesData.has_next}
+                        onClick={() => setPage((p) => p + 1)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-card hover:bg-muted text-xs font-medium text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <span className="hidden sm:inline">Next</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
               </div>
             </section>
           )}

@@ -48,7 +48,9 @@ export function CardSelector({
 }: CardSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(true);
-  const [variantFilter, setVariantFilter] = useState<CardVariantType | "All">("All");
+  const [variantFilter, setVariantFilter] = useState<CardVariantType | "All">(
+    "All",
+  );
   const [rarityFilter, setRarityFilter] = useState<string>("All");
 
   // Process raw cards into displayable variant items
@@ -111,20 +113,20 @@ export function CardSelector({
   // Filter items based on search query, variant filter, and rarity filter
   const filteredItems = useMemo(() => {
     let items = variantItems;
-    
+
     if (variantFilter !== "All") {
       items = items.filter((item) => item.variant === variantFilter);
     }
 
     if (rarityFilter !== "All") {
-      items = items.filter((item) => item.rarity.toLowerCase() === rarityFilter.toLowerCase());
+      items = items.filter(
+        (item) => item.rarity.toLowerCase() === rarityFilter.toLowerCase(),
+      );
     }
 
     if (!searchQuery.trim()) return items;
     const lowerQuery = searchQuery.toLowerCase();
-    return items.filter((item) =>
-      item.name.toLowerCase().includes(lowerQuery)
-    );
+    return items.filter((item) => item.name.toLowerCase().includes(lowerQuery));
   }, [variantItems, searchQuery, variantFilter, rarityFilter]);
 
   return (
@@ -164,7 +166,9 @@ export function CardSelector({
         <div className="flex flex-row flex-wrap items-center gap-x-6 gap-y-3 pb-2 border-b border-border/50 mb-1">
           {/* Variant Filter mb-0 for mobile wrap */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Type
+            </span>
             <div className="flex items-center border rounded-md overflow-hidden bg-muted/20 shadow-sm">
               <button
                 onClick={() => setVariantFilter("All")}
@@ -172,7 +176,7 @@ export function CardSelector({
                   "px-3 text-xs h-8 font-medium transition-colors border-r",
                   variantFilter === "All"
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted/50"
+                    : "text-muted-foreground hover:bg-muted/50",
                 )}
               >
                 All
@@ -183,7 +187,7 @@ export function CardSelector({
                   "px-3 text-xs h-8 font-medium transition-colors border-r",
                   variantFilter === CardVariantType.HERO
                     ? "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20"
-                    : "text-muted-foreground hover:bg-muted/50"
+                    : "text-muted-foreground hover:bg-muted/50",
                 )}
               >
                 Heroes
@@ -194,7 +198,7 @@ export function CardSelector({
                   "px-3 text-xs h-8 font-medium transition-colors border-r",
                   variantFilter === CardVariantType.EVOLUTION
                     ? "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20"
-                    : "text-muted-foreground hover:bg-muted/50"
+                    : "text-muted-foreground hover:bg-muted/50",
                 )}
               >
                 Evolutions
@@ -205,7 +209,7 @@ export function CardSelector({
                   "px-3 text-xs h-8 font-medium transition-colors",
                   variantFilter === CardVariantType.NORMAL
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted/50"
+                    : "text-muted-foreground hover:bg-muted/50",
                 )}
               >
                 Base
@@ -215,23 +219,27 @@ export function CardSelector({
 
           {/* Rarity Filter */}
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rarity</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Rarity
+            </span>
             <div className="flex flex-wrap items-center border rounded-md overflow-hidden bg-muted/20 shadow-sm">
-              {["All", "Common", "Rare", "Epic", "Legendary", "Champion"].map((rarity, index) => (
-                <button
-                  key={rarity}
-                  onClick={() => setRarityFilter(rarity)}
-                  className={cn(
-                    "px-3 text-xs h-8 font-medium transition-colors",
-                    index !== 5 && "border-r",
-                    rarityFilter === rarity
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted/50"
-                  )}
-                >
-                  {rarity}
-                </button>
-              ))}
+              {["All", "Common", "Rare", "Epic", "Legendary", "Champion"].map(
+                (rarity, index) => (
+                  <button
+                    key={rarity}
+                    onClick={() => setRarityFilter(rarity)}
+                    className={cn(
+                      "px-3 text-xs h-8 font-medium transition-colors",
+                      index !== 5 && "border-r",
+                      rarityFilter === rarity
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted/50",
+                    )}
+                  >
+                    {rarity}
+                  </button>
+                ),
+              )}
             </div>
           </div>
         </div>
@@ -241,7 +249,7 @@ export function CardSelector({
         <div className="grid grid-cols-10 sm:grid-cols-12 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-1 overflow-y-auto max-h-[220px] p-1 custom-scrollbar">
           {filteredItems.map((item) => {
             const isSelected = selectedIndices.has(item.id);
-            
+
             return (
               <TooltipProvider key={item.id}>
                 <Tooltip delayDuration={300}>
@@ -254,7 +262,7 @@ export function CardSelector({
                           ? filterMode === "INCLUDE"
                             ? "ring-2 ring-green-500 border-green-500 scale-95"
                             : "ring-2 ring-red-500 border-red-500 scale-95 opacity-50 grayscale"
-                          : "border-border hover:border-primary/50 hover:scale-105"
+                          : "border-border hover:border-primary/50 hover:scale-105",
                       )}
                     >
                       <Image
@@ -264,7 +272,7 @@ export function CardSelector({
                         className="object-contain p-0.5"
                         loading="lazy"
                       />
-                      
+
                       {/* Badge for Variants */}
                       {item.variant === CardVariantType.EVOLUTION && (
                         <div className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-purple-500 ring-1 ring-black/50" />
@@ -275,11 +283,14 @@ export function CardSelector({
 
                       {/* Selection Indicator Overlay */}
                       {isSelected && (
-                        <div className={cn(
-                          "absolute inset-0 flex items-center justify-center bg-black/20",
-                          filterMode === "INCLUDE" ? "text-green-500" : "text-red-500"
-                        )}>
-                        </div>
+                        <div
+                          className={cn(
+                            "absolute inset-0 flex items-center justify-center bg-black/20",
+                            filterMode === "INCLUDE"
+                              ? "text-green-500"
+                              : "text-red-500",
+                          )}
+                        ></div>
                       )}
                     </button>
                   </TooltipTrigger>
@@ -289,15 +300,15 @@ export function CardSelector({
                       {item.variant === CardVariantType.EVOLUTION
                         ? "Evolution"
                         : item.variant === CardVariantType.HERO
-                        ? "Hero"
-                        : "Normal"}
+                          ? "Hero"
+                          : "Normal"}
                     </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             );
           })}
-          
+
           {filteredItems.length === 0 && (
             <div className="col-span-full py-8 text-center text-muted-foreground text-sm">
               No cards found matching &quot;{searchQuery}&quot;

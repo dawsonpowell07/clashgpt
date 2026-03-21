@@ -18,7 +18,12 @@ function StatPill({
       <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">
         {label}
       </span>
-      <span className={cn("font-[family-name:var(--font-heading)] text-2xl font-black leading-none", color)}>
+      <span
+        className={cn(
+          "font-[family-name:var(--font-heading)] text-2xl font-black leading-none",
+          color,
+        )}
+      >
         {value}
       </span>
       {sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}
@@ -60,7 +65,9 @@ export function LivePlayerData({ crInfo }: LivePlayerDataProps) {
           />
           <StatPill
             label="PoL Medals"
-            value={crInfo.current_path_of_legends_medals?.toLocaleString() ?? "—"}
+            value={
+              crInfo.current_path_of_legends_medals?.toLocaleString() ?? "—"
+            }
             sub={`Best: ${crInfo.best_path_of_legends_medals?.toLocaleString() ?? "—"}`}
             color="text-blue-400"
           />
@@ -69,11 +76,17 @@ export function LivePlayerData({ crInfo }: LivePlayerDataProps) {
               Wins / Losses
             </span>
             <div className="flex flex-col font-[family-name:var(--font-heading)] font-black leading-tight">
-              <span className="text-emerald-400 text-lg truncate">{crInfo.wins.toLocaleString()}W</span>
-              <span className="text-red-400 text-lg truncate">{crInfo.losses.toLocaleString()}L</span>
+              <span className="text-emerald-400 text-lg truncate">
+                {crInfo.wins.toLocaleString()}W
+              </span>
+              <span className="text-red-400 text-lg truncate">
+                {crInfo.losses.toLocaleString()}L
+              </span>
             </div>
             {winRate && (
-              <span className="text-[11px] text-muted-foreground">{winRate}% WR</span>
+              <span className="text-[11px] text-muted-foreground">
+                {winRate}% WR
+              </span>
             )}
           </div>
           <StatPill
@@ -93,14 +106,18 @@ export function LivePlayerData({ crInfo }: LivePlayerDataProps) {
             <div className="flex items-center gap-1.5 text-xs bg-muted/40 border border-border/40 rounded-lg px-3 py-1.5">
               <Shield className="w-3 h-3 text-muted-foreground/60" />
               <span className="text-muted-foreground/70">Arena</span>
-              <span className="font-semibold text-foreground">{crInfo.arena.name}</span>
+              <span className="font-semibold text-foreground">
+                {crInfo.arena.name}
+              </span>
             </div>
           )}
           {crInfo.clan && (
             <div className="flex items-center gap-1.5 text-xs bg-muted/40 border border-border/40 rounded-lg px-3 py-1.5">
               <User className="w-3 h-3 text-muted-foreground/60" />
               <span className="text-muted-foreground/70">Clan</span>
-              <span className="font-semibold text-foreground">{crInfo.clan.clan_name}</span>
+              <span className="font-semibold text-foreground">
+                {crInfo.clan.clan_name}
+              </span>
             </div>
           )}
           {crInfo.total_donations != null && crInfo.total_donations > 0 && (

@@ -15,7 +15,7 @@ export function KnowledgeSearch({ status, className }: KnowledgeSearchProps) {
     <div
       className={cn(
         "bg-card border border-border rounded-lg px-4 py-2.5 my-3 inline-flex items-center gap-2",
-        className
+        className,
       )}
     >
       <span className="text-sm text-muted-foreground">

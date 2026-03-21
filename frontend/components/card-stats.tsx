@@ -40,7 +40,7 @@ export function CardStats({ stats, className }: CardStatsProps) {
     <div
       className={cn(
         "bg-card border border-border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all w-full max-w-lg",
-        className
+        className,
       )}
     >
       {/* Header */}
@@ -54,8 +54,12 @@ export function CardStats({ stats, className }: CardStatsProps) {
           />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-foreground">{stats.card_name}</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Performance Statistics</p>
+          <h3 className="text-xl font-bold text-foreground">
+            {stats.card_name}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Performance Statistics
+          </p>
           <div className="flex items-center gap-2 mt-2">
             <span className="text-xs px-2 py-0.5 rounded-full bg-muted/60 border border-border text-muted-foreground">
               {stats.total_uses.toLocaleString()} uses
@@ -78,7 +82,11 @@ export function CardStats({ stats, className }: CardStatsProps) {
             Win Rate
           </p>
           <div className="w-full h-36">
-            <WinRateDonut wins={stats.wins} losses={stats.losses} winRatePercent={winRatePercent} />
+            <WinRateDonut
+              wins={stats.wins}
+              losses={stats.losses}
+              winRatePercent={winRatePercent}
+            />
           </div>
         </div>
 
@@ -87,7 +95,9 @@ export function CardStats({ stats, className }: CardStatsProps) {
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
             In Decks
           </p>
-          <p className="text-4xl font-bold text-foreground tabular-nums">{deckAppearancePercent}%</p>
+          <p className="text-4xl font-bold text-foreground tabular-nums">
+            {deckAppearancePercent}%
+          </p>
           <p className="text-xs text-muted-foreground">of all decks</p>
         </div>
       </div>
@@ -144,7 +154,10 @@ function WinRateDonut({
         </Pie>
         <Tooltip
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          formatter={(value: any, name: any) => [value?.toLocaleString() ?? "", name]}
+          formatter={(value: any, name: any) => [
+            value?.toLocaleString() ?? "",
+            name,
+          ]}
           contentStyle={{
             background: "#1e2433",
             border: "1px solid #3d4560",

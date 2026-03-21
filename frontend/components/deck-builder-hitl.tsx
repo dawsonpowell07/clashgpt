@@ -5,7 +5,11 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Orbitron } from "next/font/google";
 import { Check, Loader2, Swords, X } from "lucide-react";
-import { CardSelector, CardVariantType, CardVariantItem } from "@/components/card-selector";
+import {
+  CardSelector,
+  CardVariantType,
+  CardVariantItem,
+} from "@/components/card-selector";
 import { Card } from "@/lib/types";
 
 const orbitron = Orbitron({ subsets: ["latin"], weight: ["700", "900"] });
@@ -28,7 +32,11 @@ interface DeckBuilderHITLProps {
   status: string;
 }
 
-export function DeckBuilderHITL({ prompt, respond, status }: DeckBuilderHITLProps) {
+export function DeckBuilderHITL({
+  prompt,
+  respond,
+  status,
+}: DeckBuilderHITLProps) {
   const [cards, setCards] = useState<Card[]>([]);
   const [loadingCards, setLoadingCards] = useState(true);
   const [deck, setDeck] = useState<CardVariantItem[]>([]);
@@ -68,13 +76,16 @@ export function DeckBuilderHITL({ prompt, respond, status }: DeckBuilderHITLProp
     const card = cards.find((c) => c.card_id === cardId);
     if (!card) return;
 
-    const cardFileName = card.name.toLowerCase().replace(/ /g, "_").replace(/\./g, "");
+    const cardFileName = card.name
+      .toLowerCase()
+      .replace(/ /g, "_")
+      .replace(/\./g, "");
     const imageSuffix =
       variant === CardVariantType.EVOLUTION
         ? "_evolution"
         : variant === CardVariantType.HERO
-        ? "_hero"
-        : "";
+          ? "_hero"
+          : "";
 
     const item: CardVariantItem = {
       id,
@@ -103,7 +114,9 @@ export function DeckBuilderHITL({ prompt, respond, status }: DeckBuilderHITLProp
   const handleSubmit = () => {
     if (deck.length !== 8 || !isActive) return;
     setSubmitted(true);
-    const deckSpec = deck.map((c) => `${c.cardId}:${VARIANT_STRING[c.variant]}`).join(",");
+    const deckSpec = deck
+      .map((c) => `${c.cardId}:${VARIANT_STRING[c.variant]}`)
+      .join(",");
     respond(deckSpec);
   };
 
@@ -137,7 +150,7 @@ export function DeckBuilderHITL({ prompt, respond, status }: DeckBuilderHITLProp
           className={cn(
             "text-sm font-black shrink-0",
             orbitron.className,
-            deck.length === 8 ? "text-emerald-400" : "text-muted-foreground"
+            deck.length === 8 ? "text-emerald-400" : "text-muted-foreground",
           )}
         >
           {deck.length}/8
@@ -160,13 +173,13 @@ export function DeckBuilderHITL({ prompt, respond, status }: DeckBuilderHITLProp
                   borderColor: isEvo
                     ? "rgb(168,85,247)"
                     : isHero
-                    ? "rgb(251,191,36)"
-                    : "rgba(255,255,255,0.15)",
+                      ? "rgb(251,191,36)"
+                      : "rgba(255,255,255,0.15)",
                   boxShadow: isEvo
                     ? "0 0 6px rgba(168,85,247,0.3)"
                     : isHero
-                    ? "0 0 6px rgba(251,191,36,0.3)"
-                    : undefined,
+                      ? "0 0 6px rgba(251,191,36,0.3)"
+                      : undefined,
                 }}
                 title={card.name}
               >
@@ -190,7 +203,9 @@ export function DeckBuilderHITL({ prompt, respond, status }: DeckBuilderHITLProp
                 key={i}
                 className="w-10 h-12 rounded-lg border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
               >
-                <span className="text-[9px] text-muted-foreground/30">{i + 1}</span>
+                <span className="text-[9px] text-muted-foreground/30">
+                  {i + 1}
+                </span>
               </div>
             );
           })}
@@ -228,7 +243,7 @@ export function DeckBuilderHITL({ prompt, respond, status }: DeckBuilderHITLProp
             "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all",
             deck.length === 8
               ? "bg-primary text-primary-foreground hover:brightness-110"
-              : "bg-muted/40 text-muted-foreground cursor-not-allowed"
+              : "bg-muted/40 text-muted-foreground cursor-not-allowed",
           )}
         >
           <Check className="w-4 h-4" />

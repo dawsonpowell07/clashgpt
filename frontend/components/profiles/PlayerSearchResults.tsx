@@ -7,11 +7,16 @@ interface PlayerSearchResultsProps {
   onSelect: (player: PlayerSearchResult) => void;
 }
 
-export function PlayerSearchResults({ results, onSelect }: PlayerSearchResultsProps) {
+export function PlayerSearchResults({
+  results,
+  onSelect,
+}: PlayerSearchResultsProps) {
   return (
     <div className="space-y-3 arena-entrance">
       <p className="text-sm text-muted-foreground px-1">
-        <span className="text-foreground font-semibold">{results.length} players</span>{" "}
+        <span className="text-foreground font-semibold">
+          {results.length} players
+        </span>{" "}
         matched — select one
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
@@ -35,10 +40,14 @@ export function PlayerSearchResults({ results, onSelect }: PlayerSearchResultsPr
             <div className="text-right shrink-0">
               <p className="text-sm font-bold text-foreground tabular-nums">
                 {p.total_games.toLocaleString()}
-                <span className="text-xs font-normal text-muted-foreground ml-1">games</span>
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  games
+                </span>
               </p>
               {p.win_rate !== null && (
-                <p className="text-xs text-muted-foreground">{p.win_rate}% WR</p>
+                <p className="text-xs text-muted-foreground">
+                  {p.win_rate}% WR
+                </p>
               )}
             </div>
           </button>
@@ -53,7 +62,9 @@ export function NoResults() {
     <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed border-border/50 bg-muted/10">
       <Search className="w-8 h-8 text-muted-foreground/30 mb-3" />
       <p className="font-semibold text-muted-foreground">No players found</p>
-      <p className="text-xs text-muted-foreground/60 mt-1">Try a different name.</p>
+      <p className="text-xs text-muted-foreground/60 mt-1">
+        Try a different name.
+      </p>
     </div>
   );
 }

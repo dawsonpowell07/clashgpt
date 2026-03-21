@@ -21,11 +21,16 @@ export function DecksPagination({
     <div className="flex items-center justify-between pt-4 border-t border-border/30">
       <div className="text-sm text-muted-foreground">
         Showing{" "}
-        <span className="font-semibold text-foreground">{(decksData.page - 1) * 24 + 1}</span> to{" "}
+        <span className="font-semibold text-foreground">
+          {(decksData.page - 1) * 24 + 1}
+        </span>{" "}
+        to{" "}
         <span className="font-semibold text-foreground">
           {Math.min(decksData.page * 24, decksData.total)}
         </span>{" "}
-        of <span className="font-semibold text-foreground">{decksData.total}</span> decks
+        of{" "}
+        <span className="font-semibold text-foreground">{decksData.total}</span>{" "}
+        decks
       </div>
       <div className="flex gap-2">
         <Button

@@ -2,7 +2,13 @@
 
 import { useState, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { Search, CheckCircle, AlertCircle, Loader2, Shield } from "lucide-react";
+import {
+  Search,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Shield,
+} from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -60,7 +66,11 @@ export function RegistrationForm({ onRegistered }: RegistrationFormProps) {
         clan: p.clan ?? null,
       });
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not look up the player. Try again.");
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Could not look up the player. Try again.",
+      );
     } finally {
       setIsPreviewing(false);
     }
@@ -83,7 +93,7 @@ export function RegistrationForm({ onRegistered }: RegistrationFormProps) {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!res.ok) {
@@ -93,7 +103,11 @@ export function RegistrationForm({ onRegistered }: RegistrationFormProps) {
 
       onRegistered(preview.tag, preview.name);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Registration failed. Please try again.");
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Registration failed. Please try again.",
+      );
     } finally {
       setIsRegistering(false);
     }
@@ -110,7 +124,8 @@ export function RegistrationForm({ onRegistered }: RegistrationFormProps) {
           Link Your Account
         </h2>
         <p className="text-sm text-muted-foreground">
-          Enter your Clash Royale player tag to start tracking your battles and stats.
+          Enter your Clash Royale player tag to start tracking your battles and
+          stats.
         </p>
       </div>
 
@@ -153,16 +168,22 @@ export function RegistrationForm({ onRegistered }: RegistrationFormProps) {
               <p className="font-[family-name:var(--font-heading)] text-xl font-bold text-foreground">
                 {preview.name}
               </p>
-              <p className="text-xs text-muted-foreground font-mono">{preview.tag}</p>
+              <p className="text-xs text-muted-foreground font-mono">
+                {preview.tag}
+              </p>
               {preview.clan && (
-                <p className="text-xs text-muted-foreground mt-0.5">{preview.clan.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {preview.clan.name}
+                </p>
               )}
             </div>
             <div className="text-right">
               <p className="font-[family-name:var(--font-heading)] text-2xl font-black text-amber-400">
                 {preview.trophies.toLocaleString()}
               </p>
-              <p className="text-xs text-muted-foreground uppercase tracking-widest">trophies</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-widest">
+                trophies
+              </p>
             </div>
           </div>
         </div>
@@ -211,7 +232,8 @@ export function RegistrationForm({ onRegistered }: RegistrationFormProps) {
       </div>
 
       <p className="text-center text-xs text-muted-foreground/60">
-        Your tag will be added to our tracker. Battle data will appear after the next scan.
+        Your tag will be added to our tracker. Battle data will appear after the
+        next scan.
       </p>
     </div>
   );

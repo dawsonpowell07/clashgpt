@@ -49,14 +49,15 @@ export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
             borderColor: isOverLimit
               ? "oklch(0.65 0.2 25)"
               : inProgress
-              ? "oklch(0.33 0.02 250)"
-              : "oklch(0.36 0.025 250)",
+                ? "oklch(0.33 0.02 250)"
+                : "oklch(0.36 0.025 250)",
             boxShadow: "none",
           }}
           onFocus={(e) => {
             if (!isOverLimit) {
               e.currentTarget.style.borderColor = "oklch(0.68 0.16 45 / 0.6)";
-              e.currentTarget.style.boxShadow = "0 0 0 3px oklch(0.68 0.16 45 / 0.12), 0 1px 8px oklch(0.68 0.16 45 / 0.08)";
+              e.currentTarget.style.boxShadow =
+                "0 0 0 3px oklch(0.68 0.16 45 / 0.12), 0 1px 8px oklch(0.68 0.16 45 / 0.08)";
             }
           }}
           onBlur={(e) => {
@@ -87,15 +88,18 @@ export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
         disabled={inProgress || !value.trim() || isOverLimit}
         className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
         style={{
-          background: inProgress || !value.trim() || isOverLimit
-            ? "oklch(0.30 0.02 250)"
-            : "linear-gradient(135deg, oklch(0.72 0.16 45) 0%, oklch(0.64 0.18 38) 100%)",
-          color: inProgress || !value.trim() || isOverLimit
-            ? "oklch(0.55 0.01 80)"
-            : "oklch(0.14 0.018 250)",
-          boxShadow: !inProgress && value.trim() && !isOverLimit
-            ? "0 2px 12px oklch(0.68 0.16 45 / 0.3)"
-            : "none",
+          background:
+            inProgress || !value.trim() || isOverLimit
+              ? "oklch(0.30 0.02 250)"
+              : "linear-gradient(135deg, oklch(0.72 0.16 45) 0%, oklch(0.64 0.18 38) 100%)",
+          color:
+            inProgress || !value.trim() || isOverLimit
+              ? "oklch(0.55 0.01 80)"
+              : "oklch(0.14 0.018 250)",
+          boxShadow:
+            !inProgress && value.trim() && !isOverLimit
+              ? "0 2px 12px oklch(0.68 0.16 45 / 0.3)"
+              : "none",
           fontFamily: "var(--font-heading)",
           fontSize: "0.65rem",
           letterSpacing: "0.12em",

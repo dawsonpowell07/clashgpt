@@ -1,4 +1,11 @@
-import { Loader2, Search, Filter, X, TrendingUp, RefreshCw } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Filter,
+  X,
+  TrendingUp,
+  RefreshCw,
+} from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -56,14 +63,16 @@ export function FilterPanel({
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
           {/* Mode Toggles */}
           <div className="flex items-center gap-3 p-1.5 bg-muted/60 rounded-xl shadow-inner">
-            <span className="text-sm font-semibold text-muted-foreground px-2">Filter Mode:</span>
+            <span className="text-sm font-semibold text-muted-foreground px-2">
+              Filter Mode:
+            </span>
             <button
               onClick={() => onSetFilterMode("INCLUDE")}
               className={cn(
                 "flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-300 transform",
                 filterMode === "INCLUDE"
                   ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/30 scale-105 ring-2 ring-green-400/50"
-                  : "text-muted-foreground hover:bg-muted hover:scale-105"
+                  : "text-muted-foreground hover:bg-muted hover:scale-105",
               )}
             >
               <Filter className="w-4 h-4" />
@@ -75,7 +84,7 @@ export function FilterPanel({
                 "flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-300 transform",
                 filterMode === "EXCLUDE"
                   ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/30 scale-105 ring-2 ring-red-400/50"
-                  : "text-muted-foreground hover:bg-muted hover:scale-105"
+                  : "text-muted-foreground hover:bg-muted hover:scale-105",
               )}
             >
               <X className="w-4 h-4" />
@@ -87,7 +96,9 @@ export function FilterPanel({
           <div className="flex items-center gap-3 p-1.5 bg-muted/60 rounded-xl shadow-inner">
             <div className="flex items-center gap-2 px-2">
               <TrendingUp className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-semibold text-muted-foreground">Min Games:</span>
+              <span className="text-sm font-semibold text-muted-foreground">
+                Min Games:
+              </span>
             </div>
             <Select
               value={minGames.toString()}
@@ -114,7 +125,11 @@ export function FilterPanel({
             variant="outline"
             size="sm"
             onClick={onClearFilters}
-            disabled={includedVariants.size === 0 && excludedVariants.size === 0 && minGames === 0}
+            disabled={
+              includedVariants.size === 0 &&
+              excludedVariants.size === 0 &&
+              minGames === 0
+            }
             className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-all"
           >
             <X className="w-3.5 h-3.5 mr-1.5" />
@@ -145,7 +160,9 @@ export function FilterPanel({
       ) : cardsError ? (
         <div className="flex flex-col items-center justify-center py-12 px-4 bg-destructive/5 rounded-xl border border-destructive/20">
           <AlertTriangle className="w-10 h-10 text-destructive/70 mb-3" />
-          <p className="text-sm font-medium text-destructive mb-3">{cardsError}</p>
+          <p className="text-sm font-medium text-destructive mb-3">
+            {cardsError}
+          </p>
           <button
             onClick={onRetryCards}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-lg transition-colors"
@@ -157,7 +174,9 @@ export function FilterPanel({
       ) : (
         <CardSelector
           cards={cards}
-          selectedIndices={filterMode === "INCLUDE" ? includedVariants : excludedVariants}
+          selectedIndices={
+            filterMode === "INCLUDE" ? includedVariants : excludedVariants
+          }
           onToggleCard={onToggleCard}
           filterMode={filterMode}
         />

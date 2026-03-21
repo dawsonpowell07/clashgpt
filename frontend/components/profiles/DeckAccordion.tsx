@@ -6,11 +6,21 @@ import { cn } from "@/lib/utils";
 import { PlayerDeck } from "./types";
 import { CardIcon } from "@/components/card-icon";
 
-export function DeckAccordion({ deck, rank }: { deck: PlayerDeck; rank: number }) {
+export function DeckAccordion({
+  deck,
+  rank,
+}: {
+  deck: PlayerDeck;
+  rank: number;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const wr = deck.win_rate ?? 0;
   const wrColor =
-    wr >= 55 ? "text-emerald-400" : wr >= 50 ? "text-amber-400" : "text-red-400";
+    wr >= 55
+      ? "text-emerald-400"
+      : wr >= 50
+        ? "text-amber-400"
+        : "text-red-400";
   const wrBarColor =
     wr >= 55 ? "bg-emerald-500" : wr >= 50 ? "bg-amber-500" : "bg-red-500";
 
@@ -33,14 +43,19 @@ export function DeckAccordion({ deck, rank }: { deck: PlayerDeck; rank: number }
         {/* 1×8 card row */}
         <div className="flex gap-1 flex-1 min-w-0">
           {cards.map((card, i) => (
-            <CardIcon key={i} cardName={card.cardName} variant={card.variant} className="flex-1 min-w-0" />
+            <CardIcon
+              key={i}
+              cardName={card.cardName}
+              variant={card.variant}
+              className="flex-1 min-w-0"
+            />
           ))}
         </div>
 
         <ChevronDown
           className={cn(
             "w-4 h-4 text-muted-foreground/60 shrink-0 transition-transform duration-200 ml-1",
-            isOpen && "rotate-180"
+            isOpen && "rotate-180",
           )}
         />
       </button>
@@ -55,13 +70,21 @@ export function DeckAccordion({ deck, rank }: { deck: PlayerDeck; rank: number }
                 <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1">
                   <Trophy className="w-3 h-3" /> Win Rate
                 </span>
-                <span className={cn("text-base font-black font-[family-name:var(--font-heading)]", wrColor)}>
+                <span
+                  className={cn(
+                    "text-base font-black font-[family-name:var(--font-heading)]",
+                    wrColor,
+                  )}
+                >
                   {deck.win_rate !== null ? `${deck.win_rate}%` : "—"}
                 </span>
               </div>
               <div className="h-2 w-full bg-muted/80 rounded-full overflow-hidden">
                 <div
-                  className={cn("h-full rounded-full transition-all", wrBarColor)}
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    wrBarColor,
+                  )}
                   style={{ width: `${Math.min(wr, 100)}%` }}
                 />
               </div>
@@ -78,7 +101,9 @@ export function DeckAccordion({ deck, rank }: { deck: PlayerDeck; rank: number }
                   <span className="text-[10px] text-muted-foreground/70 uppercase tracking-wide font-bold block">
                     Elixir
                   </span>
-                  <span className="text-sm font-bold text-foreground">{deck.avg_elixir ?? "—"}</span>
+                  <span className="text-sm font-bold text-foreground">
+                    {deck.avg_elixir ?? "—"}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center gap-2.5 bg-muted/30 border border-border/40 rounded-lg px-3 py-2.5">

@@ -19,7 +19,12 @@ function StatPill({
       <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">
         {label}
       </span>
-      <span className={cn("font-[family-name:var(--font-heading)] text-2xl font-black leading-none", color)}>
+      <span
+        className={cn(
+          "font-[family-name:var(--font-heading)] text-2xl font-black leading-none",
+          color,
+        )}
+      >
         {value}
       </span>
       {sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}
@@ -36,8 +41,8 @@ export function PlayerHeroCard({ player }: PlayerHeroCardProps) {
     (player.win_rate ?? 0) >= 55
       ? "text-emerald-400"
       : (player.win_rate ?? 0) >= 50
-      ? "text-amber-400"
-      : "text-red-400";
+        ? "text-amber-400"
+        : "text-red-400";
 
   return (
     <div className="relative rounded-2xl border border-border/60 bg-card overflow-hidden shadow-lg">
@@ -71,7 +76,9 @@ export function PlayerHeroCard({ player }: PlayerHeroCardProps) {
           />
           <StatPill
             label="Avg Crowns"
-            value={player.avg_crowns !== null ? player.avg_crowns.toFixed(2) : "—"}
+            value={
+              player.avg_crowns !== null ? player.avg_crowns.toFixed(2) : "—"
+            }
             color="text-blue-400"
           />
           <StatPill

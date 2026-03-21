@@ -6,8 +6,14 @@ import { AuthGateDialog } from "@/components/auth-gate-dialog";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
-  AlertTriangle, RefreshCw, Swords, Trophy,
-  ChevronLeft, ChevronRight, Shield, X,
+  AlertTriangle,
+  RefreshCw,
+  Swords,
+  Trophy,
+  ChevronLeft,
+  ChevronRight,
+  Shield,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Orbitron } from "next/font/google";
@@ -59,7 +65,6 @@ interface MatchupResponse {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-
 function variantIdToMatchupParam(id: string): string {
   const [cardIdStr, variantStr] = id.split("_");
   const variant = parseInt(variantStr);
@@ -69,30 +74,41 @@ function variantIdToMatchupParam(id: string): string {
 }
 
 function sortDeckCards(cards: MatchupCard[]): MatchupCard[] {
-  const evo = cards.filter(c => c.variant === "evolution");
-  const hero = cards.filter(c => c.variant === "heroic");
-  const normal = cards.filter(c => c.variant === "normal");
+  const evo = cards.filter((c) => c.variant === "evolution");
+  const hero = cards.filter((c) => c.variant === "heroic");
+  const normal = cards.filter((c) => c.variant === "normal");
   return [...evo, ...hero, ...normal].slice(0, 8);
 }
 
 // ─── Card tile ────────────────────────────────────────────────────────────────
 
-function CardTile({ card, size = "md" }: { card: MatchupCard; size?: "sm" | "md" | "lg" }) {
+function CardTile({
+  card,
+  size = "md",
+}: {
+  card: MatchupCard;
+  size?: "sm" | "md" | "lg";
+}) {
   const isEvo = card.variant === "evolution";
   const isHero = card.variant === "heroic";
   const cardFileName = (card.card_name || "unknown")
-    .toLowerCase().replace(/ /g, "_").replace(/\./g, "");
+    .toLowerCase()
+    .replace(/ /g, "_")
+    .replace(/\./g, "");
   const imageSuffix = isEvo ? "_evolution" : isHero ? "_hero" : "";
 
   const sizeClass =
-    size === "lg" ? "w-20 sm:w-24 lg:w-28 aspect-[3/4]" :
-    size === "md" ? "w-16 sm:w-20 lg:w-24 aspect-[3/4]" :
-    "w-12 sm:w-14 lg:w-16 aspect-[3/4]";
+    size === "lg"
+      ? "w-20 sm:w-24 lg:w-28 aspect-[3/4]"
+      : size === "md"
+        ? "w-16 sm:w-20 lg:w-24 aspect-[3/4]"
+        : "w-12 sm:w-14 lg:w-16 aspect-[3/4]";
 
-  const glowColor =
-    isEvo ? "shadow-purple-500/40" :
-    isHero ? "shadow-amber-400/40" :
-    "shadow-black/20";
+  const glowColor = isEvo
+    ? "shadow-purple-500/40"
+    : isHero
+      ? "shadow-amber-400/40"
+      : "shadow-black/20";
 
   return (
     <div
@@ -100,15 +116,19 @@ function CardTile({ card, size = "md" }: { card: MatchupCard; size?: "sm" | "md"
         "relative rounded-xl overflow-hidden shrink-0 border-2 bg-muted/50",
         "shadow-lg transition-transform duration-200 hover:scale-105 hover:z-10",
         glowColor,
-        sizeClass
+        sizeClass,
       )}
       style={{
-        borderColor: isEvo ? "rgb(168,85,247)" : isHero ? "rgb(251,191,36)" : "rgba(255,255,255,0.08)",
+        borderColor: isEvo
+          ? "rgb(168,85,247)"
+          : isHero
+            ? "rgb(251,191,36)"
+            : "rgba(255,255,255,0.08)",
         boxShadow: isEvo
           ? "0 0 12px rgba(168,85,247,0.35), inset 0 0 8px rgba(168,85,247,0.1)"
           : isHero
-          ? "0 0 12px rgba(251,191,36,0.35), inset 0 0 8px rgba(251,191,36,0.1)"
-          : undefined,
+            ? "0 0 12px rgba(251,191,36,0.35), inset 0 0 8px rgba(251,191,36,0.1)"
+            : undefined,
       }}
       title={`${card.card_name}${isEvo ? " (Evo)" : isHero ? " (Hero)" : ""}`}
     >
@@ -141,7 +161,11 @@ function DeckGrid({
   size?: "sm" | "md" | "lg";
 }) {
   if (!cards || cards.length === 0) {
-    return <span className="text-sm text-muted-foreground/50 italic">Unknown deck</span>;
+    return (
+      <span className="text-sm text-muted-foreground/50 italic">
+        Unknown deck
+      </span>
+    );
   }
   const sorted = sortDeckCards(cards);
   const row1 = sorted.slice(0, 4);
@@ -151,13 +175,21 @@ function DeckGrid({
     <div className="flex flex-col gap-2">
       <div className="flex gap-2">
         {row1.map((card, i) => (
-          <CardTile key={`${deckId}-r1-${card.card_id}-${i}`} card={card} size={size} />
+          <CardTile
+            key={`${deckId}-r1-${card.card_id}-${i}`}
+            card={card}
+            size={size}
+          />
         ))}
       </div>
       {row2.length > 0 && (
         <div className="flex gap-2">
           {row2.map((card, i) => (
-            <CardTile key={`${deckId}-r2-${card.card_id}-${i}`} card={card} size={size} />
+            <CardTile
+              key={`${deckId}-r2-${card.card_id}-${i}`}
+              card={card}
+              size={size}
+            />
           ))}
         </div>
       )}
@@ -182,10 +214,11 @@ function DeckSlotPreview({
     return {
       cardId,
       cardName: card?.name || `Card ${cardId}`,
-      variant: (variant === 1 ? "evolution" : variant === 2 ? "heroic" : "normal") as
-        | "normal"
-        | "evolution"
-        | "heroic",
+      variant: (variant === 1
+        ? "evolution"
+        : variant === 2
+          ? "heroic"
+          : "normal") as "normal" | "evolution" | "heroic",
     };
   });
 
@@ -207,9 +240,11 @@ function DeckSlotPreview({
               key={`empty-r1-${i}`}
               className="w-16 sm:w-20 aspect-[3/4] rounded-lg border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
             >
-              <span className="text-muted-foreground/20 text-lg font-bold">{i + 1}</span>
+              <span className="text-muted-foreground/20 text-lg font-bold">
+                {i + 1}
+              </span>
             </div>
-          )
+          ),
         )}
       </div>
       <div className="flex gap-2">
@@ -226,9 +261,11 @@ function DeckSlotPreview({
               key={`empty-r2-${i}`}
               className="w-16 sm:w-20 aspect-[3/4] rounded-lg border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
             >
-              <span className="text-muted-foreground/20 text-lg font-bold">{i + 5}</span>
+              <span className="text-muted-foreground/20 text-lg font-bold">
+                {i + 5}
+              </span>
             </div>
-          )
+          ),
         )}
       </div>
     </div>
@@ -238,28 +275,38 @@ function DeckSlotPreview({
 // ─── Stats hero ───────────────────────────────────────────────────────────────
 
 function StatsHero({ stats }: { stats: MatchupStats }) {
-  const winRatePct = stats.win_rate != null ? (stats.win_rate * 100) : null;
+  const winRatePct = stats.win_rate != null ? stats.win_rate * 100 : null;
   const display = winRatePct != null ? winRatePct.toFixed(1) : null;
 
   const ratingColor =
-    winRatePct == null ? "text-muted-foreground" :
-    winRatePct >= 55 ? "text-emerald-400" :
-    winRatePct >= 50 ? "text-amber-400" :
-    "text-rose-400";
+    winRatePct == null
+      ? "text-muted-foreground"
+      : winRatePct >= 55
+        ? "text-emerald-400"
+        : winRatePct >= 50
+          ? "text-amber-400"
+          : "text-rose-400";
 
   const ratingGlow =
-    winRatePct == null ? "" :
-    winRatePct >= 55 ? "drop-shadow-[0_0_24px_rgba(52,211,153,0.5)]" :
-    winRatePct >= 50 ? "drop-shadow-[0_0_24px_rgba(251,191,36,0.5)]" :
-    "drop-shadow-[0_0_24px_rgba(251,113,133,0.5)]";
+    winRatePct == null
+      ? ""
+      : winRatePct >= 55
+        ? "drop-shadow-[0_0_24px_rgba(52,211,153,0.5)]"
+        : winRatePct >= 50
+          ? "drop-shadow-[0_0_24px_rgba(251,191,36,0.5)]"
+          : "drop-shadow-[0_0_24px_rgba(251,113,133,0.5)]";
 
-  const barWidth = winRatePct != null ? Math.max(0, Math.min(100, winRatePct)) : 0;
+  const barWidth =
+    winRatePct != null ? Math.max(0, Math.min(100, winRatePct)) : 0;
 
   const barColor =
-    winRatePct == null ? "bg-muted" :
-    winRatePct >= 55 ? "bg-emerald-400" :
-    winRatePct >= 50 ? "bg-amber-400" :
-    "bg-rose-400";
+    winRatePct == null
+      ? "bg-muted"
+      : winRatePct >= 55
+        ? "bg-emerald-400"
+        : winRatePct >= 50
+          ? "bg-amber-400"
+          : "bg-rose-400";
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card">
@@ -267,11 +314,12 @@ function StatsHero({ stats }: { stats: MatchupStats }) {
       <div
         className="absolute -top-16 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full blur-3xl opacity-10 pointer-events-none"
         style={{
-          background: winRatePct != null && winRatePct >= 55
-            ? "rgb(52,211,153)"
-            : winRatePct != null && winRatePct >= 50
-            ? "rgb(251,191,36)"
-            : "rgb(251,113,133)",
+          background:
+            winRatePct != null && winRatePct >= 55
+              ? "rgb(52,211,153)"
+              : winRatePct != null && winRatePct >= 50
+                ? "rgb(251,191,36)"
+                : "rgb(251,113,133)",
         }}
       />
 
@@ -289,13 +337,21 @@ function StatsHero({ stats }: { stats: MatchupStats }) {
                   orbitron.className,
                   "text-6xl font-black leading-none tabular-nums",
                   ratingColor,
-                  ratingGlow
+                  ratingGlow,
                 )}
               >
                 {display ?? "—"}
               </span>
               {display && (
-                <span className={cn(orbitron.className, "text-2xl font-bold", ratingColor)}>%</span>
+                <span
+                  className={cn(
+                    orbitron.className,
+                    "text-2xl font-bold",
+                    ratingColor,
+                  )}
+                >
+                  %
+                </span>
               )}
             </div>
           </div>
@@ -306,20 +362,41 @@ function StatsHero({ stats }: { stats: MatchupStats }) {
           {/* W / L / Games */}
           <div className="flex gap-6">
             <div className="flex flex-col">
-              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-0.5">Wins</span>
-              <span className={cn(orbitron.className, "text-3xl font-black text-emerald-400 tabular-nums")}>
+              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-0.5">
+                Wins
+              </span>
+              <span
+                className={cn(
+                  orbitron.className,
+                  "text-3xl font-black text-emerald-400 tabular-nums",
+                )}
+              >
                 {stats.wins.toLocaleString()}
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-0.5">Losses</span>
-              <span className={cn(orbitron.className, "text-3xl font-black text-rose-400 tabular-nums")}>
+              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-0.5">
+                Losses
+              </span>
+              <span
+                className={cn(
+                  orbitron.className,
+                  "text-3xl font-black text-rose-400 tabular-nums",
+                )}
+              >
                 {stats.losses.toLocaleString()}
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-0.5">Games</span>
-              <span className={cn(orbitron.className, "text-3xl font-black text-foreground tabular-nums")}>
+              <span className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-0.5">
+                Games
+              </span>
+              <span
+                className={cn(
+                  orbitron.className,
+                  "text-3xl font-black text-foreground tabular-nums",
+                )}
+              >
                 {stats.games_played.toLocaleString()}
               </span>
             </div>
@@ -330,7 +407,10 @@ function StatsHero({ stats }: { stats: MatchupStats }) {
         <div className="mt-5">
           <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
             <div
-              className={cn("h-full rounded-full transition-all duration-700", barColor)}
+              className={cn(
+                "h-full rounded-full transition-all duration-700",
+                barColor,
+              )}
               style={{ width: `${barWidth}%` }}
             />
           </div>
@@ -347,15 +427,24 @@ function StatsHero({ stats }: { stats: MatchupStats }) {
 
 // ─── Matchup card (per opponent deck) ─────────────────────────────────────────
 
-function MatchRecord({ matchup, index }: { matchup: OpponentMatchup; index: number }) {
+function MatchRecord({
+  matchup,
+  index,
+}: {
+  matchup: OpponentMatchup;
+  index: number;
+}) {
   const winRatePct = matchup.win_rate != null ? matchup.win_rate * 100 : null;
   const isGood = winRatePct != null && winRatePct >= 50;
 
   const ratingColor =
-    winRatePct == null ? "text-muted-foreground" :
-    winRatePct >= 55 ? "text-emerald-400" :
-    winRatePct >= 50 ? "text-amber-400" :
-    "text-rose-400";
+    winRatePct == null
+      ? "text-muted-foreground"
+      : winRatePct >= 55
+        ? "text-emerald-400"
+        : winRatePct >= 50
+          ? "text-amber-400"
+          : "text-rose-400";
 
   return (
     <div
@@ -364,7 +453,7 @@ function MatchRecord({ matchup, index }: { matchup: OpponentMatchup; index: numb
         "hover:-translate-y-0.5 hover:shadow-xl",
         isGood
           ? "border-amber-500/20 bg-card hover:border-amber-500/40 hover:shadow-amber-500/10"
-          : "border-border/40 bg-card hover:border-border/60 hover:shadow-black/20"
+          : "border-border/40 bg-card hover:border-border/60 hover:shadow-black/20",
       )}
       style={{ animationDelay: `${index * 40}ms` }}
     >
@@ -374,7 +463,7 @@ function MatchRecord({ matchup, index }: { matchup: OpponentMatchup; index: numb
           "h-0.5 w-full",
           isGood
             ? "bg-gradient-to-r from-amber-400 via-amber-500 to-primary"
-            : "bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600"
+            : "bg-gradient-to-r from-slate-600 via-slate-500 to-slate-600",
         )}
       />
 
@@ -391,15 +480,20 @@ function MatchRecord({ matchup, index }: { matchup: OpponentMatchup; index: numb
               isGood
                 ? "bg-amber-500/10 ring-1 ring-amber-500/25"
                 : winRatePct != null && winRatePct < 50
-                ? "bg-rose-500/10 ring-1 ring-rose-500/20"
-                : "bg-muted/30 ring-1 ring-border/40"
+                  ? "bg-rose-500/10 ring-1 ring-rose-500/20"
+                  : "bg-muted/30 ring-1 ring-border/40",
             )}
           >
             {winRatePct != null ? `${winRatePct.toFixed(1)}%` : "—"}
           </div>
 
           {/* W / L */}
-          <div className={cn("flex items-center gap-1 text-sm font-bold", orbitron.className)}>
+          <div
+            className={cn(
+              "flex items-center gap-1 text-sm font-bold",
+              orbitron.className,
+            )}
+          >
             <span className="text-emerald-400">{matchup.wins}W</span>
             <span className="text-muted-foreground/40 font-normal">/</span>
             <span className="text-rose-400">{matchup.losses}L</span>
@@ -416,7 +510,11 @@ function MatchRecord({ matchup, index }: { matchup: OpponentMatchup; index: numb
           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">
             Opponent Deck
           </span>
-          <DeckGrid cards={matchup.opponent_cards} deckId={matchup.opponent_deck_id} size="sm" />
+          <DeckGrid
+            cards={matchup.opponent_cards}
+            deckId={matchup.opponent_deck_id}
+            size="sm"
+          />
         </div>
       </div>
     </div>
@@ -441,7 +539,9 @@ function MatchupsPageInner() {
   const [isLoadingCards, setIsLoadingCards] = useState(true);
   const [cardsError, setCardsError] = useState<string | null>(null);
 
-  const [selectedVariants, setSelectedVariants] = useState<Set<string>>(new Set());
+  const [selectedVariants, setSelectedVariants] = useState<Set<string>>(
+    new Set(),
+  );
 
   const [matchupData, setMatchupData] = useState<MatchupResponse | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -466,7 +566,9 @@ function MatchupsPageInner() {
     }
   }, []);
 
-  useEffect(() => { fetchCards(); }, [fetchCards]);
+  useEffect(() => {
+    fetchCards();
+  }, [fetchCards]);
 
   // Pre-fill deck from URL param (e.g. coming from Decks page)
   useEffect(() => {
@@ -478,41 +580,60 @@ function MatchupsPageInner() {
     for (const spec of specs) {
       const [cardIdStr, variant] = spec.split(":");
       if (!cardIdStr || !variant) continue;
-      const variantInt = variant === "evolution" ? 1 : variant === "heroic" ? 2 : 0;
+      const variantInt =
+        variant === "evolution" ? 1 : variant === "heroic" ? 2 : 0;
       variants.add(`${cardIdStr}_${variantInt}`);
     }
     if (variants.size === 8) {
       shouldAutoSearch.current = true;
       setSelectedVariants(variants);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const searchMatchups = useCallback(async (pageNum: number) => {
-    if (selectedVariants.size !== 8) return;
-    const now = Date.now();
-    if (now - lastSearchRef.current < 500) return;
-    lastSearchRef.current = now;
+  const searchMatchups = useCallback(
+    async (pageNum: number) => {
+      if (selectedVariants.size !== 8) return;
+      const now = Date.now();
+      if (now - lastSearchRef.current < 500) return;
+      lastSearchRef.current = now;
 
-    const deckParam = Array.from(selectedVariants).map(variantIdToMatchupParam).join(",");
+      const deckParam = Array.from(selectedVariants)
+        .map(variantIdToMatchupParam)
+        .join(",");
 
-    setIsSearching(true);
-    setSearchError(null);
-    try {
-      const token = await getToken();
-      const params = new URLSearchParams({ deck: deckParam, page: pageNum.toString(), page_size: "21" });
-      const res = await fetch(`${API_BASE_URL}/api/matchups?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 429) { setSearchError("Too many requests — please wait before searching again."); return; }
-      if (!res.ok) { const b = await res.json().catch(() => ({})); setSearchError(b.detail || "Failed to search matchups."); return; }
-      setMatchupData(await res.json());
-    } catch {
-      setSearchError("Failed to search matchups. Please try again.");
-    } finally {
-      setIsSearching(false);
-    }
-  }, [selectedVariants, getToken]);
+      setIsSearching(true);
+      setSearchError(null);
+      try {
+        const token = await getToken();
+        const params = new URLSearchParams({
+          deck: deckParam,
+          page: pageNum.toString(),
+          page_size: "21",
+        });
+        const res = await fetch(`${API_BASE_URL}/api/matchups?${params}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.status === 429) {
+          setSearchError(
+            "Too many requests — please wait before searching again.",
+          );
+          return;
+        }
+        if (!res.ok) {
+          const b = await res.json().catch(() => ({}));
+          setSearchError(b.detail || "Failed to search matchups.");
+          return;
+        }
+        setMatchupData(await res.json());
+      } catch {
+        setSearchError("Failed to search matchups. Please try again.");
+      } finally {
+        setIsSearching(false);
+      }
+    },
+    [selectedVariants, getToken],
+  );
 
   // Auto-search once when selectedVariants is populated from URL param
   useEffect(() => {
@@ -525,13 +646,19 @@ function MatchupsPageInner() {
   const handleToggleCard = (id: string) => {
     setSelectedVariants((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); }
-      else if (next.size < 8) { next.add(id); }
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < 8) {
+        next.add(id);
+      }
       return next;
     });
   };
 
-  const handleSearch = () => { setPage(1); searchMatchups(1); };
+  const handleSearch = () => {
+    setPage(1);
+    searchMatchups(1);
+  };
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
     searchMatchups(newPage);
@@ -540,7 +667,8 @@ function MatchupsPageInner() {
 
   const canSearch = selectedVariants.size === 8;
   const deckNotFound = matchupData && matchupData.deck_id === null;
-  const hasMatchups = matchupData && matchupData.matchups && matchupData.matchups.length > 0;
+  const hasMatchups =
+    matchupData && matchupData.matchups && matchupData.matchups.length > 0;
   const count = selectedVariants.size;
 
   return (
@@ -553,13 +681,22 @@ function MatchupsPageInner() {
       />
       {/* Ambient background */}
       <div className="fixed inset-0 hexagon-pattern opacity-[0.025] pointer-events-none" />
-      <div className="fixed top-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(168,107,18,0.06) 0%, transparent 70%)" }} />
-      <div className="fixed bottom-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none"
-        style={{ background: "radial-gradient(circle, rgba(59,94,168,0.06) 0%, transparent 70%)" }} />
+      <div
+        className="fixed top-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(168,107,18,0.06) 0%, transparent 70%)",
+        }}
+      />
+      <div
+        className="fixed bottom-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(59,94,168,0.06) 0%, transparent 70%)",
+        }}
+      />
 
       <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10 space-y-10">
-
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="relative">
           {/* Thin gold rule above */}
@@ -581,7 +718,8 @@ function MatchupsPageInner() {
               </h1>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs leading-relaxed pb-1">
-              Select 8 cards to see every recorded battle with that exact deck and its results
+              Select 8 cards to see every recorded battle with that exact deck
+              and its results
             </p>
           </div>
 
@@ -605,7 +743,8 @@ function MatchupsPageInner() {
                   Build Your Deck
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Select exactly 8 cards — include variants (Evo, Hero) to narrow the search
+                  Select exactly 8 cards — include variants (Evo, Hero) to
+                  narrow the search
                 </p>
               </div>
             </div>
@@ -619,22 +758,22 @@ function MatchupsPageInner() {
                     key={i}
                     className={cn(
                       "w-2 h-2 rounded-full transition-all duration-300",
-                      i < count
-                        ? "bg-primary scale-110"
-                        : "bg-muted/50"
+                      i < count ? "bg-primary scale-110" : "bg-muted/50",
                     )}
                   />
                 ))}
               </div>
 
               {/* Count badge */}
-              <div className={cn(
-                "text-sm font-bold px-3 py-1.5 rounded-lg tabular-nums transition-all",
-                orbitron.className,
-                count === 8
-                  ? "bg-primary/20 text-primary ring-1 ring-primary/40"
-                  : "bg-muted/40 text-muted-foreground"
-              )}>
+              <div
+                className={cn(
+                  "text-sm font-bold px-3 py-1.5 rounded-lg tabular-nums transition-all",
+                  orbitron.className,
+                  count === 8
+                    ? "bg-primary/20 text-primary ring-1 ring-primary/40"
+                    : "bg-muted/40 text-muted-foreground",
+                )}
+              >
                 {count}/8
               </div>
 
@@ -656,13 +795,14 @@ function MatchupsPageInner() {
                   "flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg transition-all",
                   "bg-gradient-to-r from-primary to-amber-500 text-primary-foreground shadow-lg",
                   "hover:from-primary/90 hover:to-amber-500/90 hover:shadow-primary/30 hover:-translate-y-0.5",
-                  "disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none"
+                  "disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none",
                 )}
               >
-                {isSearching
-                  ? <RefreshCw className="w-4 h-4 animate-spin" />
-                  : <Shield className="w-4 h-4" />
-                }
+                {isSearching ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Shield className="w-4 h-4" />
+                )}
                 Analyse
               </button>
             </div>
@@ -673,7 +813,10 @@ function MatchupsPageInner() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
               Selected Deck
             </p>
-            <DeckSlotPreview selectedVariants={selectedVariants} cards={cards} />
+            <DeckSlotPreview
+              selectedVariants={selectedVariants}
+              cards={cards}
+            />
           </div>
 
           {/* Card selector */}
@@ -681,14 +824,18 @@ function MatchupsPageInner() {
             {isLoadingCards ? (
               <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
                 <RefreshCw className="w-5 h-5 animate-spin text-primary" />
-                <span className="text-sm font-medium">Loading card catalogue…</span>
+                <span className="text-sm font-medium">
+                  Loading card catalogue…
+                </span>
               </div>
             ) : cardsError ? (
               <div className="flex flex-col items-center justify-center py-16 gap-4">
                 <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
                   <AlertTriangle className="w-7 h-7 text-destructive/70" />
                 </div>
-                <p className="text-sm text-destructive font-medium">{cardsError}</p>
+                <p className="text-sm text-destructive font-medium">
+                  {cardsError}
+                </p>
                 <button
                   onClick={fetchCards}
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-lg transition-colors"
@@ -713,7 +860,10 @@ function MatchupsPageInner() {
             <AlertTriangle className="w-5 h-5 shrink-0" />
             <p className="text-sm font-medium flex-1">{searchError}</p>
             <button
-              onClick={() => { setSearchError(null); searchMatchups(page); }}
+              onClick={() => {
+                setSearchError(null);
+                searchMatchups(page);
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-destructive/10 hover:bg-destructive/20 rounded-lg transition-colors"
             >
               <RefreshCw className="w-3 h-3" /> Retry
@@ -735,7 +885,9 @@ function MatchupsPageInner() {
                     Deck not found
                   </h3>
                   <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-                    This exact deck (with these specific variants) hasn&apos;t been recorded in our battle database. Try adjusting the card variants or composition.
+                    This exact deck (with these specific variants) hasn&apos;t
+                    been recorded in our battle database. Try adjusting the card
+                    variants or composition.
                   </p>
                 </div>
               </div>
@@ -773,7 +925,9 @@ function MatchupsPageInner() {
                   {!hasMatchups ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-2xl border border-dashed border-border/40">
                       <Swords className="w-7 h-7 text-muted-foreground/25" />
-                      <p className="text-sm text-muted-foreground">No matchup data found for this deck.</p>
+                      <p className="text-sm text-muted-foreground">
+                        No matchup data found for this deck.
+                      </p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2.5">
@@ -798,7 +952,12 @@ function MatchupsPageInner() {
                         <ChevronLeft className="w-4 h-4" />
                         Previous
                       </button>
-                      <span className={cn(orbitron.className, "text-sm font-bold text-muted-foreground")}>
+                      <span
+                        className={cn(
+                          orbitron.className,
+                          "text-sm font-bold text-muted-foreground",
+                        )}
+                      >
                         {matchupData.page} / {matchupData.total_pages}
                       </span>
                       <button

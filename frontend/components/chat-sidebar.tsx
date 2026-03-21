@@ -49,27 +49,31 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: <Trophy className="w-5 h-5" />,
     label: "Top Meta Decks",
     prompt: "Show me the top meta decks right now",
-    color: "from-amber-500/20 to-orange-600/20 hover:from-amber-500/30 hover:to-orange-600/30 border-amber-500/30",
+    color:
+      "from-amber-500/20 to-orange-600/20 hover:from-amber-500/30 hover:to-orange-600/30 border-amber-500/30",
   },
   {
     icon: <Search className="w-5 h-5" />,
     label: "Leaderboard",
     prompt: "Show me the top players leaderboard for ",
-    color: "from-violet-500/20 to-purple-600/20 hover:from-violet-500/30 hover:to-purple-600/30 border-violet-500/30",
+    color:
+      "from-violet-500/20 to-purple-600/20 hover:from-violet-500/30 hover:to-purple-600/30 border-violet-500/30",
     populateOnly: true,
   },
   {
     icon: <BarChart3 className="w-5 h-5" />,
     label: "Card Stats",
     prompt: "Look up the stats for ",
-    color: "from-emerald-500/20 to-teal-600/20 hover:from-emerald-500/30 hover:to-teal-600/30 border-emerald-500/30",
+    color:
+      "from-emerald-500/20 to-teal-600/20 hover:from-emerald-500/30 hover:to-teal-600/30 border-emerald-500/30",
     populateOnly: true,
   },
   {
     icon: <Swords className="w-5 h-5" />,
     label: "Find Clans",
     prompt: "Find competitive clans with 40+ members",
-    color: "from-sky-500/20 to-blue-600/20 hover:from-sky-500/30 hover:to-blue-600/30 border-sky-500/30",
+    color:
+      "from-sky-500/20 to-blue-600/20 hover:from-sky-500/30 hover:to-blue-600/30 border-sky-500/30",
   },
 ];
 
@@ -78,17 +82,34 @@ const QUERY_CATEGORIES: QueryCategory[] = [
     title: "Decks",
     icon: <Swords className="w-4 h-4" />,
     queries: [
-      { label: "Best Hog Rider decks", prompt: "Show me the best Hog Rider decks with high win rates" },
-      { label: "Highest win rate decks", prompt: "What decks have the highest win rate right now?" },
-      { label: "Most popular decks", prompt: "Show me the most popular decks being played right now" },
+      {
+        label: "Best Hog Rider decks",
+        prompt: "Show me the best Hog Rider decks with high win rates",
+      },
+      {
+        label: "Highest win rate decks",
+        prompt: "What decks have the highest win rate right now?",
+      },
+      {
+        label: "Most popular decks",
+        prompt: "Show me the most popular decks being played right now",
+      },
     ],
   },
   {
     title: "Players",
     icon: <Target className="w-4 h-4" />,
     queries: [
-      { label: "Look up a player", prompt: "Look up player #", populateOnly: true },
-      { label: "Top players by region", prompt: "Show me the top players leaderboard for ", populateOnly: true },
+      {
+        label: "Look up a player",
+        prompt: "Look up player #",
+        populateOnly: true,
+      },
+      {
+        label: "Top players by region",
+        prompt: "Show me the top players leaderboard for ",
+        populateOnly: true,
+      },
     ],
   },
 ];
@@ -99,7 +120,11 @@ interface ChatSidebarProps {
   onClearChat: () => void;
 }
 
-export function ChatSidebar({ onSendMessage, onPopulateInput, onClearChat }: ChatSidebarProps) {
+export function ChatSidebar({
+  onSendMessage,
+  onPopulateInput,
+  onClearChat,
+}: ChatSidebarProps) {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [showClearDialog, setShowClearDialog] = useState(false);
 
@@ -130,7 +155,9 @@ export function ChatSidebar({ onSendMessage, onPopulateInput, onClearChat }: Cha
           </div>
           <div>
             <h2 className="text-lg font-bold tracking-tight">Command Center</h2>
-            <p className="text-xs text-muted-foreground">Quick actions & suggestions</p>
+            <p className="text-xs text-muted-foreground">
+              Quick actions & suggestions
+            </p>
           </div>
         </div>
       </div>
@@ -200,7 +227,9 @@ export function ChatSidebar({ onSendMessage, onPopulateInput, onClearChat }: Cha
                     {category.queries.map((query) => (
                       <button
                         key={query.label}
-                        onClick={() => handleAction(query.prompt, query.populateOnly)}
+                        onClick={() =>
+                          handleAction(query.prompt, query.populateOnly)
+                        }
                         className="text-left px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-all duration-150 leading-relaxed"
                       >
                         {query.label}
@@ -234,7 +263,10 @@ export function ChatSidebar({ onSendMessage, onPopulateInput, onClearChat }: Cha
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowClearDialog(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowClearDialog(false)}
+              >
                 Cancel
               </Button>
               <Button variant="destructive" onClick={handleClearConfirm}>

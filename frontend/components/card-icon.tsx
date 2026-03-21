@@ -14,7 +14,11 @@ export function cardFileName(name: string): string {
     .replace(/\./g, "");
 }
 
-export function CardIcon({ cardName, variant = "normal", className }: CardIconProps) {
+export function CardIcon({
+  cardName,
+  variant = "normal",
+  className,
+}: CardIconProps) {
   const isEvo = variant === "evolution";
   const isHero = variant === "heroic";
   const fileName = cardFileName(cardName);
@@ -24,14 +28,14 @@ export function CardIcon({ cardName, variant = "normal", className }: CardIconPr
     <div
       className={cn(
         "relative aspect-[3/4] rounded-lg overflow-hidden border-2 bg-muted group hover:scale-[1.15] hover:z-20 hover:rotate-2 transition-all duration-300 shadow-md hover:shadow-lg",
-        className
+        className,
       )}
       style={{
         borderColor: isEvo
           ? "rgb(168, 85, 247)"
           : isHero
-          ? "rgb(234, 179, 8)"
-          : "rgba(255, 255, 255, 0.1)",
+            ? "rgb(234, 179, 8)"
+            : "rgba(255, 255, 255, 0.1)",
       }}
       title={cardName}
     >
