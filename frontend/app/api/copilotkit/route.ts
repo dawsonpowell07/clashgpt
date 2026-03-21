@@ -12,8 +12,11 @@ import { Redis } from '@upstash/redis';
 
 const ratelimit = new Ratelimit({
   redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(100000, '1 h'),
+  limiter: Ratelimit.slidingWindow(100, '1 h'),
 });
+
+// Maximum allowed request body size (bytes) — prevents extremely large payloads
+const MAX_BODY_BYTES = 32_768; // 32 KB
 
 const BACKEND_API_KEY = process.env.BACKEND_API_KEY || '';
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -47,6 +50,15 @@ export const POST = async (req: NextRequest) => {
         status: 429,
         headers: { 'Retry-After': Math.ceil((reset - Date.now()) / 1000).toString() },
       }
+    );
+  }
+
+  // Reject oversized payloads before they reach the runtime
+  const contentLength = req.headers.get('content-length');
+  if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
+    return NextResponse.json(
+      { error: 'Request body too large.' },
+      { status: 413 }
     );
   }
 

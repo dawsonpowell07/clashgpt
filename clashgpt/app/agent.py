@@ -43,6 +43,7 @@ from app.tools import (
 from dataclasses import dataclass
 from google.adk.agents.callback_context import CallbackContext
 from app.models.models import Player
+from app.guardrails import input_guardrail
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ root_agent = Agent(
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=PROMPT,
+    before_model_callback=input_guardrail,
     tools=[
         AGUIToolset(),  # Exposes frontend actions (e.g. request_deck_from_user) to the agent
         get_card_stats,
