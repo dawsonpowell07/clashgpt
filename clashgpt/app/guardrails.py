@@ -7,7 +7,6 @@ protecting against prompt injection, jailbreaks, and excessive message length.
 
 import logging
 import re
-from typing import Optional
 
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.llm_request import LlmRequest
@@ -78,7 +77,7 @@ def _blocked_response(text: str) -> LlmResponse:
 
 def input_guardrail(
     callback_context: CallbackContext, llm_request: LlmRequest
-) -> Optional[LlmResponse]:
+) -> LlmResponse | None:
     """
     Before-model callback — validates user input before it reaches the LLM.
 
