@@ -57,6 +57,8 @@ WIN_CONDITION_CARD_IDS = [
     26000028,  # Three Musketeers
     28000003,  # Rocket
     26000056,  # Skeleton Barrel
+    26000020,  # Giant Skeleton
+    26000004,  # PEKKA
 ]
 
 
