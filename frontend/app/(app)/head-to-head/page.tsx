@@ -3,12 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { Orbitron } from "next/font/google";
-import {
-  AlertTriangle,
-  RefreshCw,
-  Swords,
-  X,
-} from "lucide-react";
+import { AlertTriangle, RefreshCw, Swords, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WinConditionMatchup } from "@/components/win-condition-matchup";
 import { CardIcon, cardFileName } from "@/components/card-icon";
@@ -23,7 +18,7 @@ const WIN_CONDITION_IDS = new Set([
   27000002, 26000024, 26000067, 26000036, 26000021, 26000003, 26000059,
   26000058, 28000004, 27000013, 26000006, 26000060, 26000085, 27000008,
   26000009, 26000032, 26000051, 28000010, 26000029, 26000028, 28000003,
-  26000056,
+  26000056, 26000020, 26000004,
 ]);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
