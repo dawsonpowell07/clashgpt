@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Orbitron } from "next/font/google";
-import { Settings, Swords } from "lucide-react";
+import { Info, Settings, Swords } from "lucide-react";
 import { DeckGrid } from "./deck-grid";
 import { cardFileName } from "./card-icon";
 
@@ -434,9 +434,15 @@ export function WinConditionMatchup({
         </div>
       )}
 
-      <p className="text-[10px] text-muted-foreground/40 text-center px-4 py-2 border-t border-border/20">
-        Based on {data.total_games.toLocaleString()} battles in our database
-      </p>
+      <div className="flex items-start gap-2 px-4 py-3 border-t border-border/20 bg-muted/10">
+        <Info className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0 mt-0.5" />
+        <p className="text-[10px] text-muted-foreground/50 leading-relaxed">
+          All stats — win rates, games played, and top decks — reflect only
+          battles where one side ran {data.card_a.name} and the other ran{" "}
+          {data.card_b.name}. Deck win rates show performance in this specific
+          matchup, not overall ladder performance.
+        </p>
+      </div>
     </div>
   );
 }
