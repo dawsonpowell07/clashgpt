@@ -783,7 +783,7 @@ function MatchupsPageInner() {
                 ) : (
                   <Shield className="w-4 h-4" />
                 )}
-                Analyse
+                Analyze
               </button>
             </div>
           </div>

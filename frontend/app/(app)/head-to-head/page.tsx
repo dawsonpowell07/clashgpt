@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Swords,
   X,
-  ArrowLeftRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WinConditionMatchup } from "@/components/win-condition-matchup";
@@ -488,17 +487,6 @@ export default function HeadToHeadPage() {
 
             {/* Action buttons */}
             <div className="flex items-center gap-2 shrink-0">
-              {/* Swap */}
-              <button
-                onClick={handleSwap}
-                disabled={selectedA == null && selectedB == null}
-                title="Swap sides"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-border/50 text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-muted/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-                Swap
-              </button>
-
               {/* Clear */}
               <button
                 onClick={handleClear}
@@ -509,7 +497,7 @@ export default function HeadToHeadPage() {
                 Clear
               </button>
 
-              {/* Analyse */}
+              {/* Analyze */}
               <button
                 onClick={handleAnalyse}
                 disabled={!canAnalyse}
@@ -525,7 +513,7 @@ export default function HeadToHeadPage() {
                 ) : (
                   <Swords className="w-4 h-4" />
                 )}
-                Analyse
+                Analyze
               </button>
             </div>
           </div>
@@ -613,9 +601,9 @@ export default function HeadToHeadPage() {
             </div>
           )}
 
-          {/* Bottom action row (mobile-friendly) */}
+          {/* Bottom status row */}
           {!isLoadingCards && !cardsError && (
-            <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-border/20 bg-muted/5">
+            <div className="flex items-center px-4 sm:px-6 py-4 border-t border-border/20 bg-muted/5">
               <p
                 className={cn(
                   "text-xs tabular-nums font-semibold",
@@ -624,28 +612,11 @@ export default function HeadToHeadPage() {
                 )}
               >
                 {selectedA != null && selectedB != null
-                  ? "Ready to analyse"
+                  ? "Ready to analyze"
                   : selectedA != null || selectedB != null
                     ? "Pick one more card"
                     : "Select both cards to begin"}
               </p>
-              <button
-                onClick={handleAnalyse}
-                disabled={!canAnalyse}
-                className={cn(
-                  "flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl transition-all",
-                  "bg-gradient-to-r from-primary to-amber-500 text-primary-foreground shadow-lg",
-                  "hover:from-primary/90 hover:to-amber-500/90 hover:shadow-primary/30 hover:-translate-y-0.5",
-                  "disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none",
-                )}
-              >
-                {isAnalysing ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Swords className="w-4 h-4" />
-                )}
-                Analyse
-              </button>
             </div>
           )}
         </div>
@@ -695,7 +666,7 @@ export default function HeadToHeadPage() {
                   {cardA?.name ?? ""} vs {cardB?.name ?? ""}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Press Analyse to see how these win conditions compare
+                  Press Analyze to see how these win conditions compare
                 </p>
               </div>
             </div>
