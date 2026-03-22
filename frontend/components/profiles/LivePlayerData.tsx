@@ -1,21 +1,54 @@
-import { Shield, User, Heart, Star } from "lucide-react";
+import React from "react";
+import { Shield, User, Heart, Star, Trophy, Crown, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CRPlayerInfo } from "./types";
+
+const ACCENT_BG: Record<string, string> = {
+  green: "from-emerald-500/[0.08] border-emerald-500/20",
+  amber: "from-amber-500/[0.08] border-amber-500/20",
+  blue: "from-sky-500/[0.08] border-sky-500/20",
+  red: "from-rose-500/[0.08] border-rose-500/20",
+  default: "from-muted/50 border-border/50",
+};
+
+const ACCENT_TOP: Record<string, string> = {
+  green: "from-emerald-400/80 via-emerald-400/20 to-transparent",
+  amber: "from-amber-400/80 via-amber-400/20 to-transparent",
+  blue: "from-sky-400/80 via-sky-400/20 to-transparent",
+  red: "from-rose-400/80 via-rose-400/20 to-transparent",
+  default: "from-border/60 to-transparent",
+};
 
 function StatPill({
   label,
   value,
   sub,
   color = "text-foreground",
+  accent = "default",
+  icon: Icon,
 }: {
   label: string;
   value: string;
   sub?: string;
   color?: string;
+  accent?: string;
+  icon?: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="flex flex-col gap-1 bg-muted/40 border border-border/50 rounded-xl p-3.5">
-      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">
+    <div
+      className={cn(
+        "relative flex flex-col gap-1.5 bg-gradient-to-b to-card/30 border rounded-xl p-3.5 overflow-hidden",
+        ACCENT_BG[accent] ?? ACCENT_BG.default,
+      )}
+    >
+      <div
+        className={cn(
+          "absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r",
+          ACCENT_TOP[accent] ?? ACCENT_TOP.default,
+        )}
+      />
+      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
+        {Icon && <Icon className="w-3 h-3" />}
         {label}
       </span>
       <span
@@ -44,8 +77,10 @@ export function LivePlayerData({ crInfo }: LivePlayerDataProps) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card overflow-hidden shadow-lg">
       <div className="px-5 pt-4 pb-3.5 border-b border-border/40 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-primary" />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/15 border border-primary/25 text-primary shrink-0">
+            <Shield className="w-4 h-4" />
+          </div>
           <span className="font-[family-name:var(--font-heading)] font-bold text-foreground">
             Live Player Data
           </span>
@@ -62,16 +97,31 @@ export function LivePlayerData({ crInfo }: LivePlayerDataProps) {
             value={crInfo.trophies.toLocaleString()}
             sub={`Best: ${crInfo.best_trophies.toLocaleString()}`}
             color="text-amber-400"
+            accent="amber"
+            icon={Trophy}
           />
           <StatPill
-            label="PoL Medals"
+            label="Ranked Medals"
             value={
               crInfo.current_path_of_legends_medals?.toLocaleString() ?? "—"
             }
             sub={`Best: ${crInfo.best_path_of_legends_medals?.toLocaleString() ?? "—"}`}
-            color="text-blue-400"
+            color="text-sky-400"
+            accent="blue"
+            icon={Zap}
           />
-          <div className="flex flex-col gap-1 bg-muted/40 border border-border/50 rounded-xl p-3.5 min-w-0">
+          <div
+            className={cn(
+              "relative flex flex-col gap-1.5 bg-gradient-to-b to-card/30 border rounded-xl p-3.5 overflow-hidden min-w-0",
+              ACCENT_BG.default,
+            )}
+          >
+            <div
+              className={cn(
+                "absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r",
+                ACCENT_TOP.default,
+              )}
+            />
             <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">
               Wins / Losses
             </span>
@@ -98,6 +148,8 @@ export function LivePlayerData({ crInfo }: LivePlayerDataProps) {
                 : undefined
             }
             color="text-amber-400"
+            accent="amber"
+            icon={Crown}
           />
         </div>
 

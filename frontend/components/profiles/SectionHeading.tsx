@@ -10,7 +10,7 @@ export function SectionHeading({
   sub?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 mb-5">
+    <div className="flex items-center gap-3">
       <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/15 border border-primary/25 text-primary shrink-0">
         {icon}
       </div>

@@ -1,22 +1,57 @@
-import { Clock } from "lucide-react";
+import React from "react";
+import { Clock, Trophy, Crown, Swords, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlayerSearchResult } from "./types";
 import { formatTag, formatLastSeen } from "./utils";
+
+const ACCENT_BG: Record<string, string> = {
+  green: "from-emerald-500/[0.08] border-emerald-500/20",
+  amber: "from-amber-500/[0.08] border-amber-500/20",
+  blue: "from-sky-500/[0.08] border-sky-500/20",
+  red: "from-rose-500/[0.08] border-rose-500/20",
+  purple: "from-purple-500/[0.08] border-purple-500/20",
+  default: "from-muted/50 border-border/50",
+};
+
+const ACCENT_TOP: Record<string, string> = {
+  green: "from-emerald-400/80 via-emerald-400/20 to-transparent",
+  amber: "from-amber-400/80 via-amber-400/20 to-transparent",
+  blue: "from-sky-400/80 via-sky-400/20 to-transparent",
+  red: "from-rose-400/80 via-rose-400/20 to-transparent",
+  purple: "from-purple-400/80 via-purple-400/20 to-transparent",
+  default: "from-border/60 to-transparent",
+};
 
 function StatPill({
   label,
   value,
   sub,
   color,
+  accent = "default",
+  icon: Icon,
 }: {
   label: string;
   value: string;
   sub?: string;
   color: string;
+  accent?: string;
+  icon?: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="flex flex-col gap-1 bg-muted/40 border border-border/50 rounded-xl p-3.5">
-      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">
+    <div
+      className={cn(
+        "relative flex flex-col gap-1.5 bg-gradient-to-b to-card/30 border rounded-xl p-3.5 overflow-hidden",
+        ACCENT_BG[accent] ?? ACCENT_BG.default,
+      )}
+    >
+      <div
+        className={cn(
+          "absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r",
+          ACCENT_TOP[accent] ?? ACCENT_TOP.default,
+        )}
+      />
+      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
+        {Icon && <Icon className="w-3 h-3" />}
         {label}
       </span>
       <span
@@ -37,6 +72,12 @@ interface PlayerHeroCardProps {
 }
 
 export function PlayerHeroCard({ player }: PlayerHeroCardProps) {
+  const wrAccent =
+    (player.win_rate ?? 0) >= 55
+      ? "green"
+      : (player.win_rate ?? 0) >= 50
+        ? "amber"
+        : "red";
   const wrColor =
     (player.win_rate ?? 0) >= 55
       ? "text-emerald-400"
@@ -67,19 +108,25 @@ export function PlayerHeroCard({ player }: PlayerHeroCardProps) {
             label="Games Tracked"
             value={player.total_games.toLocaleString()}
             color="text-amber-400"
+            accent="amber"
+            icon={Swords}
           />
           <StatPill
             label="Win Rate"
             value={player.win_rate !== null ? `${player.win_rate}%` : "—"}
             sub={`${player.wins.toLocaleString()} wins`}
             color={wrColor}
+            accent={wrAccent}
+            icon={Trophy}
           />
           <StatPill
             label="Avg Crowns"
             value={
               player.avg_crowns !== null ? player.avg_crowns.toFixed(2) : "—"
             }
-            color="text-blue-400"
+            color="text-sky-400"
+            accent="blue"
+            icon={Crown}
           />
           <StatPill
             label="Elixir Leaked"
@@ -90,6 +137,8 @@ export function PlayerHeroCard({ player }: PlayerHeroCardProps) {
             }
             sub="avg per game"
             color="text-purple-400"
+            accent="purple"
+            icon={Zap}
           />
         </div>
       </div>

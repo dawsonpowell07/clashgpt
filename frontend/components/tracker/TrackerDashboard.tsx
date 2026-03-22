@@ -33,6 +33,7 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  ReferenceLine,
 } from "recharts";
 import type {
   TrackerStats,
@@ -107,18 +108,48 @@ function StatCard({
   value: string;
   sub?: string;
   icon: React.ComponentType<{ className?: string }>;
-  accent?: "green" | "amber" | "blue" | "red" | "default";
+  accent?: "green" | "amber" | "blue" | "red" | "default" | "purple";
 }) {
   const valueColor = {
     green: "text-emerald-400",
     amber: "text-amber-400",
-    blue: "text-blue-400",
-    red: "text-red-400",
+    blue: "text-sky-400",
+    red: "text-rose-400",
     default: "text-foreground",
+    purple: "text-purple-400",
+  }[accent];
+
+  const accentBg = {
+    green: "from-emerald-500/[0.08] border-emerald-500/20",
+    amber: "from-amber-500/[0.08] border-amber-500/20",
+    blue: "from-sky-500/[0.08] border-sky-500/20",
+    red: "from-rose-500/[0.08] border-rose-500/20",
+    default: "from-muted/50 border-border/50",
+    purple: "from-purple-500/[0.08] border-purple-500/20",
+  }[accent];
+
+  const accentTop = {
+    green: "from-emerald-400/80 via-emerald-400/20 to-transparent",
+    amber: "from-amber-400/80 via-amber-400/20 to-transparent",
+    blue: "from-sky-400/80 via-sky-400/20 to-transparent",
+    red: "from-rose-400/80 via-rose-400/20 to-transparent",
+    default: "from-border/60 to-transparent",
+    purple: "from-purple-400/80 via-purple-400/20 to-transparent",
   }[accent];
 
   return (
-    <div className="flex flex-col gap-1.5 bg-muted/40 border border-border/50 rounded-xl p-3.5">
+    <div
+      className={cn(
+        "relative flex flex-col gap-1.5 bg-gradient-to-b to-card/30 border rounded-xl p-3.5 overflow-hidden",
+        accentBg,
+      )}
+    >
+      <div
+        className={cn(
+          "absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r",
+          accentTop,
+        )}
+      />
       <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
         <Icon className="w-3 h-3" />
         {label}
@@ -328,7 +359,10 @@ function BattleRow({ battle }: { battle: TrackerBattle }) {
     <button
       onClick={() => {
         if (battle.battle_id) {
-          window.open(`/tracker/battle/${encodeURIComponent(battle.battle_id)}`, "_blank");
+          window.open(
+            `/tracker/battle/${encodeURIComponent(battle.battle_id)}`,
+            "_blank",
+          );
         }
       }}
       className={cn(
@@ -386,13 +420,15 @@ function fmtActivityDate(iso: string) {
 }
 
 const CHART_TOOLTIP_STYLE = {
-  background: "#1e2433",
-  border: "1px solid #3d4560",
-  borderRadius: "8px",
+  background: "rgba(6, 9, 20, 0.95)",
+  border: "1px solid rgba(148, 163, 184, 0.12)",
+  borderRadius: "10px",
   fontSize: "12px",
+  boxShadow:
+    "0 20px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)",
 };
-const CHART_ITEM_STYLE = { color: "#e5e7eb" };
-const CHART_LABEL_STYLE = { color: "#9ca3af" };
+const CHART_ITEM_STYLE = { color: "#e2e8f0" };
+const CHART_LABEL_STYLE = { color: "#94a3b8" };
 
 function WinLossDonut({
   wins,
@@ -409,7 +445,7 @@ function WinLossDonut({
     { name: "Losses", value: losses },
   ];
   return (
-    <div className="bg-muted/40 border border-border/50 rounded-xl p-5 flex flex-col gap-3">
+    <div className="bg-card/50 border border-border/60 rounded-2xl p-5 flex flex-col gap-3 shadow-[0_0_40px_rgba(34,211,238,0.04)]">
       <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
         <Trophy className="w-3 h-3" /> Win / Loss
       </p>
@@ -417,13 +453,13 @@ function WinLossDonut({
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <defs>
-              <linearGradient id="pieBlueGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#60a5fa" />
-                <stop offset="100%" stopColor="#2563eb" />
+              <linearGradient id="pieBlueGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#67e8f9" />
+                <stop offset="100%" stopColor="#3b82f6" />
               </linearGradient>
-              <linearGradient id="pieRedGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#f87171" />
-                <stop offset="100%" stopColor="#dc2626" />
+              <linearGradient id="pieRedGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#fb7185" />
+                <stop offset="100%" stopColor="#e11d48" />
               </linearGradient>
             </defs>
             <Pie
@@ -443,7 +479,12 @@ function WinLossDonut({
               <Label
                 value={pct}
                 position="center"
-                style={{ fontSize: "22px", fontWeight: 800, fill: "#f3f4f6" }}
+                style={{
+                  fontSize: "24px",
+                  fontWeight: 900,
+                  fill: "#f0f9ff",
+                  letterSpacing: "-0.5px",
+                }}
               />
             </Pie>
             <Tooltip
@@ -458,12 +499,18 @@ function WinLossDonut({
       </div>
       <div className="flex justify-center gap-5 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
-          {wins.toLocaleString()}W
+          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block shadow-[0_0_8px_rgba(103,232,249,0.7)]" />
+          <span className="font-semibold text-foreground/80">
+            {wins.toLocaleString()}
+          </span>
+          W
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
-          {losses.toLocaleString()}L
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shadow-[0_0_8px_rgba(251,113,133,0.7)]" />
+          <span className="font-semibold text-foreground/80">
+            {losses.toLocaleString()}
+          </span>
+          L
         </span>
       </div>
     </div>
@@ -491,7 +538,7 @@ function GamesPerDayChart({
 }) {
   const data = activity.map((d) => ({ ...d, date: fmtActivityDate(d.date) }));
   return (
-    <div className="bg-muted/40 border border-border/50 rounded-xl p-5 flex flex-col gap-3 flex-1">
+    <div className="bg-card/50 border border-border/60 rounded-2xl p-5 flex flex-col gap-3 flex-1">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
           <Swords className="w-3 h-3" /> Activity
@@ -504,7 +551,7 @@ function GamesPerDayChart({
               className={cn(
                 "px-2 py-0.5 rounded text-[10px] font-bold transition-colors",
                 days === opt.days
-                  ? "bg-primary/20 text-primary border border-primary/30"
+                  ? "bg-sky-500/15 text-sky-400 border border-sky-400/30"
                   : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/60",
               )}
             >
@@ -528,29 +575,29 @@ function GamesPerDayChart({
           >
             <defs>
               <linearGradient id="barBlueGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#60a5fa" />
-                <stop offset="100%" stopColor="#2563eb" />
+                <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.95} />
+                <stop offset="100%" stopColor="#0284c7" stopOpacity={0.85} />
               </linearGradient>
               <linearGradient id="barRedGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#f87171" />
-                <stop offset="100%" stopColor="#dc2626" />
+                <stop offset="0%" stopColor="#fb7185" stopOpacity={0.95} />
+                <stop offset="100%" stopColor="#be123c" stopOpacity={0.85} />
               </linearGradient>
             </defs>
             <CartesianGrid
               vertical={false}
-              stroke="#3d4560"
-              strokeOpacity={0.4}
+              stroke="rgba(148,163,184,0.1)"
+              strokeDasharray="4 4"
             />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10, fill: "#6b7280" }}
+              tick={{ fontSize: 10, fill: "#94a3b8" }}
               axisLine={false}
               tickLine={false}
               dy={5}
             />
             <YAxis
               allowDecimals={false}
-              tick={{ fontSize: 10, fill: "#6b7280" }}
+              tick={{ fontSize: 10, fill: "#94a3b8" }}
               axisLine={false}
               tickLine={false}
             />
@@ -581,11 +628,11 @@ function GamesPerDayChart({
       </div>
       <div className="flex justify-end gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-sm bg-blue-500 inline-block" />
+          <span className="w-2 h-2 rounded-sm bg-sky-400 inline-block" />
           Wins
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-sm bg-red-500 inline-block" />
+          <span className="w-2 h-2 rounded-sm bg-rose-500 inline-block" />
           Losses
         </span>
       </div>
@@ -601,7 +648,7 @@ function DeckWinRateChart({ decks }: { decks: TrackerDeck[] }) {
     games: d.games,
   }));
   return (
-    <div className="bg-muted/40 border border-border/50 rounded-xl p-5 flex flex-col gap-3">
+    <div className="bg-card/50 border border-border/60 rounded-2xl p-5 flex flex-col gap-3">
       <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
         <Zap className="w-3 h-3 text-amber-400" /> Deck Win Rates
       </p>
@@ -616,27 +663,27 @@ function DeckWinRateChart({ decks }: { decks: TrackerDeck[] }) {
           >
             <defs>
               <linearGradient id="deckGreenGrad" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#4ade80" />
+                <stop offset="0%" stopColor="#86efac" />
                 <stop offset="100%" stopColor="#16a34a" />
               </linearGradient>
               <linearGradient id="deckAmberGrad" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#facc15" />
-                <stop offset="100%" stopColor="#ca8a04" />
+                <stop offset="0%" stopColor="#fcd34d" />
+                <stop offset="100%" stopColor="#b45309" />
               </linearGradient>
               <linearGradient id="deckRedGrad" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#f87171" />
-                <stop offset="100%" stopColor="#dc2626" />
+                <stop offset="0%" stopColor="#fb7185" />
+                <stop offset="100%" stopColor="#9f1239" />
               </linearGradient>
             </defs>
             <CartesianGrid
               horizontal={false}
-              stroke="#3d4560"
-              strokeOpacity={0.4}
+              stroke="rgba(148,163,184,0.1)"
+              strokeDasharray="3 3"
             />
             <XAxis
               type="number"
               domain={[0, 100]}
-              tick={{ fontSize: 10, fill: "#6b7280" }}
+              tick={{ fontSize: 10, fill: "#94a3b8" }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(v) => `${v}%`}
@@ -644,7 +691,7 @@ function DeckWinRateChart({ decks }: { decks: TrackerDeck[] }) {
             <YAxis
               type="category"
               dataKey="name"
-              tick={{ fontSize: 11, fill: "#9ca3af", fontWeight: 500 }}
+              tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 500 }}
               axisLine={false}
               tickLine={false}
               width={64}
@@ -669,8 +716,8 @@ function DeckWinRateChart({ decks }: { decks: TrackerDeck[] }) {
               label={{
                 position: "right",
                 fontSize: 11,
-                fill: "#d1d5db",
-                fontWeight: 600,
+                fill: "#e2e8f0",
+                fontWeight: 700,
                 formatter: (v: any) => `${v}%`,
               }}
             >
@@ -687,6 +734,12 @@ function DeckWinRateChart({ decks }: { decks: TrackerDeck[] }) {
                 />
               ))}
             </Bar>
+            <ReferenceLine
+              x={50}
+              stroke="rgba(248,113,133,0.4)"
+              strokeDasharray="4 3"
+              strokeWidth={1.5}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -715,7 +768,9 @@ export function TrackerDashboard({
   const [battlesData, setBattlesData] = useState<TrackerBattlesResponse | null>(
     null,
   );
-  const [activityData, setActivityData] = useState<{ date: string; wins: number; losses: number }[]>([]);
+  const [activityData, setActivityData] = useState<
+    { date: string; wins: number; losses: number }[]
+  >([]);
   const [activityDays, setActivityDays] = useState(7);
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [page, setPage] = useState(1);
@@ -760,7 +815,6 @@ export function TrackerDashboard({
       .then((d) => setWorstMatchups(d.worst_matchups ?? []))
       .catch(() => setWorstMatchups([]))
       .finally(() => setLoadingWorstMatchups(false));
-
   }, [authFetch]);
 
   useEffect(() => {
@@ -877,7 +931,7 @@ export function TrackerDashboard({
                     : "—"
                 }
                 icon={Zap}
-                accent="blue"
+                accent="purple"
               />
             </div>
           ) : null}
