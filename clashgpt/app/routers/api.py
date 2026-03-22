@@ -891,6 +891,60 @@ async def get_tracker_battles(
     }
 
 
+@router.get("/tracker/battles/{battle_id}")
+@limiter.limit("20/minute")
+async def get_battle_detail(
+    request: Request,
+    battle_id: str,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    """
+    Get full detail for a single battle, verifying it belongs to the authenticated user's linked player.
+    Returns 404 if the battle is not found or does not belong to the user.
+    """
+    db = get_database_service()
+    tracked = await db.get_tracked_player(user_id=user_id)
+    if tracked is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No player tag linked. Use POST /api/tracker/register first.",
+        )
+
+    detail = await db.get_battle_detail(
+        battle_id=battle_id, player_tag=tracked["player_tag"]
+    )
+    if detail is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Battle not found or does not belong to your tracked player.",
+        )
+    return detail
+
+
+@router.get("/tracker/me/activity")
+@limiter.limit("20/minute")
+async def get_tracker_activity(
+    request: Request,
+    days: int = 7,
+    user_id: str = Depends(_get_current_user_id_dep()),
+):
+    db = get_database_service()
+    tracked = await db.get_tracked_player(user_id=user_id)
+    if tracked is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No player tag linked. Use POST /api/tracker/register first.",
+        )
+    activity = await db.get_tracker_activity(
+        player_tag=tracked["player_tag"], days=min(days, 90)
+    )
+    return {
+        "player_tag": tracked["player_tag"],
+        "player_name": tracked["player_name"],
+        "activity": activity,
+    }
+
+
 @router.get("/tracker/me/worst-matchups")
 @limiter.limit("20/minute")
 async def get_tracker_worst_matchups(

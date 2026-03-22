@@ -36,12 +36,15 @@ export interface TrackerDeck {
 }
 
 export interface TrackerBattle {
+  battle_id: string | null;
   battle_time: string | null;
   game_mode: string | null;
   result: "Win" | "Loss";
   crowns: number | null;
   elixir_leaked: number | null;
   opponent: string | null;
+  deck_id: string | null;
+  player_cards: TrackerCard[];
   opponent_deck_id: string | null;
   opponent_cards: TrackerCard[];
 }

@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ExternalLink,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -324,9 +325,15 @@ function WorstMatchupRow({ matchup }: { matchup: TrackerWorstMatchup }) {
 function BattleRow({ battle }: { battle: TrackerBattle }) {
   const isWin = battle.result === "Win";
   return (
-    <div
+    <button
+      onClick={() => {
+        if (battle.battle_id) {
+          window.open(`/tracker/battle/${encodeURIComponent(battle.battle_id)}`, "_blank");
+        }
+      }}
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm transition-colors shrink-0",
+        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm transition-colors shrink-0 text-left",
+        battle.battle_id ? "cursor-pointer" : "cursor-default",
         isWin
           ? "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10"
           : "border-red-500/20 bg-red-500/5 hover:bg-red-500/10",
@@ -362,32 +369,20 @@ function BattleRow({ battle }: { battle: TrackerBattle }) {
           <p className="text-[9px] text-muted-foreground">elixir</p>
         </div>
       )}
-    </div>
+      {battle.battle_id !== null && (
+        <ExternalLink className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+      )}
+    </button>
   );
 }
 
 // ─── Chart helpers ───────────────────────────────────────────────────────────
 
-function getGamesPerDay(battles: TrackerBattle[]) {
-  const map: Record<string, { wins: number; losses: number }> = {};
-  battles.forEach((b) => {
-    if (!b.battle_time) return;
-    const day = b.battle_time.split("T")[0];
-    if (!map[day]) map[day] = { wins: 0, losses: 0 };
-    if (b.result === "Win") map[day].wins++;
-    else map[day].losses++;
+function fmtActivityDate(iso: string) {
+  return new Date(iso + "T12:00:00").toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
   });
-  return Object.entries(map)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, counts]) => ({
-      date: new Date(date + "T12:00:00").toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      }),
-      wins: counts.wins,
-      losses: counts.losses,
-    }))
-    .slice(-14);
 }
 
 const CHART_TOOLTIP_STYLE = {
@@ -475,15 +470,55 @@ function WinLossDonut({
   );
 }
 
-function GamesPerDayChart({ battles }: { battles: TrackerBattle[] }) {
-  const data = getGamesPerDay(battles);
-  if (data.length === 0) return null;
+const ACTIVITY_OPTIONS = [
+  { label: "24h", days: 1 },
+  { label: "7d", days: 7 },
+  { label: "14d", days: 14 },
+  { label: "30d", days: 30 },
+  { label: "60d", days: 60 },
+];
+
+function GamesPerDayChart({
+  activity,
+  days,
+  onDaysChange,
+  loading,
+}: {
+  activity: { date: string; wins: number; losses: number }[];
+  days: number;
+  onDaysChange: (d: number) => void;
+  loading: boolean;
+}) {
+  const data = activity.map((d) => ({ ...d, date: fmtActivityDate(d.date) }));
   return (
     <div className="bg-muted/40 border border-border/50 rounded-xl p-5 flex flex-col gap-3 flex-1">
-      <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
-        <Swords className="w-3 h-3" /> Activity
-      </p>
-      <div className="h-44">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5">
+          <Swords className="w-3 h-3" /> Activity
+        </p>
+        <div className="flex items-center gap-1">
+          {ACTIVITY_OPTIONS.map((opt) => (
+            <button
+              key={opt.days}
+              onClick={() => onDaysChange(opt.days)}
+              className={cn(
+                "px-2 py-0.5 rounded text-[10px] font-bold transition-colors",
+                days === opt.days
+                  ? "bg-primary/20 text-primary border border-primary/30"
+                  : "text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/60",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="h-44 relative">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/40 rounded-lg z-10">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/40" />
+          </div>
+        )}
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
@@ -680,7 +715,9 @@ export function TrackerDashboard({
   const [battlesData, setBattlesData] = useState<TrackerBattlesResponse | null>(
     null,
   );
-  const [chartBattles, setChartBattles] = useState<TrackerBattle[]>([]);
+  const [activityData, setActivityData] = useState<{ date: string; wins: number; losses: number }[]>([]);
+  const [activityDays, setActivityDays] = useState(7);
+  const [loadingActivity, setLoadingActivity] = useState(false);
   const [page, setPage] = useState(1);
 
   const [loadingStats, setLoadingStats] = useState(true);
@@ -724,10 +761,15 @@ export function TrackerDashboard({
       .catch(() => setWorstMatchups([]))
       .finally(() => setLoadingWorstMatchups(false));
 
-    authFetch(`${API_URL}/api/tracker/me/battles?page=1&page_size=50`)
-      .then((d) => setChartBattles(d.battles ?? []))
-      .catch(() => setChartBattles([]));
   }, [authFetch]);
+
+  useEffect(() => {
+    setLoadingActivity(true);
+    authFetch(`${API_URL}/api/tracker/me/activity?days=${activityDays}`)
+      .then((d) => setActivityData(d.activity ?? []))
+      .catch(() => setActivityData([]))
+      .finally(() => setLoadingActivity(false));
+  }, [authFetch, activityDays]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -781,8 +823,7 @@ export function TrackerDashboard({
             Your battles are being processed…
           </p>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            Your tag has been registered. Battle data will appear after the next
-            ETL run.
+            Your tag has been registered. Battle data will appear soon.
           </p>
         </div>
       )}
@@ -854,11 +895,14 @@ export function TrackerDashboard({
                 winRate={stats.win_rate}
               />
             )}
-            {chartBattles.length > 0 && (
-              <div className="md:col-span-2 min-w-0">
-                <GamesPerDayChart battles={chartBattles} />
-              </div>
-            )}
+            <div className="md:col-span-2 min-w-0">
+              <GamesPerDayChart
+                activity={activityData}
+                days={activityDays}
+                onDaysChange={setActivityDays}
+                loading={loadingActivity}
+              />
+            </div>
           </div>
           {decks.length > 0 && <DeckWinRateChart decks={decks} />}
         </section>

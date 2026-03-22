@@ -1934,6 +1934,48 @@ class DatabaseService:
                 f"Unexpected error in get_tracker_stats: {e!s}"
             ) from e
 
+    async def get_tracker_activity(self, player_tag: str, days: int = 7) -> list[dict]:
+        """
+        Get per-day win/loss counts for a tracked player over the last N days.
+        Returns a list of {date, wins, losses} dicts ordered oldest-to-newest.
+        """
+        logger.info(
+            f"DB query: get_tracker_activity | player_tag={player_tag}, days={days}"
+        )
+        try:
+            async with self.async_session() as session:
+                stmt = text("""
+                    SELECT
+                        pb.battle_time::date                                    AS day,
+                        COALESCE(SUM(fbp.is_win), 0)                           AS wins,
+                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses
+                    FROM fact_battle_participants fbp
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                    WHERE fbp.player_tag = :tag
+                      AND pb.battle_time >= NOW() - INTERVAL '1 day' * :days
+                    GROUP BY pb.battle_time::date
+                    ORDER BY day ASC
+                """)
+                result = await session.execute(stmt, {"tag": player_tag, "days": days})
+                return [
+                    {
+                        "date": str(row[0]),
+                        "wins": int(row[1]),
+                        "losses": int(row[2]),
+                    }
+                    for row in result.fetchall()
+                ]
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_tracker_activity")
+            raise DatabaseQueryError(f"Failed to fetch tracker activity: {e!s}") from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_tracker_activity")
+            raise DatabaseServiceError(
+                f"Unexpected error in get_tracker_activity: {e!s}"
+            ) from e
+
     async def get_tracker_deck_breakdown(
         self,
         player_tag: str,
@@ -2148,7 +2190,9 @@ class DatabaseService:
                         fbp.crowns,
                         fbp.elixir_leaked,
                         opp.name                                               AS opponent_name,
-                        fbp.opponent_deck_id
+                        fbp.opponent_deck_id,
+                        fbp.battle_id,
+                        fbp.deck_id
                     FROM fact_battle_participants fbp
                     JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     LEFT JOIN dim_players opp
@@ -2200,10 +2244,44 @@ class DatabaseService:
                             }
                         )
 
+                # Batch-fetch player deck cards
+                player_deck_ids = [r[8] for r in rows if r[8] is not None]
+                player_cards_by_deck: dict[str, list[dict]] = {}
+                if player_deck_ids:
+                    id_params = {
+                        f"pdid_{i}": did for i, did in enumerate(player_deck_ids)
+                    }
+                    in_clause = ", ".join(
+                        f":pdid_{i}" for i in range(len(player_deck_ids))
+                    )
+                    player_cards_query = f"""
+                        SELECT dcc.deck_id, dcc.card_id, dc.name, dcc.variant::text, dcc.slot_index
+                        FROM deck_card_config dcc
+                        JOIN dim_cards dc ON dcc.card_id = dc.card_id
+                        WHERE dcc.deck_id IN ({in_clause})
+                        ORDER BY dcc.deck_id, dcc.slot_index
+                    """
+                    player_cards_result = await session.execute(
+                        text(player_cards_query), id_params
+                    )
+                    for r in player_cards_result.fetchall():
+                        did = r[0]
+                        if did not in player_cards_by_deck:
+                            player_cards_by_deck[did] = []
+                        player_cards_by_deck[did].append(
+                            {
+                                "card_id": r[1],
+                                "card_name": r[2],
+                                "variant": r[3],
+                                "slot_index": r[4],
+                            }
+                        )
+
                 battles = []
                 for row in rows:
                     battles.append(
                         {
+                            "battle_id": row[7],
                             "battle_time": row[0].isoformat()
                             if hasattr(row[0], "isoformat")
                             else (str(row[0]) if row[0] else None),
@@ -2214,6 +2292,10 @@ class DatabaseService:
                             if row[4] is not None
                             else None,
                             "opponent": row[5],
+                            "deck_id": row[8],
+                            "player_cards": player_cards_by_deck.get(row[8], [])
+                            if row[8]
+                            else [],
                             "opponent_deck_id": row[6],
                             "opponent_cards": opp_cards_by_deck.get(row[6], [])
                             if row[6]
@@ -2234,6 +2316,98 @@ class DatabaseService:
             logger.exception("Unexpected error in get_tracker_battles")
             raise DatabaseServiceError(
                 f"Unexpected error in get_tracker_battles: {e!s}"
+            ) from e
+
+    async def get_battle_detail(self, battle_id: str, player_tag: str) -> dict | None:
+        logger.info(
+            f"DB query: get_battle_detail | battle_id={battle_id}, player_tag={player_tag}"
+        )
+        try:
+            async with self.async_session() as session:
+                query = text("""
+                    SELECT
+                        pb.battle_time,
+                        pb.game_mode,
+                        CASE WHEN fbp.is_win = 1 THEN 'Win' ELSE 'Loss' END AS result,
+                        fbp.crowns,
+                        fbp.elixir_leaked,
+                        opp.name AS opponent_name,
+                        fbp.opponent_deck_id,
+                        fbp.battle_id,
+                        fbp.deck_id
+                    FROM fact_battle_participants fbp
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                    LEFT JOIN dim_players opp
+                        ON opp.player_tag = (
+                            SELECT player_tag FROM fact_battle_participants
+                            WHERE battle_id = fbp.battle_id
+                              AND player_tag != fbp.player_tag
+                            LIMIT 1
+                        )
+                    WHERE fbp.player_tag = :tag AND fbp.battle_id = :battle_id
+                    LIMIT 1
+                """)
+                result = await session.execute(
+                    query, {"tag": player_tag, "battle_id": battle_id}
+                )
+                row = result.fetchone()
+                if row is None:
+                    return None
+
+                deck_ids_to_fetch = [did for did in [row[8], row[6]] if did is not None]
+                cards_by_deck: dict[str, list[dict]] = {}
+                if deck_ids_to_fetch:
+                    id_params = {
+                        f"did_{i}": did for i, did in enumerate(deck_ids_to_fetch)
+                    }
+                    in_clause = ", ".join(
+                        f":did_{i}" for i in range(len(deck_ids_to_fetch))
+                    )
+                    cards_query = f"""
+                        SELECT dcc.deck_id, dcc.card_id, dc.name, dcc.variant::text, dcc.slot_index
+                        FROM deck_card_config dcc
+                        JOIN dim_cards dc ON dcc.card_id = dc.card_id
+                        WHERE dcc.deck_id IN ({in_clause})
+                        ORDER BY dcc.deck_id, dcc.slot_index
+                    """
+                    cards_result = await session.execute(text(cards_query), id_params)
+                    for r in cards_result.fetchall():
+                        did = r[0]
+                        if did not in cards_by_deck:
+                            cards_by_deck[did] = []
+                        cards_by_deck[did].append(
+                            {
+                                "card_id": r[1],
+                                "card_name": r[2],
+                                "variant": r[3],
+                                "slot_index": r[4],
+                            }
+                        )
+
+                return {
+                    "battle_id": row[7],
+                    "battle_time": row[0].isoformat()
+                    if hasattr(row[0], "isoformat")
+                    else (str(row[0]) if row[0] else None),
+                    "game_mode": row[1],
+                    "result": row[2],
+                    "crowns": int(row[3]) if row[3] is not None else None,
+                    "elixir_leaked": float(row[4]) if row[4] is not None else None,
+                    "opponent": row[5],
+                    "deck_id": row[8],
+                    "player_cards": cards_by_deck.get(row[8], []) if row[8] else [],
+                    "opponent_deck_id": row[6],
+                    "opponent_cards": cards_by_deck.get(row[6], []) if row[6] else [],
+                }
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: get_battle_detail")
+            raise DatabaseQueryError(f"Failed to fetch battle detail: {e!s}") from e
+        except Exception as e:
+            logger.exception("Unexpected error in get_battle_detail")
+            raise DatabaseServiceError(
+                f"Unexpected error in get_battle_detail: {e!s}"
             ) from e
 
     # ===== LOCATIONS ENDPOINTS =====
