@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, Suspense } from "react";
-import { useAuth, useUser } from "@clerk/nextjs";
-import { AuthGateDialog } from "@/components/auth-gate-dialog";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
@@ -525,15 +523,6 @@ function MatchRecord({
 
 function MatchupsPageInner() {
   const searchParams = useSearchParams();
-  const { getToken } = useAuth();
-  const { isSignedIn, isLoaded } = useUser();
-  const [showAuthDialog, setShowAuthDialog] = useState(false);
-
-  useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      setShowAuthDialog(true);
-    }
-  }, [isLoaded, isSignedIn]);
 
   const [cards, setCards] = useState<Card[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
@@ -605,15 +594,12 @@ function MatchupsPageInner() {
       setIsSearching(true);
       setSearchError(null);
       try {
-        const token = await getToken();
         const params = new URLSearchParams({
           deck: deckParam,
           page: pageNum.toString(),
           page_size: "21",
         });
-        const res = await fetch(`${API_BASE_URL}/api/matchups?${params}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(`${API_BASE_URL}/api/matchups?${params}`);
         if (res.status === 429) {
           setSearchError(
             "Too many requests — please wait before searching again.",
@@ -632,7 +618,7 @@ function MatchupsPageInner() {
         setIsSearching(false);
       }
     },
-    [selectedVariants, getToken],
+    [selectedVariants],
   );
 
   // Auto-search once when selectedVariants is populated from URL param
@@ -673,12 +659,6 @@ function MatchupsPageInner() {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24 relative overflow-hidden">
-      <AuthGateDialog
-        open={showAuthDialog}
-        onOpenChange={setShowAuthDialog}
-        featureName="Deck Matchups"
-        redirectUrl="/matchups"
-      />
       {/* Ambient background */}
       <div className="fixed inset-0 hexagon-pattern opacity-[0.025] pointer-events-none" />
       <div

@@ -322,7 +322,7 @@ async def get_card_stats(
 
 
 @router.get("/decks")
-@limiter.limit("5/second;30/minute;500/day")
+@limiter.limit("2/second;20/minute;200/day")
 async def search_decks(
     request: Request,
     include: Annotated[
@@ -520,13 +520,12 @@ def _get_current_user_id_dep():
 
 
 @router.get("/players")
-@limiter.limit("30/minute")
+@limiter.limit("15/minute")
 async def search_players(
     request: Request,
     name: Annotated[
         str, Query(min_length=1, description="Player name to search (partial match)")
     ],
-    user_id: str = Depends(_get_current_user_id_dep()),
 ):
     """
     Search players by name from dim_players (top ranked battle participants).
@@ -540,11 +539,10 @@ async def search_players(
 
 
 @router.get("/players/{player_tag}/info")
-@limiter.limit("30/minute")
+@limiter.limit("15/minute")
 async def get_player_cr_info(
     request: Request,
     player_tag: str,
-    user_id: str = Depends(_get_current_user_id_dep()),
 ):
     """
     Get live player info from the Clash Royale API.
@@ -578,11 +576,10 @@ async def get_player_cr_info(
 
 
 @router.get("/players/{player_tag}/decks")
-@limiter.limit("30/minute")
+@limiter.limit("15/minute")
 async def get_player_top_decks(
     request: Request,
     player_tag: str,
-    user_id: str = Depends(_get_current_user_id_dep()),
 ):
     """
     Get the top 5 most-used decks for a player, with card details.
@@ -593,11 +590,10 @@ async def get_player_top_decks(
 
 
 @router.get("/players/{player_tag}/battles")
-@limiter.limit("30/minute")
+@limiter.limit("15/minute")
 async def get_player_recent_battles(
     request: Request,
     player_tag: str,
-    user_id: str = Depends(_get_current_user_id_dep()),
 ):
     """
     Get the 20 most recent battles for a player.
@@ -614,7 +610,7 @@ MATCHUP_SEARCH_TIMEOUT = 10.0
 
 
 @router.get("/matchups")
-@limiter.limit("30/minute")
+@limiter.limit("10/minute")
 async def get_deck_matchups(
     request: Request,
     deck: Annotated[
@@ -626,7 +622,6 @@ async def get_deck_matchups(
     ],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
-    user_id: str = Depends(_get_current_user_id_dep()),
 ):
     """
     Find recent battles for an exact 8-card deck (with variants).
@@ -718,7 +713,7 @@ async def get_deck_matchups(
 
 
 @router.post("/tracker/register")
-@limiter.limit("10/minute")
+@limiter.limit("3/minute")
 async def register_tracker(
     request: Request,
     player_tag: Annotated[
@@ -737,6 +732,15 @@ async def register_tracker(
         ClashRoyaleRateLimitError,
         ClashRoyaleService,
     )
+
+    # Check if user already has a tracked player — one player per account
+    db = get_database_service()
+    existing = await db.get_tracked_player(user_id=user_id)
+    if existing is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"You are already tracking '{existing['player_tag']}'. You can only track one player per account.",
+        )
 
     # Normalise tag
     normalised = player_tag.strip().upper()
@@ -763,7 +767,6 @@ async def register_tracker(
             status_code=502, detail=f"Could not verify player tag: {e!s}"
         ) from e
 
-    db = get_database_service()
     tracked = await db.register_tracked_player(
         user_id=user_id,
         player_tag=normalised,
@@ -776,7 +779,7 @@ async def register_tracker(
 
 
 @router.get("/tracker/me")
-@limiter.limit("30/minute")
+@limiter.limit("20/minute")
 async def get_tracker_me(
     request: Request,
     user_id: str = Depends(_get_current_user_id_dep()),
@@ -796,7 +799,7 @@ async def get_tracker_me(
 
 
 @router.get("/tracker/me/stats")
-@limiter.limit("30/minute")
+@limiter.limit("20/minute")
 async def get_tracker_stats(
     request: Request,
     user_id: str = Depends(_get_current_user_id_dep()),
@@ -821,7 +824,7 @@ async def get_tracker_stats(
 
 
 @router.get("/tracker/me/decks")
-@limiter.limit("30/minute")
+@limiter.limit("20/minute")
 async def get_tracker_decks(
     request: Request,
     limit: Annotated[int, Query(ge=1, le=20)] = 10,
@@ -849,7 +852,7 @@ async def get_tracker_decks(
 
 
 @router.get("/tracker/me/battles")
-@limiter.limit("30/minute")
+@limiter.limit("20/minute")
 async def get_tracker_battles(
     request: Request,
     page: Annotated[int, Query(ge=1)] = 1,
@@ -889,7 +892,7 @@ async def get_tracker_battles(
 
 
 @router.get("/tracker/me/worst-matchups")
-@limiter.limit("30/minute")
+@limiter.limit("20/minute")
 async def get_tracker_worst_matchups(
     request: Request,
     limit: Annotated[int, Query(ge=1, le=20)] = 10,
@@ -925,7 +928,7 @@ WIN_CONDITION_MATCHUP_TIMEOUT = 15.0
 
 
 @router.get("/win-condition-matchup")
-@limiter.limit("30/minute")
+@limiter.limit("10/minute")
 async def get_win_condition_matchup(
     request: Request,
     card_a: Annotated[

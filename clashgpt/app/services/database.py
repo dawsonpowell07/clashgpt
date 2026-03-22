@@ -292,21 +292,16 @@ class DatabaseService:
         try:
             async with self.async_session() as session:
                 params: dict[str, Any] = {"min_uses": min_uses, "limit": limit}
-                join_clause = ""
-                where_conditions = []
+                join_clause = (
+                    "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                )
+                where_conditions = ["pb.source = 'ladder'"]
 
                 if season_id:
-                    join_clause = (
-                        "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
-                    )
                     where_conditions.append("pb.season_id = :season_id")
                     params["season_id"] = season_id
 
-                where_clause = (
-                    "WHERE " + " AND ".join(where_conditions)
-                    if where_conditions
-                    else ""
-                )
+                where_clause = "WHERE " + " AND ".join(where_conditions)
 
                 query = f"""
                     SELECT
@@ -389,21 +384,16 @@ class DatabaseService:
         try:
             async with self.async_session() as session:
                 params: dict[str, Any] = {"limit": limit}
-                join_clause = ""
-                where_conditions = []
+                join_clause = (
+                    "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                )
+                where_conditions = ["pb.source = 'ladder'"]
 
                 if season_id:
-                    join_clause = (
-                        "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
-                    )
                     where_conditions.append("pb.season_id = :season_id")
                     params["season_id"] = season_id
 
-                where_clause = (
-                    "WHERE " + " AND ".join(where_conditions)
-                    if where_conditions
-                    else ""
-                )
+                where_clause = "WHERE " + " AND ".join(where_conditions)
 
                 # Total card appearances across all battle-deck slots
                 total_query = f"""
@@ -510,21 +500,16 @@ class DatabaseService:
 
                 card_name = card_row[1]
 
-                join_clause = ""
-                season_conditions = []
+                join_clause = (
+                    "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                )
+                season_conditions = ["pb.source = 'ladder'"]
                 season_params: dict[str, Any] = {}
                 if season_id:
-                    join_clause = (
-                        "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
-                    )
                     season_conditions.append("pb.season_id = :season_id")
                     season_params["season_id"] = season_id
 
-                season_where = (
-                    "WHERE " + " AND ".join(season_conditions)
-                    if season_conditions
-                    else ""
-                )
+                season_where = "WHERE " + " AND ".join(season_conditions)
 
                 # Total card appearances across all decks for usage rate
                 total_query = f"""
@@ -729,14 +714,13 @@ class DatabaseService:
         )
         try:
             async with self.async_session() as session:
-                where_conditions = ["fbp.deck_id = :deck_id"]
+                where_conditions = ["fbp.deck_id = :deck_id", "pb.source = 'ladder'"]
                 params: dict[str, Any] = {"deck_id": deck_id}
-                join_clause = ""
+                join_clause = (
+                    "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
+                )
 
                 if season_id:
-                    join_clause = (
-                        "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
-                    )
                     where_conditions.append("pb.season_id = :season_id")
                     params["season_id"] = season_id
 
@@ -813,6 +797,7 @@ class DatabaseService:
                             MAX(pb.battle_time) AS last_seen
                         FROM fact_battle_participants fbp
                         JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                        WHERE pb.source = 'ladder'
                         GROUP BY fbp.deck_id
                     )
                     SELECT
@@ -892,16 +877,18 @@ class DatabaseService:
         try:
             async with self.async_session() as session:
                 # Build season join for the stats CTE
-                season_where = ""
                 params: dict[str, Any] = {
                     "min_games": min_games,
                     "limit": limit,
                     "offset": offset,
                 }
+                cte_conditions = ["pb.source = 'ladder'"]
 
                 if season_id:
-                    season_where = "WHERE pb.season_id = :season_id"
+                    cte_conditions.append("pb.season_id = :season_id")
                     params["season_id"] = season_id
+
+                season_where = "WHERE " + " AND ".join(cte_conditions)
 
                 # Build card include/exclude conditions on dim_decks
                 deck_conditions = ["COALESCE(dsa.games_played, 0) >= :min_games"]
@@ -1054,7 +1041,9 @@ class DatabaseService:
                         ROUND(AVG(fbp.elixir_leaked)::numeric, 2)                      AS avg_elixir_leaked
                     FROM dim_players p
                     JOIN fact_battle_participants fbp ON p.player_tag = fbp.player_tag
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     WHERE LOWER(p.name) LIKE LOWER(:search)
+                      AND pb.source = 'ladder'
                     GROUP BY p.player_tag, p.name, p.last_seen
                     ORDER BY total_games DESC
                     LIMIT :limit
@@ -1378,7 +1367,9 @@ class DatabaseService:
                         COALESCE(SUM(fbp.is_win), 0) AS wins,
                         COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses
                     FROM fact_battle_participants fbp
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     WHERE fbp.deck_id = :deck_id
+                      AND pb.source = 'ladder'
                 """)
                 stats_result = await session.execute(stats_query, {"deck_id": deck_id})
                 stats_row = stats_result.fetchone()
@@ -1394,9 +1385,12 @@ class DatabaseService:
 
                 # ── 4. Count total distinct opponent decks for pagination ──
                 count_query = text("""
-                    SELECT COUNT(DISTINCT opponent_deck_id)
-                    FROM fact_battle_participants
-                    WHERE deck_id = :deck_id AND opponent_deck_id IS NOT NULL
+                    SELECT COUNT(DISTINCT fbp.opponent_deck_id)
+                    FROM fact_battle_participants fbp
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                    WHERE fbp.deck_id = :deck_id
+                      AND fbp.opponent_deck_id IS NOT NULL
+                      AND pb.source = 'ladder'
                 """)
                 count_result = await session.execute(count_query, {"deck_id": deck_id})
                 total_matchups = int(count_result.scalar() or 0)
@@ -1409,8 +1403,10 @@ class DatabaseService:
                         COALESCE(SUM(fbp.is_win), 0) AS wins,
                         COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses
                     FROM fact_battle_participants fbp
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     WHERE fbp.deck_id = :deck_id
                       AND fbp.opponent_deck_id IS NOT NULL
+                      AND pb.source = 'ladder'
                     GROUP BY fbp.opponent_deck_id
                     ORDER BY games_played DESC
                     LIMIT :limit OFFSET :offset
@@ -1568,7 +1564,9 @@ class DatabaseService:
                         COALESCE(SUM(fbp.is_win), 0) AS wins_a,
                         COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses_a
                     FROM fact_battle_participants fbp
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     WHERE fbp.opponent_deck_id IS NOT NULL
+                      AND pb.source = 'ladder'
                       AND EXISTS (
                           SELECT 1 FROM deck_card_config dcc
                           WHERE dcc.deck_id = fbp.deck_id AND dcc.card_id = :card_a_id
@@ -1614,7 +1612,9 @@ class DatabaseService:
                             4
                         ) AS win_rate
                     FROM fact_battle_participants fbp
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     WHERE fbp.opponent_deck_id IS NOT NULL
+                      AND pb.source = 'ladder'
                       AND EXISTS (
                           SELECT 1 FROM deck_card_config dcc
                           WHERE dcc.deck_id = fbp.deck_id AND dcc.card_id = :card_a_id
@@ -1649,7 +1649,9 @@ class DatabaseService:
                             4
                         ) AS win_rate
                     FROM fact_battle_participants fbp
+                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     WHERE fbp.opponent_deck_id IS NOT NULL
+                      AND pb.source = 'ladder'
                       AND EXISTS (
                           SELECT 1 FROM deck_card_config dcc
                           WHERE dcc.deck_id = fbp.deck_id AND dcc.card_id = :card_a_id

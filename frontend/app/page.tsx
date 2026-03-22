@@ -18,9 +18,11 @@ import {
   Target,
   ChevronRight,
   User,
+  Users,
   GitCompare,
   Activity,
   Crosshair,
+  LayoutGrid,
 } from "lucide-react";
 import { SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
 
@@ -437,31 +439,87 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <SignedIn>
+          <div className="pt-4 w-full max-w-2xl mx-auto flex flex-col gap-3">
+            {/* Row 1 — 2 items */}
+            <div className="flex gap-3">
               <Link
-                href="/chat"
-                className="group inline-flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 text-base font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_40px_rgba(255,159,28,0.25)] active:scale-[0.98]"
+                href="/decks"
+                className="group flex flex-col items-center gap-2 px-4 py-4 flex-1 bg-card/60 border border-border/50 rounded-xl hover:bg-card hover:border-border transition-all duration-200"
               >
-                Start Chatting
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                <LayoutGrid className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <span className="text-sm font-semibold text-foreground">
+                  Decks
+                </span>
+                <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                  Browse meta decks &amp; win rates
+                </span>
               </Link>
-            </SignedIn>
-            <SignedOut>
-              <SignInButton mode="modal" forceRedirectUrl="/chat">
-                <button className="group inline-flex items-center gap-3 bg-primary text-primary-foreground px-8 py-4 text-base font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_40px_rgba(255,159,28,0.25)] active:scale-[0.98] cursor-pointer">
-                  Start Chatting
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </button>
-              </SignInButton>
-            </SignedOut>
-            <Link
-              href="/decks"
-              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground px-6 py-4 text-base font-medium transition-colors"
-            >
-              Browse Decks
-              <ChevronRight className="w-4 h-4" />
-            </Link>
+              <Link
+                href="/head-to-head"
+                className="group flex flex-col items-center gap-2 px-4 py-4 flex-1 bg-card/60 border border-border/50 rounded-xl hover:bg-card hover:border-border transition-all duration-200"
+              >
+                <GitCompare className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <span className="text-sm font-semibold text-foreground">
+                  Head to Head
+                </span>
+                <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                  Compare win coditions head-to-head
+                </span>
+              </Link>
+            </div>
+            {/* Row 2 — 3 items */}
+            <div className="flex gap-3">
+              <Link
+                href="/profiles"
+                className="group flex flex-col items-center gap-2 px-4 py-4 flex-1 bg-card/60 border border-border/50 rounded-xl hover:bg-card hover:border-border transition-all duration-200"
+              >
+                <Users className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <span className="text-sm font-semibold text-foreground">
+                  Profiles
+                </span>
+                <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                  Look up any top player&apos;s stats
+                </span>
+              </Link>
+              <Link
+                href="/matchups"
+                className="group flex flex-col items-center gap-2 px-4 py-4 flex-1 bg-card/60 border border-border/50 rounded-xl hover:bg-card hover:border-border transition-all duration-200"
+              >
+                <Swords className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <span className="text-sm font-semibold text-foreground">
+                  Matchups
+                </span>
+                <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                  See how your deck performs against other decks
+                </span>
+              </Link>
+
+              <SignedIn>
+                <Link
+                  href="/chat"
+                  className="group flex flex-col items-center gap-2 px-4 py-4 flex-1 bg-primary/10 border border-primary/30 rounded-xl hover:bg-primary/15 hover:border-primary/50 transition-all duration-200"
+                >
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">
+                    AI Chat
+                  </span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight"></span>
+                </Link>
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal" forceRedirectUrl="/chat">
+                  <button className="group flex flex-col items-center gap-2 px-4 py-4 flex-1 w-full bg-primary/10 border border-primary/30 rounded-xl hover:bg-primary/15 hover:border-primary/50 transition-all duration-200 cursor-pointer">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    <span className="text-sm font-semibold text-foreground">
+                      AI Chat
+                    </span>
+                    <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                      Ask our agent to find you decks!
+                    </span>
+                  </button>
+                </SignInButton>
+              </SignedOut>
+            </div>
           </div>
         </div>
 

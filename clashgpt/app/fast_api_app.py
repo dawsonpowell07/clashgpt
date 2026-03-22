@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import hmac
 import logging
 import time
@@ -117,6 +118,12 @@ app.include_router(api_router)
 # API request/response logging middleware + API key protection
 PROTECTED_PATHS = {"/agent"}
 
+# Sliding window rate limit for /agent: 20 requests/minute per IP
+# Accounts for the 5-10 burst requests sent on initial agent connection.
+_AGENT_RATE_LIMIT = 20
+_AGENT_RATE_WINDOW = 60  # seconds
+_agent_request_log: dict[str, list[float]] = collections.defaultdict(list)
+
 
 @app.middleware("http")
 async def log_and_protect_requests(request: Request, call_next):
@@ -125,6 +132,26 @@ async def log_and_protect_requests(request: Request, call_next):
 
     # Log request
     app_logger.info(f"API request: {request.method} {request.url.path}")
+
+    # Rate limit /agent per IP
+    if request.url.path.startswith("/agent"):
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        cutoff = now - _AGENT_RATE_WINDOW
+        _agent_request_log[client_ip] = [
+            t for t in _agent_request_log[client_ip] if t > cutoff
+        ]
+        if len(_agent_request_log[client_ip]) >= _AGENT_RATE_LIMIT:
+            app_logger.warning(f"Rate limit exceeded for /agent from {client_ip}")
+            from starlette.responses import JSONResponse
+
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": f"Rate limit exceeded: {_AGENT_RATE_LIMIT} per 1 minute"
+                },
+            )
+        _agent_request_log[client_ip].append(now)
 
     # API key validation for protected paths
     if any(request.url.path.startswith(p) for p in PROTECTED_PATHS):
