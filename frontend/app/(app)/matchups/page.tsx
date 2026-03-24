@@ -12,6 +12,9 @@ import {
   ChevronRight,
   Shield,
   X,
+  Filter,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Orbitron } from "next/font/google";
@@ -532,6 +535,18 @@ function MatchupsPageInner() {
     new Set(),
   );
 
+  // Opponent card filters (applied when Analyze is run)
+  const [opponentFilterMode, setOpponentFilterMode] = useState<
+    "INCLUDE" | "EXCLUDE"
+  >("INCLUDE");
+  const [opponentIncluded, setOpponentIncluded] = useState<Set<string>>(
+    new Set(),
+  );
+  const [opponentExcluded, setOpponentExcluded] = useState<Set<string>>(
+    new Set(),
+  );
+  const [showOpponentFilter, setShowOpponentFilter] = useState(false);
+
   const [matchupData, setMatchupData] = useState<MatchupResponse | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -547,7 +562,19 @@ function MatchupsPageInner() {
       const res = await fetch(`${API_BASE_URL}/api/cards`);
       if (!res.ok) throw new Error("Failed to fetch cards");
       const data = await res.json();
-      setCards(data.cards || []);
+      const TOWER_TROOP_NAMES = new Set([
+        "Tower Princess",
+        "Royal Chef",
+        "Dagger Duchess",
+        "Cannoneer",
+      ]);
+      setCards(
+        (data.cards || []).filter(
+          (card: Card) =>
+            !String(card.card_id).startsWith("159") &&
+            !TOWER_TROOP_NAMES.has(card.name),
+        ),
+      );
     } catch {
       setCardsError("Failed to load cards. Please check your connection.");
     } finally {
@@ -599,6 +626,14 @@ function MatchupsPageInner() {
           page: pageNum.toString(),
           page_size: "21",
         });
+        const includeParam = Array.from(opponentIncluded)
+          .map(variantIdToMatchupParam)
+          .join(",");
+        const excludeParam = Array.from(opponentExcluded)
+          .map(variantIdToMatchupParam)
+          .join(",");
+        if (includeParam) params.set("include_opponent", includeParam);
+        if (excludeParam) params.set("exclude_opponent", excludeParam);
         const res = await fetch(`${API_BASE_URL}/api/matchups?${params}`);
         if (res.status === 429) {
           setSearchError(
@@ -618,7 +653,7 @@ function MatchupsPageInner() {
         setIsSearching(false);
       }
     },
-    [selectedVariants],
+    [selectedVariants, opponentIncluded, opponentExcluded],
   );
 
   // Auto-search once when selectedVariants is populated from URL param
@@ -639,6 +674,36 @@ function MatchupsPageInner() {
       }
       return next;
     });
+  };
+
+  const handleToggleOpponentCard = (id: string) => {
+    if (opponentFilterMode === "INCLUDE") {
+      setOpponentIncluded((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      setOpponentExcluded((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    } else {
+      setOpponentExcluded((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      setOpponentIncluded((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   };
 
   const handleSearch = () => {
@@ -895,12 +960,127 @@ function MatchupsPageInner() {
                         Opponent Decks
                       </h2>
                     </div>
-                    {matchupData.total > 0 && (
-                      <span className="text-xs font-medium text-muted-foreground bg-muted/40 px-2.5 py-1 rounded-full">
-                        {matchupData.total.toLocaleString()} unique decks
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {matchupData.total > 0 && (
+                        <span className="text-xs font-medium text-muted-foreground bg-muted/40 px-2.5 py-1 rounded-full">
+                          {matchupData.total.toLocaleString()} unique decks
+                        </span>
+                      )}
+                      <button
+                        onClick={() =>
+                          setShowOpponentFilter((v) => !v)
+                        }
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all",
+                          (opponentIncluded.size > 0 || opponentExcluded.size > 0)
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : "border-border/50 bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground",
+                        )}
+                      >
+                        <Filter className="w-3.5 h-3.5" />
+                        Filter
+                        {(opponentIncluded.size + opponentExcluded.size) > 0 && (
+                          <span className="bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center text-[10px] font-bold">
+                            {opponentIncluded.size + opponentExcluded.size}
+                          </span>
+                        )}
+                        {showOpponentFilter ? (
+                          <ChevronUp className="w-3 h-3" />
+                        ) : (
+                          <ChevronDown className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Opponent card filter panel */}
+                  {showOpponentFilter && (
+                    <div className="rounded-xl border border-border/50 bg-card p-4 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        {/* Mode toggle */}
+                        <div className="flex items-center gap-2 p-1 bg-muted/60 rounded-lg">
+                          <span className="text-xs font-semibold text-muted-foreground px-1">
+                            Filter Mode:
+                          </span>
+                          <button
+                            onClick={() => setOpponentFilterMode("INCLUDE")}
+                            className={cn(
+                              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
+                              opponentFilterMode === "INCLUDE"
+                                ? "bg-green-500 text-white shadow-sm"
+                                : "text-muted-foreground hover:bg-muted/50",
+                            )}
+                          >
+                            <Filter className="w-3 h-3" />
+                            Include
+                          </button>
+                          <button
+                            onClick={() => setOpponentFilterMode("EXCLUDE")}
+                            className={cn(
+                              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
+                              opponentFilterMode === "EXCLUDE"
+                                ? "bg-red-500 text-white shadow-sm"
+                                : "text-muted-foreground hover:bg-muted/50",
+                            )}
+                          >
+                            <X className="w-3 h-3" />
+                            Exclude
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {(opponentIncluded.size > 0 || opponentExcluded.size > 0) && (
+                            <button
+                              onClick={() => {
+                                setOpponentIncluded(new Set());
+                                setOpponentExcluded(new Set());
+                              }}
+                              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              Clear
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              setPage(1);
+                              searchMatchups(1);
+                            }}
+                            disabled={isSearching}
+                            className={cn(
+                              "flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-lg transition-all",
+                              "bg-gradient-to-r from-primary to-amber-500 text-primary-foreground shadow",
+                              "hover:from-primary/90 hover:to-amber-500/90 disabled:opacity-40 disabled:cursor-not-allowed",
+                            )}
+                          >
+                            {isSearching ? (
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Shield className="w-3 h-3" />
+                            )}
+                            Apply
+                          </button>
+                        </div>
+                      </div>
+
+                      {isLoadingCards ? (
+                        <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                          <RefreshCw className="w-4 h-4 animate-spin text-primary" />
+                          <span className="text-xs">Loading cards…</span>
+                        </div>
+                      ) : (
+                        <CardSelector
+                          cards={cards}
+                          selectedIndices={
+                            opponentFilterMode === "INCLUDE"
+                              ? opponentIncluded
+                              : opponentExcluded
+                          }
+                          onToggleCard={handleToggleOpponentCard}
+                          filterMode={opponentFilterMode}
+                        />
+                      )}
+                    </div>
+                  )}
 
                   {!hasMatchups ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-2xl border border-dashed border-border/40">

@@ -1271,6 +1271,8 @@ class DatabaseService:
         card_specs: list[tuple[int, str]],
         limit: int = 20,
         offset: int = 0,
+        include_opponent_specs: list[tuple[int, str]] | None = None,
+        exclude_opponent_specs: list[tuple[int, str]] | None = None,
     ) -> dict:
         """
         Find a deck by its exact 8-card composition and return aggregated matchups
@@ -1387,20 +1389,51 @@ class DatabaseService:
                     "win_rate": round(wins / games, 4) if games > 0 else None,
                 }
 
-                # ── 4. Count total distinct opponent decks for pagination ──
-                count_query = text("""
+                # ── 4. Build opponent-card filter SQL fragments ──
+                opp_filter_sql = ""
+                opp_filter_params: dict[str, Any] = {}
+
+                if include_opponent_specs:
+                    for i, (cid, cvar) in enumerate(include_opponent_specs):
+                        opp_filter_sql += (
+                            f"\n    AND EXISTS (SELECT 1 FROM deck_card_config"
+                            f" WHERE deck_id = fbp.opponent_deck_id"
+                            f" AND card_id = :opp_inc_cid_{i}"
+                            f" AND variant::text = :opp_inc_cvar_{i})"
+                        )
+                        opp_filter_params[f"opp_inc_cid_{i}"] = cid
+                        opp_filter_params[f"opp_inc_cvar_{i}"] = cvar.lower()
+
+                if exclude_opponent_specs:
+                    exc_conditions = " OR ".join(
+                        f"(card_id = :opp_exc_cid_{i} AND variant::text = :opp_exc_cvar_{i})"
+                        for i in range(len(exclude_opponent_specs))
+                    )
+                    opp_filter_sql += (
+                        f"\n    AND NOT EXISTS (SELECT 1 FROM deck_card_config"
+                        f" WHERE deck_id = fbp.opponent_deck_id AND ({exc_conditions}))"
+                    )
+                    for i, (cid, cvar) in enumerate(exclude_opponent_specs):
+                        opp_filter_params[f"opp_exc_cid_{i}"] = cid
+                        opp_filter_params[f"opp_exc_cvar_{i}"] = cvar.lower()
+
+                # ── 5. Count total distinct opponent decks for pagination ──
+                count_query = text(f"""
                     SELECT COUNT(DISTINCT fbp.opponent_deck_id)
                     FROM fact_battle_participants fbp
                     JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     WHERE fbp.deck_id = :deck_id
                       AND fbp.opponent_deck_id IS NOT NULL
                       AND pb.source = 'ladder'
+                    {opp_filter_sql}
                 """)
-                count_result = await session.execute(count_query, {"deck_id": deck_id})
+                count_result = await session.execute(
+                    count_query, {"deck_id": deck_id, **opp_filter_params}
+                )
                 total_matchups = int(count_result.scalar() or 0)
 
-                # ── 5. Aggregate matchups by opponent deck ──
-                matchups_query = text("""
+                # ── 6. Aggregate matchups by opponent deck ──
+                matchups_query = text(f"""
                     SELECT
                         fbp.opponent_deck_id,
                         COUNT(*) AS games_played,
@@ -1411,17 +1444,18 @@ class DatabaseService:
                     WHERE fbp.deck_id = :deck_id
                       AND fbp.opponent_deck_id IS NOT NULL
                       AND pb.source = 'ladder'
+                    {opp_filter_sql}
                     GROUP BY fbp.opponent_deck_id
                     ORDER BY games_played DESC
                     LIMIT :limit OFFSET :offset
                 """)
                 matchups_result = await session.execute(
                     matchups_query,
-                    {"deck_id": deck_id, "limit": limit, "offset": offset},
+                    {"deck_id": deck_id, "limit": limit, "offset": offset, **opp_filter_params},
                 )
                 matchup_rows = matchups_result.fetchall()
 
-                # ── 6. Batch-fetch opponent deck cards ──
+                # ── 7. Batch-fetch opponent deck cards ──
                 opponent_deck_ids = [r[0] for r in matchup_rows if r[0] is not None]
                 opp_cards_by_deck: dict[str, list[dict]] = {}
 

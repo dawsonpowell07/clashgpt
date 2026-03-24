@@ -49,9 +49,9 @@ export function CardSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(true);
   const [variantFilter, setVariantFilter] = useState<CardVariantType | "All">(
-    "All",
+    CardVariantType.EVOLUTION,
   );
-  const [rarityFilter, setRarityFilter] = useState<string>("All");
+  const [rarityFilter, setRarityFilter] = useState<string>("Common");
 
   // Process raw cards into displayable variant items
   const variantItems = useMemo(() => {

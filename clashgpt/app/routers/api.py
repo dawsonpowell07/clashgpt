@@ -639,6 +639,14 @@ async def get_deck_matchups(
     ],
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    include_opponent: Annotated[
+        str | None,
+        Query(description="Comma-separated card_id:variant specs that opponent decks must contain."),
+    ] = None,
+    exclude_opponent: Annotated[
+        str | None,
+        Query(description="Comma-separated card_id:variant specs that opponent decks must not contain."),
+    ] = None,
 ):
     """
     Find recent battles for an exact 8-card deck (with variants).
@@ -692,6 +700,35 @@ async def get_deck_matchups(
                 detail=f"Invalid card_id '{card_id_str}' — must be a numeric ID.",
             ) from None
 
+    def _parse_opponent_specs(raw_param: str | None) -> list[tuple[int, str]]:
+        if not raw_param:
+            return []
+        specs = []
+        for raw in (s.strip() for s in raw_param.split(",") if s.strip()):
+            if ":" not in raw:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid opponent card spec '{raw}'. Use card_id:variant format.",
+                )
+            cid_str, var = raw.split(":", 1)
+            var = var.lower()
+            if var not in VALID_VARIANTS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid variant '{var}' in '{raw}'. Valid: {', '.join(sorted(VALID_VARIANTS))}.",
+                )
+            try:
+                specs.append((int(cid_str), var))
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid card_id '{cid_str}' — must be numeric.",
+                ) from None
+        return specs
+
+    include_opponent_specs = _parse_opponent_specs(include_opponent)
+    exclude_opponent_specs = _parse_opponent_specs(exclude_opponent)
+
     db = get_database_service()
     offset = (page - 1) * page_size
 
@@ -701,6 +738,8 @@ async def get_deck_matchups(
                 card_specs=card_specs,
                 limit=page_size,
                 offset=offset,
+                include_opponent_specs=include_opponent_specs or None,
+                exclude_opponent_specs=exclude_opponent_specs or None,
             ),
             timeout=MATCHUP_SEARCH_TIMEOUT,
         )

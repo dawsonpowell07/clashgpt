@@ -124,7 +124,7 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
   return (
     <div
       className={cn(
-        "group relative bg-card border border-border/50 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1",
+        "group relative bg-card border border-border/50 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 flex flex-col",
         className,
       )}
     >
@@ -234,7 +234,7 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
       </div>
 
       {/* Matchups link */}
-      <div className="px-3 sm:px-5 pb-3 sm:pb-4">
+      <div className="px-3 sm:px-5 pb-3 sm:pb-4 mt-auto">
         <Link
           href={matchupsHref}
           className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 transition-all"
