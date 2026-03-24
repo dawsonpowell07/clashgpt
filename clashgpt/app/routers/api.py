@@ -603,6 +603,23 @@ async def get_player_recent_battles(
     return {"battles": battles}
 
 
+@router.get("/players/{player_tag}/battles/{battle_id}")
+@limiter.limit("20/minute")
+async def get_player_battle_detail(
+    request: Request,
+    player_tag: str,
+    battle_id: str,
+):
+    """
+    Get full detail for a single battle belonging to the given player tag.
+    """
+    db = get_database_service()
+    detail = await db.get_battle_detail(battle_id=battle_id, player_tag=player_tag)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Battle not found.")
+    return detail
+
+
 # ===== MATCHUPS ENDPOINT =====
 
 # Per-request timeout (seconds)

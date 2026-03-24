@@ -289,7 +289,7 @@ export default function ProfilesPage() {
                           sub="Last 20 battles from database"
                         />
                         <div className="bg-card/40 border border-border/50 rounded-2xl p-4">
-                          <RecentBattles battles={battles} />
+                          <RecentBattles battles={battles} playerTag={selectedPlayer.player_tag} />
                         </div>
                       </section>
                     )}

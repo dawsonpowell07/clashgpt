@@ -27,6 +27,7 @@ export interface PlayerDeck {
 }
 
 export interface Battle {
+  battle_id: string | null;
   battle_time: string | null;
   game_mode: string | null;
   result: string;

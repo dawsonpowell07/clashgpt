@@ -1204,6 +1204,7 @@ class DatabaseService:
             async with self.async_session() as session:
                 query = text("""
                     SELECT
+                        pb.battle_id,
                         pb.battle_time,
                         pb.game_mode,
                         CASE WHEN fbp.is_win = 1 THEN 'Win' ELSE 'Loss' END  AS result,
@@ -1232,16 +1233,17 @@ class DatabaseService:
                 for row in rows:
                     battles.append(
                         {
-                            "battle_time": row[0].isoformat()
-                            if hasattr(row[0], "isoformat")
-                            else (str(row[0]) if row[0] else None),
-                            "game_mode": row[1],
-                            "result": row[2],
-                            "crowns": int(row[3]) if row[3] is not None else None,
-                            "elixir_leaked": float(row[4])
-                            if row[4] is not None
+                            "battle_id": row[0],
+                            "battle_time": row[1].isoformat()
+                            if hasattr(row[1], "isoformat")
+                            else (str(row[1]) if row[1] else None),
+                            "game_mode": row[2],
+                            "result": row[3],
+                            "crowns": int(row[4]) if row[4] is not None else None,
+                            "elixir_leaked": float(row[5])
+                            if row[5] is not None
                             else None,
-                            "opponent": row[5],
+                            "opponent": row[6],
                         }
                     )
 

@@ -1,13 +1,14 @@
-import { Crown } from "lucide-react";
+import { Crown, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Battle } from "./types";
 import { formatBattleTime } from "./utils";
 
 interface RecentBattlesProps {
   battles: Battle[];
+  playerTag: string;
 }
 
-export function RecentBattles({ battles }: RecentBattlesProps) {
+export function RecentBattles({ battles, playerTag }: RecentBattlesProps) {
   if (battles.length === 0) {
     return (
       <div className="text-sm text-muted-foreground/60 text-center py-10 rounded-xl border border-dashed border-border/40">
@@ -21,10 +22,19 @@ export function RecentBattles({ battles }: RecentBattlesProps) {
       {battles.map((battle, i) => {
         const isWin = battle.result === "Win";
         return (
-          <div
+          <button
             key={i}
+            onClick={() => {
+              if (battle.battle_id) {
+                window.open(
+                  `/profiles/battle/${encodeURIComponent(battle.battle_id)}?player=${encodeURIComponent(playerTag)}`,
+                  "_blank",
+                );
+              }
+            }}
             className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm transition-colors",
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm transition-colors text-left",
+              battle.battle_id ? "cursor-pointer" : "cursor-default",
               isWin
                 ? "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10"
                 : "border-red-500/20 bg-red-500/5 hover:bg-red-500/10",
@@ -60,7 +70,10 @@ export function RecentBattles({ battles }: RecentBattlesProps) {
                 <p className="text-[9px] text-muted-foreground">elixir</p>
               </div>
             )}
-          </div>
+            {battle.battle_id !== null && (
+              <ExternalLink className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+            )}
+          </button>
         );
       })}
     </div>
