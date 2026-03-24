@@ -11,6 +11,8 @@ import {
   Swords,
   ArrowLeft,
   Loader2,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -34,6 +36,16 @@ interface BattleDetail {
   player_cards: BattleCard[];
   opponent_deck_id: string | null;
   opponent_cards: BattleCard[];
+  starting_trophies: number | null;
+  trophy_change: number | null;
+}
+
+function formatGameMode(gameMode: string | null): string {
+  if (!gameMode) return "Ranked";
+  if (gameMode === "TrophyRoad") return "Trophy Road";
+  if (gameMode === "ChaosMode") return "Chaos Mode";
+  if (gameMode.startsWith("Ranked")) return "Ranked";
+  return gameMode;
 }
 
 function fmtDate(iso: string | null) {
@@ -212,7 +224,7 @@ export default function BattleDetailPage() {
               </span>
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Swords className="w-3.5 h-3.5" />
-                <span>Ranked</span>
+                <span>{formatGameMode(battle.game_mode)}</span>
               </div>
               <p className="text-sm text-muted-foreground ml-auto">
                 {fmtDate(battle.battle_time)}
@@ -269,7 +281,7 @@ export default function BattleDetailPage() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-5">
                 Battle Stats
               </p>
-              <div className="grid grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                 <div className="flex flex-col gap-2 bg-muted/30 border border-border/40 rounded-xl p-4 sm:p-5">
                   <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Crowns</p>
@@ -288,9 +300,42 @@ export default function BattleDetailPage() {
                   <Swords className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground/60" />
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Game Mode</p>
                   <p className="text-lg sm:text-xl font-black font-[family-name:var(--font-heading)] text-foreground leading-none">
-                    Ranked
+                    {formatGameMode(battle.game_mode)}
                   </p>
                 </div>
+                {battle.trophy_change !== null && (
+                  <div
+                    className={cn(
+                      "flex flex-col gap-2 border rounded-xl p-4 sm:p-5",
+                      battle.trophy_change > 0
+                        ? "bg-emerald-500/10 border-emerald-500/20"
+                        : "bg-red-500/10 border-red-500/20",
+                    )}
+                  >
+                    {battle.trophy_change > 0 ? (
+                      <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+                    ) : (
+                      <TrendingDown className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
+                    )}
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+                      Medals
+                    </p>
+                    <p
+                      className={cn(
+                        "text-2xl sm:text-3xl font-black font-[family-name:var(--font-heading)] leading-none",
+                        battle.trophy_change > 0 ? "text-emerald-400" : "text-red-400",
+                      )}
+                    >
+                      {battle.trophy_change > 0 ? "+" : ""}
+                      {battle.trophy_change}
+                    </p>
+                    {battle.starting_trophies !== null && (
+                      <p className="text-[10px] text-muted-foreground">
+                        from {battle.starting_trophies}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

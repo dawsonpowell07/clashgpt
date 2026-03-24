@@ -47,6 +47,8 @@ export interface TrackerBattle {
   player_cards: TrackerCard[];
   opponent_deck_id: string | null;
   opponent_cards: TrackerCard[];
+  starting_trophies: number | null;
+  trophy_change: number | null;
 }
 
 export interface TrackerBattlesResponse {

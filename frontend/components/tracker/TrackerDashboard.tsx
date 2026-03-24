@@ -58,6 +58,14 @@ function cardImagePath(name: string, variant: string | null) {
   return `/cards/${base}/${base}${suffix}.png`;
 }
 
+function formatGameMode(gameMode: string | null): string {
+  if (!gameMode) return "Ranked";
+  if (gameMode === "TrophyRoad") return "Trophy Road";
+  if (gameMode === "ChaosMode") return "Chaos Mode";
+  if (gameMode.startsWith("Ranked")) return "Ranked";
+  return gameMode;
+}
+
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString(undefined, {
@@ -392,9 +400,23 @@ function BattleRow({ battle }: { battle: TrackerBattle }) {
           vs {battle.opponent ?? "Unknown"}
         </p>
         <p className="text-[10px] text-muted-foreground">
-          {fmtDate(battle.battle_time)}
+          {formatGameMode(battle.game_mode)} · {fmtDate(battle.battle_time)}
         </p>
       </div>
+      {battle.trophy_change !== null && (
+        <div className="text-right shrink-0">
+          <p
+            className={cn(
+              "text-xs font-bold",
+              battle.trophy_change > 0 ? "text-emerald-400" : "text-red-400",
+            )}
+          >
+            {battle.trophy_change > 0 ? "+" : ""}
+            {battle.trophy_change}
+          </p>
+          <p className="text-[9px] text-muted-foreground">medals</p>
+        </div>
+      )}
       {battle.elixir_leaked !== null && (
         <div className="text-right shrink-0 hidden sm:block">
           <p className="text-xs font-semibold text-purple-400">
