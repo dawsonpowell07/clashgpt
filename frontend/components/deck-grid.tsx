@@ -47,7 +47,7 @@ export function DeckGrid({ cards, className }: DeckGridProps) {
   return (
     <div className={cn("grid grid-cols-4 gap-1.5", className)}>
       {sorted.map((card, i) => (
-        <CardIcon key={i} cardName={card.cardName} variant={card.variant} />
+        <CardIcon key={i} cardName={card.cardName} variant={card.variant} className="w-full" />
       ))}
     </div>
   );
