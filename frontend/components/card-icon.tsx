@@ -27,7 +27,9 @@ export function CardIcon({
   return (
     <div
       className={cn(
-        "relative aspect-[3/4] rounded-lg overflow-hidden border-2 bg-muted group hover:scale-[1.15] hover:z-20 hover:rotate-2 transition-all duration-300 shadow-md hover:shadow-lg",
+        "relative aspect-[3/4] w-full rounded-lg overflow-hidden border-2 bg-muted group",
+        "transition-all duration-300 shadow-md",
+        "[@media(hover:hover)]:hover:scale-[1.15] [@media(hover:hover)]:hover:z-20 [@media(hover:hover)]:hover:rotate-2 [@media(hover:hover)]:hover:shadow-lg",
         className,
       )}
       style={{
@@ -43,9 +45,9 @@ export function CardIcon({
         src={`/cards/${fileName}/${fileName}${imageSuffix}.png`}
         alt={cardName}
         fill
-        className="object-contain p-0.5 relative z-10 group-hover:scale-105 transition-transform duration-300"
+        className="object-contain p-0.5 relative z-10 transition-transform duration-300 [@media(hover:hover)]:group-hover:scale-105"
       />
-      <div className="absolute inset-x-0 bottom-0 p-1.5 pt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
+      <div className="absolute inset-x-0 bottom-0 p-1.5 pt-4 opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity duration-200 z-20">
         <p className="text-white text-[10px] font-bold text-center truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
           {cardName}
         </p>

@@ -112,7 +112,7 @@ function CardTile({
     <div
       className={cn(
         "relative rounded-xl overflow-hidden shrink-0 border-2 bg-muted/50",
-        "shadow-lg transition-transform duration-200 hover:scale-105 hover:z-10",
+        "shadow-lg transition-transform duration-200 [@media(hover:hover)]:hover:scale-105 [@media(hover:hover)]:hover:z-10",
         glowColor,
         sizeClass,
       )}
@@ -223,43 +223,43 @@ function DeckSlotPreview({
   const all = [...filled, ...Array(8 - filled.length).fill(null)];
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="flex gap-2">
+    <div className="flex flex-col items-center gap-1.5 sm:gap-2 w-full">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full max-w-[320px] sm:max-w-none">
         {all.slice(0, 4).map((card, i) =>
           card ? (
             <CardIcon
               key={`slot-${card.cardId}-${i}`}
               cardName={card.cardName}
               variant={card.variant}
-              className="w-16 sm:w-20"
+              className="w-full"
             />
           ) : (
             <div
               key={`empty-r1-${i}`}
-              className="w-16 sm:w-20 aspect-[3/4] rounded-lg border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
+              className="w-full aspect-[3/4] rounded-lg border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center"
             >
-              <span className="text-muted-foreground/20 text-lg font-bold">
+              <span className="text-muted-foreground/20 text-sm sm:text-lg font-bold">
                 {i + 1}
               </span>
             </div>
           ),
         )}
       </div>
-      <div className="flex gap-2">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full max-w-[320px] sm:max-w-none">
         {all.slice(4, 8).map((card, i) =>
           card ? (
             <CardIcon
               key={`slot-${card.cardId}-${i}`}
               cardName={card.cardName}
               variant={card.variant}
-              className="w-16 sm:w-20"
+              className="w-full"
             />
           ) : (
             <div
               key={`empty-r2-${i}`}
-              className="w-16 sm:w-20 aspect-[3/4] rounded-lg border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center shrink-0"
+              className="w-full aspect-[3/4] rounded-lg border-2 border-dashed border-border/30 bg-muted/10 flex items-center justify-center"
             >
-              <span className="text-muted-foreground/20 text-lg font-bold">
+              <span className="text-muted-foreground/20 text-sm sm:text-lg font-bold">
                 {i + 5}
               </span>
             </div>
@@ -789,7 +789,7 @@ function MatchupsPageInner() {
           </div>
 
           {/* Deck slot preview */}
-          <div className="px-6 py-4 border-b border-border/20 bg-muted/10">
+          <div className="px-4 sm:px-6 py-4 border-b border-border/20 bg-muted/10">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
               Selected Deck
             </p>
@@ -800,7 +800,7 @@ function MatchupsPageInner() {
           </div>
 
           {/* Card selector */}
-          <div className="px-6 py-4">
+          <div className="px-4 sm:px-6 py-4">
             {isLoadingCards ? (
               <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
                 <RefreshCw className="w-5 h-5 animate-spin text-primary" />
