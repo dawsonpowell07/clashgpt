@@ -14,7 +14,6 @@ from urllib.parse import quote
 
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.models.models import (
@@ -98,7 +97,14 @@ class DatabaseService:
             logger.info(
                 f"Initializing database service | mode={'dev' if settings.dev_mode else 'prod'}"
             )
-            self.engine = create_async_engine(database_url, echo=False, poolclass=NullPool)
+            connect_args = {} if settings.dev_mode else {"ssl": True}
+            self.engine = create_async_engine(
+                database_url,
+                echo=False,
+                pool_size=5,
+                max_overflow=10,
+                connect_args=connect_args,
+            )
             self.async_session = async_sessionmaker(self.engine, expire_on_commit=False)
         except DatabaseServiceError:
             raise
@@ -117,12 +123,10 @@ class DatabaseService:
                     f"@{settings.local_db_host}:{settings.local_db_port}/{settings.local_db_name}"
                 )
 
-            encoded_pass = quote(settings.cloud_sql_password or "", safe="")
-            socket_path = f"/cloudsql/{settings.cloud_sql_connection_name}"
+            encoded_pass = quote(settings.database_password or "", safe="")
             return (
-                f"postgresql+asyncpg://{settings.cloud_sql_username}:{encoded_pass}"
-                f"@/{settings.cloud_sql_db_name}"
-                f"?host={socket_path}"
+                f"postgresql+asyncpg://{settings.database_username}:{encoded_pass}"
+                f"@{settings.database_host}:{settings.database_port}/{settings.database}"
             )
         except Exception as e:
             logger.exception("Failed to build database URL")

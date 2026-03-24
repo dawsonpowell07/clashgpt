@@ -23,18 +23,19 @@ class Settings(BaseSettings):
     # Clash Royale API
     clash_royale_api_token: str = ""
 
-    # Local Database (dev mode — Supabase local)
+    # Local PostgreSQL (dev mode — Docker)
+    local_db_host: str = "127.0.0.1"
+    local_db_port: int = 5433
     local_db_user: str = "postgres"
     local_db_password: str = "postgres"
-    local_db_name: str = "postgres"
-    local_db_host: str = "127.0.0.1"
-    local_db_port: int = 5432
+    local_db_name: str = "clashroyale_db"
 
-    # Cloud SQL Database (production)
-    cloud_sql_username: str = ""
-    cloud_sql_password: str = ""
-    cloud_sql_connection_name: str = ""  # e.g. 'project:region:instance'
-    cloud_sql_db_name: str = "postgres"
+    # PostgreSQL Database (PlanetScale — production)
+    database_host: str = "us-east-2.pg.psdb.cloud"
+    database_port: int = 6432
+    database_username: str = ""
+    database_password: str = ""
+    database: str = ""
 
     # Application
     dev_mode: bool = False
