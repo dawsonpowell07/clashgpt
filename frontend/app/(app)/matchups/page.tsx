@@ -224,7 +224,7 @@ function DeckSlotPreview({
 
   return (
     <div className="flex flex-col items-center gap-1.5 sm:gap-2 w-full">
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full max-w-[320px] sm:max-w-none">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full max-w-[320px] sm:max-w-[280px]">
         {all.slice(0, 4).map((card, i) =>
           card ? (
             <CardIcon
@@ -245,7 +245,7 @@ function DeckSlotPreview({
           ),
         )}
       </div>
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full max-w-[320px] sm:max-w-none">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full max-w-[320px] sm:max-w-[280px]">
         {all.slice(4, 8).map((card, i) =>
           card ? (
             <CardIcon
