@@ -14,6 +14,7 @@ from urllib.parse import quote
 
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.models.models import (
@@ -97,7 +98,7 @@ class DatabaseService:
             logger.info(
                 f"Initializing database service | mode={'dev' if settings.dev_mode else 'prod'}"
             )
-            self.engine = create_async_engine(database_url, echo=False)
+            self.engine = create_async_engine(database_url, echo=False, poolclass=NullPool)
             self.async_session = async_sessionmaker(self.engine, expire_on_commit=False)
         except DatabaseServiceError:
             raise
