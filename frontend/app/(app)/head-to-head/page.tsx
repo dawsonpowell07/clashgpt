@@ -266,7 +266,7 @@ function CardGrid({
   onSelect,
 }: CardGridProps) {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 gap-2 overflow-y-auto max-h-[320px] pr-1">
+    <div className="grid grid-cols-5 sm:grid-cols-3 md:grid-cols-4 gap-2 overflow-y-auto max-h-[320px] pr-1">
       {cards.map((card) => {
         const isThisSideSelected =
           side === "a"
@@ -383,6 +383,7 @@ export default function HeadToHeadPage() {
         card_a: selectedA.toString(),
         card_b: selectedB.toString(),
       });
+
       const res = await fetch(
         `${API_BASE_URL}/api/win-condition-matchup?${params}`,
       );
@@ -404,6 +405,13 @@ export default function HeadToHeadPage() {
       setIsAnalysing(false);
     }
   }, [selectedA, selectedB]);
+
+  // Status text helper
+  const statusText = (() => {
+    if (selectedA != null && selectedB != null) return "Ready to analyze";
+    if (selectedA != null || selectedB != null) return "Pick one more card";
+    return "Select both cards to begin";
+  })();
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-24 relative overflow-hidden">
@@ -559,12 +567,12 @@ export default function HeadToHeadPage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 divide-x divide-border/30 px-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border/30 px-0 divide-y sm:divide-y-0">
               {/* Side A */}
               <div className="px-4 sm:px-6 py-5 space-y-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-400">
+                  <p className="text-xs font-bold uppercase tracking-tight sm:tracking-[0.18em] text-blue-400 min-w-0">
                     Your Win Condition
                   </p>
                 </div>
@@ -579,9 +587,9 @@ export default function HeadToHeadPage() {
 
               {/* Side B */}
               <div className="px-4 sm:px-6 py-5 space-y-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <div className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-400">
+                  <p className="text-xs font-bold uppercase tracking-tight sm:tracking-[0.18em] text-orange-400 min-w-0">
                     Opponent&apos;s Win Condition
                   </p>
                 </div>
@@ -606,11 +614,7 @@ export default function HeadToHeadPage() {
                   "text-muted-foreground",
                 )}
               >
-                {selectedA != null && selectedB != null
-                  ? "Ready to analyze"
-                  : selectedA != null || selectedB != null
-                    ? "Pick one more card"
-                    : "Select both cards to begin"}
+                {statusText}
               </p>
             </div>
           )}

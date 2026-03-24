@@ -211,14 +211,14 @@ function DeckRow({ deck, rank }: { deck: TrackerDeck; rank: number }) {
           {rank}
         </div>
 
-        {/* 1×8 card row */}
-        <div className="flex gap-1 flex-1 min-w-0">
+        {/* 4×2 grid on mobile, 1×8 row on sm+ */}
+        <div className="grid grid-cols-4 gap-1.5 flex-1 sm:flex sm:gap-1 sm:min-w-0">
           {cards.map((card, i) => (
             <CardIcon
               key={i}
               cardName={card.cardName}
               variant={card.variant}
-              className="flex-1 min-w-0"
+              className="sm:flex-1 sm:min-w-0"
             />
           ))}
         </div>

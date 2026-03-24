@@ -101,11 +101,10 @@ export function CardSelector({
       }
     });
 
-    // Sort items: Variant type (Hero=2 > Evo=1 > Normal=0), then Name
+    // Sort items: Variant type (Hero=2 > Evo=1 > Normal=0), then elixir cost ascending, then name
     return items.sort((a, b) => {
-      // Sort by variant type descending (Hero -> Evo -> Normal)
       if (a.variant !== b.variant) return b.variant - a.variant;
-      // Then alphabetically by name
+      if (a.elixir !== b.elixir) return a.elixir - b.elixir;
       return a.name.localeCompare(b.name);
     });
   }, [cards]);
@@ -163,9 +162,9 @@ export function CardSelector({
 
       {/* Filters - Natural Layout */}
       {isOpen && (
-        <div className="flex flex-row flex-wrap items-center gap-x-6 gap-y-3 pb-2 border-b border-border/50 mb-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 pb-2 border-b border-border/50 mb-1">
           {/* Variant Filter mb-0 for mobile wrap */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Type
             </span>
@@ -218,11 +217,11 @@ export function CardSelector({
           </div>
 
           {/* Rarity Filter */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Rarity
             </span>
-            <div className="flex flex-wrap items-center border rounded-md overflow-hidden bg-muted/20 shadow-sm">
+            <div className="flex items-center border rounded-md overflow-x-auto bg-muted/20 shadow-sm">
               {["All", "Common", "Rare", "Epic", "Legendary", "Champion"].map(
                 (rarity, index) => (
                   <button
@@ -246,7 +245,7 @@ export function CardSelector({
       )}
 
       {isOpen && (
-        <div className="grid grid-cols-10 sm:grid-cols-12 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-1 overflow-y-auto max-h-[220px] p-1 custom-scrollbar">
+        <div className="grid grid-cols-4 sm:grid-cols-10 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-2 sm:gap-1 overflow-y-auto max-h-[320px] sm:max-h-[220px] p-1 custom-scrollbar [&>*]:isolate">
           {filteredItems.map((item) => {
             const isSelected = selectedIndices.has(item.id);
 

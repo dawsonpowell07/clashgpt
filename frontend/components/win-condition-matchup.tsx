@@ -140,7 +140,7 @@ function DeckRow({ deck, side, rank }: DeckRowProps) {
             cardName: c.card_name,
             variant: c.variant as "normal" | "evolution" | "heroic",
           }))}
-          className="grid-cols-8 gap-0.5"
+          className="grid-cols-4 sm:grid-cols-8 gap-1 sm:gap-0.5"
         />
       </div>
 
@@ -420,7 +420,7 @@ export function WinConditionMatchup({
       />
 
       {(data.top_decks_a.length > 0 || data.top_decks_b.length > 0) && (
-        <div className="grid grid-cols-2 divide-x divide-border/20 border-t border-border/20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border/20 border-t border-border/20 divide-y sm:divide-y-0">
           <TopDecksColumn
             decks={data.top_decks_a}
             side="a"

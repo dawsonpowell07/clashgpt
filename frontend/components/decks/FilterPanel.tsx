@@ -62,8 +62,8 @@ export function FilterPanel({
         {/* Top Row: Mode Toggles and Min Games Filter */}
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
           {/* Mode Toggles */}
-          <div className="flex items-center gap-3 p-1.5 bg-muted/60 rounded-xl shadow-inner">
-            <span className="text-sm font-semibold text-muted-foreground px-2">
+          <div className="flex items-center gap-2 p-1.5 bg-muted/60 rounded-xl shadow-inner overflow-x-auto w-full sm:w-auto">
+            <span className="text-sm font-semibold text-muted-foreground px-2 shrink-0">
               Filter Mode:
             </span>
             <button
@@ -93,7 +93,7 @@ export function FilterPanel({
           </div>
 
           {/* Minimum Games Filter */}
-          <div className="flex items-center gap-3 p-1.5 bg-muted/60 rounded-xl shadow-inner">
+          <div className="flex items-center gap-2 p-1.5 bg-muted/60 rounded-xl shadow-inner w-full sm:w-auto">
             <div className="flex items-center gap-2 px-2">
               <TrendingUp className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-semibold text-muted-foreground">
@@ -120,7 +120,7 @@ export function FilterPanel({
         </div>
 
         {/* Bottom Row: Action Buttons */}
-        <div className="flex items-center justify-end gap-3 w-full">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 w-full">
           <Button
             variant="outline"
             size="sm"
@@ -130,7 +130,7 @@ export function FilterPanel({
               excludedVariants.size === 0 &&
               minGames === 0
             }
-            className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-all"
+            className="w-full sm:w-auto hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-all"
           >
             <X className="w-3.5 h-3.5 mr-1.5" />
             Clear Filters

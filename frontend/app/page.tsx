@@ -503,6 +503,9 @@ export default function Home() {
                   <span className="text-sm font-semibold text-foreground">
                     AI Chat
                   </span>
+                  <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                    Ask our agent to find you decks!
+                  </span>
                   <span className="text-[10px] text-muted-foreground text-center leading-tight"></span>
                 </Link>
               </SignedIn>
@@ -514,7 +517,7 @@ export default function Home() {
                       AI Chat
                     </span>
                     <span className="text-[10px] text-muted-foreground text-center leading-tight">
-                      Ask our agent to find you decks!
+                      Create an account or Log In to chat with out AI!
                     </span>
                   </button>
                 </SignInButton>
