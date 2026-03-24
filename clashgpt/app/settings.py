@@ -30,12 +30,11 @@ class Settings(BaseSettings):
     local_db_host: str = "127.0.0.1"
     local_db_port: int = 5432
 
-    # Supabase Database (production)
-    supabase_db_password: str
-    supabase_db_host: str
-    supabase_db_port: int
-    supabase_db_name: str
-    supabase_db_user: str
+    # Cloud SQL Database (production)
+    cloud_sql_username: str = ""
+    cloud_sql_password: str = ""
+    cloud_sql_connection_name: str = ""  # e.g. 'project:region:instance'
+    cloud_sql_db_name: str = "postgres"
 
     # Application
     dev_mode: bool = False

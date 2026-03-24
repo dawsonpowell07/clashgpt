@@ -110,13 +110,18 @@ class DatabaseService:
     def _build_database_url(self) -> str:
         try:
             if settings.dev_mode:
-                return "postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/postgres"
+                encoded_pass = quote(settings.local_db_password or "", safe="")
+                return (
+                    f"postgresql+asyncpg://{settings.local_db_user}:{encoded_pass}"
+                    f"@{settings.local_db_host}:{settings.local_db_port}/{settings.local_db_name}"
+                )
 
-            encoded_pass = quote(settings.supabase_db_password or "", safe="")
+            encoded_pass = quote(settings.cloud_sql_password or "", safe="")
+            socket_path = f"/cloudsql/{settings.cloud_sql_connection_name}"
             return (
-                f"postgresql+asyncpg://{settings.supabase_db_user}:{encoded_pass}@"
-                f"{settings.supabase_db_host}:{settings.supabase_db_port}/"
-                f"{settings.supabase_db_name}"
+                f"postgresql+asyncpg://{settings.cloud_sql_username}:{encoded_pass}"
+                f"@/{settings.cloud_sql_db_name}"
+                f"?host={socket_path}"
             )
         except Exception as e:
             logger.exception("Failed to build database URL")
