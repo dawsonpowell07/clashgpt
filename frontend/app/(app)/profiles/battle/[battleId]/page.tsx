@@ -37,6 +37,7 @@ interface BattleDetail {
   opponent_cards: BattleCard[];
   starting_trophies: number | null;
   trophy_change: number | null;
+  player_name: string | null;
 }
 
 function formatGameMode(gameMode: string | null): string {
@@ -223,7 +224,7 @@ export default function ProfileBattleDetailPage() {
                 <DeckGrid
                   cards={battle.player_cards}
                   label="Player Deck"
-                  playerName={playerTag}
+                  playerName={battle.player_name ?? playerTag}
                 />
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px bg-border/40" />
@@ -244,7 +245,7 @@ export default function ProfileBattleDetailPage() {
                 <DeckGrid
                   cards={battle.player_cards}
                   label="Player Deck"
-                  playerName={playerTag}
+                  playerName={battle.player_name ?? playerTag}
                 />
                 <div className="flex flex-col items-center justify-center self-stretch">
                   <div className="flex-1 w-px bg-border/40" />

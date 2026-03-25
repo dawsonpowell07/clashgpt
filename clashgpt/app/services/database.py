@@ -2398,7 +2398,8 @@ class DatabaseService:
                         fbp.battle_id,
                         fbp.deck_id,
                         fbp.starting_trophies,
-                        fbp.trophy_change
+                        fbp.trophy_change,
+                        p.name AS player_name
                     FROM fact_battle_participants fbp
                     JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     LEFT JOIN fact_battle_participants opp_fbp
@@ -2406,6 +2407,8 @@ class DatabaseService:
                        AND opp_fbp.player_tag != fbp.player_tag
                     LEFT JOIN dim_players opp
                         ON opp.player_tag = opp_fbp.player_tag
+                    LEFT JOIN dim_players p
+                        ON p.player_tag = fbp.player_tag
                     WHERE fbp.player_tag = :tag AND fbp.battle_id = :battle_id
                     LIMIT 1
                 """)
@@ -2462,6 +2465,7 @@ class DatabaseService:
                     "opponent_cards": cards_by_deck.get(row[6], []) if row[6] else [],
                     "starting_trophies": int(row[9]) if row[9] is not None else None,
                     "trophy_change": int(row[10]) if row[10] is not None else None,
+                    "player_name": row[11],
                 }
         except DatabaseServiceError:
             raise

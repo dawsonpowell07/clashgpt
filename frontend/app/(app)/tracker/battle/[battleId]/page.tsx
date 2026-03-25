@@ -38,6 +38,7 @@ interface BattleDetail {
   opponent_cards: BattleCard[];
   starting_trophies: number | null;
   trophy_change: number | null;
+  player_name: string | null;
 }
 
 function formatGameMode(gameMode: string | null): string {
@@ -111,7 +112,7 @@ export default function BattleDetailPage() {
   const battleId = decodeURIComponent(params.battleId as string);
 
   const { getToken } = useAuth();
-  const { isSignedIn, isLoaded, user } = useUser();
+  const { isSignedIn, isLoaded } = useUser();
 
   const [battle, setBattle] = useState<BattleDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -238,7 +239,7 @@ export default function BattleDetailPage() {
                 <DeckGrid
                   cards={battle.player_cards}
                   label="Your Deck"
-                  playerName={user?.username ?? user?.firstName ?? null}
+                  playerName={battle.player_name ?? null}
                 />
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-px bg-border/40" />
@@ -259,7 +260,7 @@ export default function BattleDetailPage() {
                 <DeckGrid
                   cards={battle.player_cards}
                   label="Your Deck"
-                  playerName={user?.username ?? user?.firstName ?? null}
+                  playerName={battle.player_name ?? null}
                 />
                 <div className="flex flex-col items-center justify-center self-stretch">
                   <div className="flex-1 w-px bg-border/40" />
