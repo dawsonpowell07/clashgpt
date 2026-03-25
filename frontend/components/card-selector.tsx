@@ -256,7 +256,7 @@ export function CardSelector({
                     <button
                       onClick={() => onToggleCard(item.id)}
                       className={cn(
-                        "relative w-full rounded-md overflow-hidden transition-all duration-200 group",
+                        "relative w-full h-24 sm:h-auto sm:aspect-[3/4] rounded-md overflow-hidden transition-all duration-200 group",
                         isSelected
                           ? filterMode === "INCLUDE"
                             ? "ring-2 ring-green-500"
@@ -264,8 +264,6 @@ export function CardSelector({
                           : "[@media(hover:hover)]:hover:scale-105 [@media(hover:hover)]:hover:z-10",
                       )}
                     >
-                      {/* Padding spacer forces 3:4 aspect ratio on all mobile browsers */}
-                      <div className="w-full pb-[133.33%]" />
                       <Image
                         src={item.imageUrl}
                         alt={`${item.name} ${item.variant}`}
