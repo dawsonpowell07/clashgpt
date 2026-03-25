@@ -112,7 +112,7 @@ function CardPickerTile({
           "relative w-full aspect-[3/4] rounded-lg overflow-hidden border-2 bg-muted group shadow-md",
           "transition-all duration-300",
           !isDisabled &&
-            "hover:scale-[1.15] hover:z-20 hover:rotate-2 hover:shadow-lg",
+            "[@media(hover:hover)]:hover:scale-[1.15] [@media(hover:hover)]:hover:z-20 [@media(hover:hover)]:hover:rotate-2 [@media(hover:hover)]:hover:shadow-lg",
           isSelectedA && "shadow-[0_0_12px_rgba(59,130,246,0.5)]",
           isSelectedB && "shadow-[0_0_12px_rgba(249,115,22,0.5)]",
         )}
@@ -129,7 +129,7 @@ function CardPickerTile({
           src={`/cards/${cardFileName(card.name)}/${cardFileName(card.name)}.png`}
           alt={card.name}
           fill
-          className="object-contain p-0.5 relative z-10 group-hover:scale-105 transition-transform duration-300"
+          className="object-contain p-0.5 relative z-10 [@media(hover:hover)]:group-hover:scale-105 transition-transform duration-300"
         />
         {/* Card name hover overlay — same as CardIcon */}
         <div className="absolute inset-x-0 bottom-0 p-1.5 pt-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">

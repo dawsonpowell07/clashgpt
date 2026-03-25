@@ -245,7 +245,7 @@ export function CardSelector({
       )}
 
       {isOpen && (
-        <div className="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-10 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-2 sm:gap-1 overflow-y-auto max-h-[360px] sm:max-h-[220px] p-1 custom-scrollbar [&>*]:isolate">
+        <div className="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-10 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-2 sm:gap-1 overflow-y-auto max-h-[360px] sm:max-h-[220px] p-1 custom-scrollbar">
           {filteredItems.map((item) => {
             const isSelected = selectedIndices.has(item.id);
 
@@ -261,7 +261,7 @@ export function CardSelector({
                           ? filterMode === "INCLUDE"
                             ? "ring-2 ring-inset ring-green-500 border-green-500"
                             : "ring-2 ring-inset ring-red-500 border-red-500 opacity-50 grayscale"
-                          : "border-border [@media(hover:hover)]:hover:border-primary/50 [@media(hover:hover)]:hover:scale-105",
+                          : "border-border [@media(hover:hover)]:hover:border-primary/50 [@media(hover:hover)]:hover:scale-105 [@media(hover:hover)]:hover:z-10",
                       )}
                     >
                       <Image
