@@ -221,7 +221,7 @@ export function CardSelector({
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Rarity
             </span>
-            <div className="flex items-center border rounded-md overflow-x-auto bg-muted/20 shadow-sm">
+            <div className="flex items-center border rounded-md overflow-x-auto bg-muted/20 shadow-sm whitespace-nowrap">
               {["All", "Common", "Rare", "Epic", "Legendary", "Champion"].map(
                 (rarity, index) => (
                   <button

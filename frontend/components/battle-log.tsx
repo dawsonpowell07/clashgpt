@@ -75,7 +75,7 @@ export function BattleLog({ battleLog, className }: BattleLogProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center flex-wrap gap-3 sm:gap-6">
           <div className="text-center">
             <div className="text-lg font-bold text-green-500">{wins}</div>
             <div className="text-[10px] uppercase font-bold text-muted-foreground">

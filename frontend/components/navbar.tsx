@@ -44,7 +44,7 @@ export function Navbar() {
   };
 
   const chatLinkClasses = `
-    group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
+    group flex items-center gap-2 px-2 sm:px-4 py-2 text-sm md:text-base font-medium rounded-lg
     transition-all duration-200
     ${
       isActive("/chat")
@@ -56,7 +56,7 @@ export function Navbar() {
   return (
     <>
       <nav className="sticky top-0 z-50 w-full border-b border-border bg-card/80 backdrop-blur-lg">
-        <div className="flex h-16 items-center justify-between px-6 md:px-12">
+        <div className="flex h-16 items-center justify-between px-4 sm:px-6 md:px-12">
           {/* Left: Logo/Brand */}
           <Link
             href="/"
@@ -68,7 +68,7 @@ export function Navbar() {
           </Link>
 
           {/* Right: Navigation Links */}
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
             {isSignedIn ? (
               <Link href="/chat" className={chatLinkClasses}>
                 <MessageSquare className="w-4 h-4" />
@@ -87,7 +87,7 @@ export function Navbar() {
             <Link
               href="/decks"
               className={`
-                group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
+                group flex items-center gap-2 px-2 sm:px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 ${
                   isActive("/decks")
@@ -104,7 +104,7 @@ export function Navbar() {
               <Link
                 href="/profiles"
                 className={`
-                group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
+                group flex items-center gap-2 px-2 sm:px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 ${
                   isActive("/profiles")
@@ -120,7 +120,7 @@ export function Navbar() {
               <button
                 onClick={() => openAuthDialog("Player Profiles", "/profiles")}
                 className={`
-                group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
+                group flex items-center gap-2 px-2 sm:px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 text-muted-foreground hover:bg-muted hover:text-foreground
               `}
@@ -134,7 +134,7 @@ export function Navbar() {
               <Link
                 href="/matchups"
                 className={`
-                group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
+                group flex items-center gap-2 px-2 sm:px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 ${
                   isActive("/matchups")
@@ -164,7 +164,7 @@ export function Navbar() {
               <Link
                 href="/tracker"
                 className={`
-                group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
+                group flex items-center gap-2 px-2 sm:px-4 py-2 text-sm md:text-base font-medium rounded-lg
                 transition-all duration-200
                 ${
                   isActive("/tracker")
@@ -195,7 +195,7 @@ export function Navbar() {
               <SignInButton mode="modal">
                 <button
                   className={`
-                    group flex items-center gap-2 px-4 py-2 text-sm md:text-base font-medium rounded-lg
+                    group flex items-center gap-2 px-2 sm:px-4 py-2 text-sm md:text-base font-medium rounded-lg
                     transition-all duration-200
                     bg-primary text-primary-foreground shadow-sm
                     hover:opacity-90

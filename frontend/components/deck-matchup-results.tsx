@@ -394,7 +394,7 @@ export function DeckMatchupResults({
         {/* Your deck */}
         <DeckGrid
           cards={toGridCards(results.deck_cards)}
-          className="grid-cols-4 gap-1 w-1/4 mx-auto"
+          className="grid-cols-4 gap-1 w-1/2 sm:w-1/4 mx-auto"
         />
       </div>
 
@@ -409,7 +409,7 @@ export function DeckMatchupResults({
           No matchup data found.
         </p>
       ) : (
-        <div className="grid grid-cols-3 divide-x divide-border/20">
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border/20">
           <MatchupSection
             title="Hard Counters"
             matchups={counters}

@@ -86,7 +86,7 @@ export default function DecksPage() {
     const variant = parseInt(variantStr);
     if (variant === 1) return `${cardIdStr}:evolution`;
     if (variant === 2) return `${cardIdStr}:heroic`;
-    return cardIdStr;
+    return `${cardIdStr}:normal`;
   };
 
   const fetchDecks = useCallback(

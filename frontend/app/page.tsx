@@ -441,7 +441,7 @@ export default function Home() {
 
           <div className="pt-4 w-full max-w-2xl mx-auto flex flex-col gap-3">
             {/* Row 1 — 2 items */}
-            <div className="flex gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Link
                 href="/decks"
                 className="group flex flex-col items-center gap-2 px-4 py-4 flex-1 bg-card/60 border border-border/50 rounded-xl hover:bg-card hover:border-border transition-all duration-200"
@@ -468,7 +468,7 @@ export default function Home() {
               </Link>
             </div>
             {/* Row 2 — 3 items */}
-            <div className="flex gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Link
                 href="/profiles"
                 className="group flex flex-col items-center gap-2 px-4 py-4 flex-1 bg-card/60 border border-border/50 rounded-xl hover:bg-card hover:border-border transition-all duration-200"

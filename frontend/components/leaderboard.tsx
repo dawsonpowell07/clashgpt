@@ -49,7 +49,7 @@ export function Leaderboard({
       {/* Podium for Top 3 */}
       {topThree.length > 0 && (
         <div className="bg-gradient-to-b from-muted/30 to-card border border-border rounded-xl p-6 overflow-hidden">
-          <div className="flex items-end justify-center gap-4 mb-2">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end justify-center gap-4 mb-2">
             {/* Second Place */}
             {topThree[1] && (
               <PodiumCard
@@ -175,10 +175,10 @@ function PodiumCard({ entry, rank, height, medal }: PodiumCardProps) {
       {/* Podium Base */}
       <div
         className={cn(
-          "w-full rounded-t-lg border-t-2 border-x-2 transition-all",
+          "w-full rounded-t-lg border-t-2 border-x-2 transition-all hidden sm:flex",
           height,
           medalColors[medal],
-          "flex items-center justify-center",
+          "items-center justify-center",
         )}
       >
         <span

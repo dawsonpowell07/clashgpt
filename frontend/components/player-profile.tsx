@@ -86,7 +86,7 @@ export function PlayerProfile({ player, className }: PlayerProfileProps) {
     >
       {/* Header Section - Horizontal Layout */}
       <div className="bg-muted/30 px-6 py-4 border-b border-border">
-        <div className="flex items-center justify-between gap-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
           {/* Player Info */}
           <div className="flex items-center gap-6 flex-1">
             <div>
@@ -100,7 +100,7 @@ export function PlayerProfile({ player, className }: PlayerProfileProps) {
 
             {/* Arena Info */}
             {player.arena && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-card/60 backdrop-blur-sm rounded-lg border border-border/50">
+              <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-card/60 backdrop-blur-sm rounded-lg border border-border/50">
                 <span className="text-lg">🏟️</span>
                 <span className="text-sm font-medium text-accent">
                   {player.arena.name}
@@ -110,7 +110,7 @@ export function PlayerProfile({ player, className }: PlayerProfileProps) {
           </div>
 
           {/* Trophy Badge */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
             <div className="flex flex-col items-center gap-1 bg-card/80 backdrop-blur-sm rounded-lg px-6 py-3 border border-border">
               <div className="text-3xl font-bold text-primary">
                 {player.current_trophies.toLocaleString()}
