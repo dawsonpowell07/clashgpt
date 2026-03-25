@@ -23,15 +23,13 @@ class Settings(BaseSettings):
     # Clash Royale API
     clash_royale_api_token: str = ""
 
-    # Local PostgreSQL (dev mode — Docker)
     local_db_host: str = "127.0.0.1"
     local_db_port: int = 5433
     local_db_user: str = "postgres"
     local_db_password: str = "postgres"
     local_db_name: str = "clashroyale_db"
 
-    # PostgreSQL Database (PlanetScale — production)
-    database_host: str = "us-east-2.pg.psdb.cloud"
+    database_host: str
     database_port: int = 6432
     database_username: str = ""
     database_password: str = ""
