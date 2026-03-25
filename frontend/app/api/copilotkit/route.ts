@@ -1,6 +1,6 @@
 import {
   CopilotRuntime,
-  GoogleGenerativeAIAdapter,
+  EmptyAdapter,
   copilotRuntimeNextJSAppRouterEndpoint,
 } from "@copilotkit/runtime";
 import { HttpAgent } from "@ag-ui/client";
@@ -21,9 +21,8 @@ const ratelimit = new Ratelimit({
 const BACKEND_API_KEY = process.env.BACKEND_API_KEY || "";
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-const serviceAdapter = new GoogleGenerativeAIAdapter({
-  model: "gemini-3.1-flash-lite-preview",
-});
+const serviceAdapter = new EmptyAdapter();
+
 const runtime = new CopilotRuntime({
   agents: {
     clash_gpt: new HttpAgent({
