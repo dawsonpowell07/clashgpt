@@ -107,8 +107,23 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    min-height: 100dvh;
+  }
+  /* Prevent images/media from blowing out their containers */
+  img, video, svg, canvas {
+    max-width: 100%;
+  }
+  /* Tables overflow horizontally on narrow screens */
+  table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
   }
 }
 
