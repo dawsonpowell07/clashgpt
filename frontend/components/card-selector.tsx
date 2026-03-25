@@ -245,7 +245,7 @@ export function CardSelector({
       )}
 
       {isOpen && (
-        <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-1.5 sm:gap-1 overflow-y-auto max-h-[50vh] sm:max-h-[220px] p-1 custom-scrollbar">
+        <div className="grid grid-cols-3 sm:grid-cols-10 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-1.5 sm:gap-1 overflow-y-auto max-h-[70vh] sm:max-h-[220px] p-1 custom-scrollbar">
           {filteredItems.map((item) => {
             const isSelected = selectedIndices.has(item.id);
 
@@ -256,12 +256,12 @@ export function CardSelector({
                     <button
                       onClick={() => onToggleCard(item.id)}
                       className={cn(
-                        "relative w-full rounded-lg overflow-hidden border transition-all duration-200 group",
+                        "relative w-full rounded-md overflow-hidden transition-all duration-200 group",
                         isSelected
                           ? filterMode === "INCLUDE"
-                            ? "ring-2 ring-inset ring-green-500 border-green-500"
-                            : "ring-2 ring-inset ring-red-500 border-red-500 opacity-50 grayscale"
-                          : "border-border [@media(hover:hover)]:hover:border-primary/50 [@media(hover:hover)]:hover:scale-105 [@media(hover:hover)]:hover:z-10",
+                            ? "ring-2 ring-green-500"
+                            : "ring-2 ring-red-500 opacity-50 grayscale"
+                          : "[@media(hover:hover)]:hover:scale-105 [@media(hover:hover)]:hover:z-10",
                       )}
                     >
                       {/* Padding spacer forces 3:4 aspect ratio on all mobile browsers */}
