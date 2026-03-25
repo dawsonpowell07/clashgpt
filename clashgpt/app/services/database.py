@@ -321,7 +321,7 @@ class DatabaseService:
                         dc.name AS card_name,
                         COUNT(*) AS total_uses,
                         SUM(fbp.is_win) AS wins,
-                        SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END) AS losses,
+                        (COUNT(*) - COALESCE(SUM(fbp.is_win), 0)) AS losses,
                         ROUND(
                             100.0 * SUM(fbp.is_win) / NULLIF(COUNT(*), 0),
                             2
@@ -424,7 +424,7 @@ class DatabaseService:
                         dc.name AS card_name,
                         COUNT(*) AS total_uses,
                         SUM(fbp.is_win) AS wins,
-                        SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END) AS losses,
+                        (COUNT(*) - COALESCE(SUM(fbp.is_win), 0)) AS losses,
                         ROUND(100.0 * COUNT(*) / :total_uses, 2) AS usage_rate_pct
                     FROM fact_battle_participants fbp
                     {join_clause}
@@ -558,7 +558,7 @@ class DatabaseService:
                     SELECT
                         COUNT(*) AS total_uses,
                         SUM(fbp.is_win) AS wins,
-                        SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END) AS losses,
+                        (COUNT(*) - COALESCE(SUM(fbp.is_win), 0)) AS losses,
                         COUNT(DISTINCT fbp.deck_id) AS deck_count
                     FROM fact_battle_participants fbp
                     {join_clause}
@@ -743,7 +743,7 @@ class DatabaseService:
                         fbp.deck_id,
                         COUNT(*) AS games_played,
                         SUM(fbp.is_win) AS wins,
-                        SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END) AS losses
+                        (COUNT(*) - COALESCE(SUM(fbp.is_win), 0)) AS losses
                     FROM fact_battle_participants fbp
                     {join_clause}
                     {where_clause}
@@ -805,7 +805,7 @@ class DatabaseService:
                             fbp.deck_id,
                             COUNT(*) AS games_played,
                             SUM(fbp.is_win) AS wins,
-                            SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END) AS losses,
+                            (COUNT(*) - COALESCE(SUM(fbp.is_win), 0)) AS losses,
                             MAX(pb.battle_time) AS last_seen
                         FROM fact_battle_participants fbp
                         JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
@@ -903,13 +903,13 @@ class DatabaseService:
                 season_where = "WHERE " + " AND ".join(cte_conditions)
 
                 # Build card include/exclude conditions on dim_decks
-                deck_conditions = ["COALESCE(dsa.games_played, 0) >= :min_games"]
+                card_conditions = []
 
                 if include_card_ids:
                     for i, card_spec in enumerate(include_card_ids):
                         if isinstance(card_spec, str) and ":" in card_spec:
                             card_id_str, variant = card_spec.split(":", 1)
-                            deck_conditions.append(
+                            card_conditions.append(
                                 f"EXISTS (SELECT 1 FROM deck_card_config "
                                 f"WHERE deck_id = d.deck_id AND card_id = :include_id_{i} "
                                 f"AND variant::text = :include_variant_{i})"
@@ -917,7 +917,7 @@ class DatabaseService:
                             params[f"include_id_{i}"] = int(card_id_str)
                             params[f"include_variant_{i}"] = variant.lower()
                         else:
-                            deck_conditions.append(
+                            card_conditions.append(
                                 f"EXISTS (SELECT 1 FROM deck_card_config "
                                 f"WHERE deck_id = d.deck_id AND card_id = :include_{i})"
                             )
@@ -931,7 +931,7 @@ class DatabaseService:
                     for i, card_spec in enumerate(exclude_card_ids):
                         if isinstance(card_spec, str) and ":" in card_spec:
                             card_id_str, variant = card_spec.split(":", 1)
-                            deck_conditions.append(
+                            card_conditions.append(
                                 f"NOT EXISTS (SELECT 1 FROM deck_card_config "
                                 f"WHERE deck_id = d.deck_id AND card_id = :exclude_id_{i} "
                                 f"AND variant::text = :exclude_variant_{i})"
@@ -939,7 +939,7 @@ class DatabaseService:
                             params[f"exclude_id_{i}"] = int(card_id_str)
                             params[f"exclude_variant_{i}"] = variant.lower()
                         else:
-                            deck_conditions.append(
+                            card_conditions.append(
                                 f"NOT EXISTS (SELECT 1 FROM deck_card_config "
                                 f"WHERE deck_id = d.deck_id AND card_id = :exclude_{i})"
                             )
@@ -949,18 +949,24 @@ class DatabaseService:
                                 else card_spec
                             )
 
-                where_clause = "WHERE " + " AND ".join(deck_conditions)
+                card_where = ("WHERE " + " AND ".join(card_conditions)) if card_conditions else ""
 
                 stats_cte = f"""
+                    filtered_decks AS (
+                        SELECT d.deck_id, d.avg_elixir
+                        FROM dim_decks d
+                        {card_where}
+                    ),
                     deck_stats_agg AS (
                         SELECT
                             fbp.deck_id,
                             COUNT(*) AS games_played,
                             SUM(fbp.is_win) AS wins,
-                            SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END) AS losses,
+                            (COUNT(*) - COALESCE(SUM(fbp.is_win), 0)) AS losses,
                             MAX(pb.battle_time) AS last_seen
                         FROM fact_battle_participants fbp
                         JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                        JOIN filtered_decks fd ON fbp.deck_id = fd.deck_id
                         {season_where}
                         GROUP BY fbp.deck_id
                     )
@@ -969,9 +975,9 @@ class DatabaseService:
                 count_query = f"""
                     WITH {stats_cte}
                     SELECT COUNT(*)
-                    FROM dim_decks d
+                    FROM filtered_decks d
                     LEFT JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
-                    {where_clause}
+                    WHERE COALESCE(dsa.games_played, 0) >= :min_games
                 """
                 count_result = await session.execute(text(count_query), params)
                 total_count = count_result.scalar() or 0
@@ -985,9 +991,9 @@ class DatabaseService:
                         COALESCE(dsa.wins, 0) AS wins,
                         COALESCE(dsa.losses, 0) AS losses,
                         dsa.last_seen
-                    FROM dim_decks d
+                    FROM filtered_decks d
                     LEFT JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
-                    {where_clause}
+                    WHERE COALESCE(dsa.games_played, 0) >= :min_games
                     {order_clause}
                     LIMIT :limit OFFSET :offset
                 """
@@ -1039,6 +1045,11 @@ class DatabaseService:
         try:
             async with self.async_session() as session:
                 query = text("""
+                    WITH matched_players AS (
+                        SELECT player_tag, name, last_seen
+                        FROM dim_players
+                        WHERE name ILIKE :search
+                    )
                     SELECT
                         p.player_tag,
                         p.name,
@@ -1051,11 +1062,10 @@ class DatabaseService:
                         )                                                               AS win_rate,
                         ROUND(AVG(fbp.crowns)::numeric, 2)                             AS avg_crowns,
                         ROUND(AVG(fbp.elixir_leaked)::numeric, 2)                      AS avg_elixir_leaked
-                    FROM dim_players p
+                    FROM matched_players p
                     JOIN fact_battle_participants fbp ON p.player_tag = fbp.player_tag
                     JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
-                    WHERE LOWER(p.name) LIKE LOWER(:search)
-                      AND pb.source = 'ladder'
+                    WHERE pb.source = 'ladder'
                     GROUP BY p.player_tag, p.name, p.last_seen
                     ORDER BY total_games DESC
                     LIMIT :limit
@@ -1223,13 +1233,11 @@ class DatabaseService:
                         opp.name                                               AS opponent
                     FROM fact_battle_participants fbp
                     JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                    LEFT JOIN fact_battle_participants opp_fbp
+                        ON opp_fbp.battle_id = fbp.battle_id
+                       AND opp_fbp.player_tag != fbp.player_tag
                     LEFT JOIN dim_players opp
-                        ON opp.player_tag = (
-                            SELECT player_tag FROM fact_battle_participants
-                            WHERE battle_id = fbp.battle_id
-                              AND player_tag != fbp.player_tag
-                            LIMIT 1
-                        )
+                        ON opp.player_tag = opp_fbp.player_tag
                     WHERE fbp.player_tag = :tag
                     ORDER BY pb.battle_time DESC
                     LIMIT :limit
@@ -1381,7 +1389,7 @@ class DatabaseService:
                     SELECT
                         COUNT(*) AS games_played,
                         COALESCE(SUM(fbp.is_win), 0) AS wins,
-                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses
+                        COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0) AS losses
                     FROM fact_battle_participants fbp
                     JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     WHERE fbp.deck_id = :deck_id
@@ -1448,7 +1456,7 @@ class DatabaseService:
                         fbp.opponent_deck_id,
                         COUNT(*) AS games_played,
                         COALESCE(SUM(fbp.is_win), 0) AS wins,
-                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses
+                        COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0) AS losses
                     FROM fact_battle_participants fbp
                     JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     WHERE fbp.deck_id = :deck_id
@@ -1610,7 +1618,7 @@ class DatabaseService:
                     SELECT
                         COUNT(*) AS total_games,
                         COALESCE(SUM(fbp.is_win), 0) AS wins_a,
-                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses_a
+                        COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0) AS losses_a
                     FROM fact_battle_participants fbp
                     JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     WHERE fbp.opponent_deck_id IS NOT NULL
@@ -1690,9 +1698,9 @@ class DatabaseService:
                     SELECT
                         fbp.opponent_deck_id AS deck_id,
                         COUNT(*) AS games,
-                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS wins,
+                        COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0) AS wins,
                         ROUND(
-                            COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0)::numeric
+                            COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0)::numeric
                             / NULLIF(COUNT(*), 0),
                             4
                         ) AS win_rate
@@ -1928,7 +1936,7 @@ class DatabaseService:
                     SELECT
                         COUNT(*)                                                  AS total_games,
                         COALESCE(SUM(fbp.is_win), 0)                            AS wins,
-                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses,
+                        COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0) AS losses,
                         ROUND(
                             COALESCE(SUM(fbp.is_win), 0)::numeric
                             / NULLIF(COUNT(*), 0) * 100, 1
@@ -1994,7 +2002,7 @@ class DatabaseService:
                     SELECT
                         pb.battle_time::date                                    AS day,
                         COALESCE(SUM(fbp.is_win), 0)                           AS wins,
-                        COALESCE(SUM(CASE WHEN fbp.is_win = 0 THEN 1 ELSE 0 END), 0) AS losses
+                        COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0) AS losses
                     FROM fact_battle_participants fbp
                     JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
                     WHERE fbp.player_tag = :tag
@@ -2245,13 +2253,11 @@ class DatabaseService:
                         fbp.trophy_change
                     FROM fact_battle_participants fbp
                     JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                    LEFT JOIN fact_battle_participants opp_fbp
+                        ON opp_fbp.battle_id = fbp.battle_id
+                       AND opp_fbp.player_tag != fbp.player_tag
                     LEFT JOIN dim_players opp
-                        ON opp.player_tag = (
-                            SELECT player_tag FROM fact_battle_participants
-                            WHERE battle_id = fbp.battle_id
-                              AND player_tag != fbp.player_tag
-                            LIMIT 1
-                        )
+                        ON opp.player_tag = opp_fbp.player_tag
                     WHERE fbp.player_tag = :tag
                     ORDER BY pb.battle_time DESC
                     LIMIT :limit OFFSET :offset
@@ -2395,13 +2401,11 @@ class DatabaseService:
                         fbp.trophy_change
                     FROM fact_battle_participants fbp
                     JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                    LEFT JOIN fact_battle_participants opp_fbp
+                        ON opp_fbp.battle_id = fbp.battle_id
+                       AND opp_fbp.player_tag != fbp.player_tag
                     LEFT JOIN dim_players opp
-                        ON opp.player_tag = (
-                            SELECT player_tag FROM fact_battle_participants
-                            WHERE battle_id = fbp.battle_id
-                              AND player_tag != fbp.player_tag
-                            LIMIT 1
-                        )
+                        ON opp.player_tag = opp_fbp.player_tag
                     WHERE fbp.player_tag = :tag AND fbp.battle_id = :battle_id
                     LIMIT 1
                 """)
