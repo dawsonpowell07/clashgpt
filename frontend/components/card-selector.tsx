@@ -245,7 +245,7 @@ export function CardSelector({
       )}
 
       {isOpen && (
-        <div className="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-1.5 sm:gap-1 overflow-y-auto max-h-[50vh] sm:max-h-[220px] p-1 custom-scrollbar">
+        <div className="grid grid-cols-5 sm:grid-cols-10 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-1.5 sm:gap-1 overflow-y-auto max-h-[50vh] sm:max-h-[220px] p-1 custom-scrollbar">
           {filteredItems.map((item) => {
             const isSelected = selectedIndices.has(item.id);
 
