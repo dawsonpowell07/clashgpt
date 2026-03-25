@@ -12,6 +12,7 @@ import {
   ArrowLeftRight,
   LogIn,
   Lock,
+  Shield,
 } from "lucide-react";
 import {
   SignInButton,
@@ -165,6 +166,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         <SidebarFooter>
           <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/privacy"}>
+                <Link href="/privacy">
+                  <Shield />
+                  <span>Privacy</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SignedOut>
                 <SignInButton mode="modal">
