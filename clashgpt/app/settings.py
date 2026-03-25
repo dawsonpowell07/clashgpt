@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     # Clerk
     clerk_jwks_url: str = ""  # e.g. https://<clerk-domain>/.well-known/jwks.json
 
+    # Google AI
+    google_api_key: str = ""
+
     # Telemetry
     logs_bucket_name: str = ""
 

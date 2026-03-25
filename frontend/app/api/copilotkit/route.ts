@@ -16,13 +16,13 @@ const ratelimit = new Ratelimit({
 });
 
 // Maximum allowed request body size (bytes) — prevents extremely large payloads
-const MAX_BODY_BYTES = 32_768; // 32 KB
+// const MAX_BODY_BYTES = 32_768; // 32 KB
 
 const BACKEND_API_KEY = process.env.BACKEND_API_KEY || "";
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const serviceAdapter = new GoogleGenerativeAIAdapter({
-  model: "gemini-2.5-flash",
+  model: "gemini-3.1-flash-lite-preview",
 });
 const runtime = new CopilotRuntime({
   agents: {
@@ -57,14 +57,14 @@ export const POST = async (req: NextRequest) => {
     );
   }
 
-  // Reject oversized payloads before they reach the runtime
-  const contentLength = req.headers.get("content-length");
-  if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
-    return NextResponse.json(
-      { error: "Request body too large." },
-      { status: 413 },
-    );
-  }
+  // // Reject oversized payloads before they reach the runtime
+  // const contentLength = req.headers.get("content-length");
+  // if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
+  //   return NextResponse.json(
+  //     { error: "Request body too large." },
+  //     { status: 413 },
+  //   );
+  // }
 
   try {
     const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({

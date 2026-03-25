@@ -24,13 +24,14 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.apps import App, ResumabilityConfig
 from google.cloud import logging as google_cloud_logging
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
 
+# from slowapi import _rate_limit_exceeded_handler
+# from slowapi.errors import RateLimitExceeded
+# from slowapi.middleware import SlowAPIMiddleware
 from app.agent import root_agent
 from app.app_utils.telemetry import setup_telemetry
-from app.rate_limit import limiter
+
+# from app.rate_limit import limiter
 from app.routers.api import router as api_router
 from app.services.database import get_database_service
 from app.settings import settings
@@ -82,9 +83,9 @@ app.title = "clashgpt"
 app.description = "API for interacting with the Agent clashgpt"
 
 # Rate limiting
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)
+# app.state.limiter = limiter
+# app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# app.add_middleware(SlowAPIMiddleware)
 
 # CORS middleware
 if not settings.dev_mode and not settings.allow_origins:
@@ -116,7 +117,7 @@ app.include_router(api_router)
 
 
 # API request/response logging middleware + API key protection
-PROTECTED_PATHS = {"/agent"}
+# PROTECTED_PATHS = {"/agent"}
 
 # Sliding window rate limit for /agent: 20 requests/minute per IP
 # Accounts for the 5-10 burst requests sent on initial agent connection.
@@ -125,7 +126,7 @@ _AGENT_RATE_WINDOW = 60  # seconds
 _agent_request_log: dict[str, list[float]] = collections.defaultdict(list)
 
 
-@app.middleware("http")
+# @app.middleware("http")
 async def log_and_protect_requests(request: Request, call_next):
     """Log incoming API requests and validate API key for protected routes."""
     start_time = time.time()

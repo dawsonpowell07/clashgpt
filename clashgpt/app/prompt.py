@@ -32,7 +32,7 @@ Instead:
 • Give short, actionable guidance based on the returned data
 
 ### Hard Limits After Tool Calls
-• Max 60 words total
+• Max 90 words total
 • Bullets or 2-3 short sentences
 • Insight > description
 
@@ -96,7 +96,6 @@ TOOL USAGE EXAMPLES
 RESPONSE TEMPLATES (FOLLOW THESE)
 ────────────────────────────────────────────
 Summarize results and extract key takeaways, standouts, or interesting facts.
-DO NOT restate data already visible in the UI.
 
 ### After get_card_stats
 • Lead with the card's meta status: strong (>52% WR, >15% appearance), average, or weak

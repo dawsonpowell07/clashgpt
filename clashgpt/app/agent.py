@@ -28,7 +28,10 @@ from google.genai import types
 from app.prompt import PROMPT
 import os
 import google.auth
+from dotenv import load_dotenv
 
+
+from app.settings import settings
 from app.tools import (
     get_card_stats,
     get_clan_info,
@@ -47,16 +50,15 @@ from app.guardrails import input_guardrail
 
 logger = logging.getLogger(__name__)
 
-_, project_id = google.auth.default()
-os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
-os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
+load_dotenv()
+
+os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "False"
 
 
 root_agent = Agent(
     name="clash_gpt",
     model=Gemini(
-        model="gemini-2.5-flash",
+        model="gemini-3.1-flash-lite-preview",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=PROMPT,
