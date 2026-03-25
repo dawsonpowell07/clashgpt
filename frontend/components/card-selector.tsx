@@ -272,13 +272,6 @@ export function CardSelector({
                         loading="lazy"
                       />
 
-                      {/* Badge for Variants */}
-                      {item.variant === CardVariantType.EVOLUTION && (
-                        <div className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-purple-500 ring-1 ring-black/50" />
-                      )}
-                      {item.variant === CardVariantType.HERO && (
-                        <div className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-yellow-500 ring-1 ring-black/50" />
-                      )}
 
                       {/* Selection Indicator Overlay */}
                       {isSelected && (
