@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import { Trophy, Swords, Target, Clock, Layers } from "lucide-react";
+import { useState } from "react";
+import { Trophy, Swords, Target, Clock, Layers, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Orbitron } from "next/font/google";
 import { DeckGrid } from "./deck-grid";
@@ -60,6 +63,27 @@ function formatLastSeen(timestamp: string): string {
   }
 }
 
+function generateDeckLink(cards: DeckCard[], deckName: string): string {
+  const evoCards = cards.filter((c) => c.variant === "evolution");
+  const heroCards = cards.filter((c) => c.variant === "heroic");
+  const normalCards = cards.filter((c) => c.variant !== "evolution" && c.variant !== "heroic");
+
+  const sorted: DeckCard[] = [];
+  sorted.push(...evoCards.slice(0, 2));
+  const evosNeeded = 2 - Math.min(evoCards.length, 2);
+  if (evosNeeded > 0) sorted.push(...normalCards.splice(0, evosNeeded));
+  sorted.push(...heroCards.slice(0, 2));
+  const heroesNeeded = 2 - Math.min(heroCards.length, 2);
+  if (heroesNeeded > 0) sorted.push(...normalCards.splice(0, heroesNeeded));
+  sorted.push(...normalCards);
+  if (evoCards.length > 2) sorted.push(...evoCards.slice(2));
+  if (heroCards.length > 2) sorted.push(...heroCards.slice(2));
+
+  const deckParam = sorted.slice(0, 8).map((c) => c.card_id).join(";");
+  const label = encodeURIComponent(deckName);
+  return `https://link.clashroyale.com/en/?clashroyale://copyDeck?deck=${deckParam}&l=${label}&tt=159000000`;
+}
+
 function getKeyCards(cards: DeckCard[], avgElixir: number): string {
   const keyCardNames = [
     "giant",
@@ -103,6 +127,8 @@ function getKeyCards(cards: DeckCard[], avgElixir: number): string {
 }
 
 export function DeckGridCard({ deck, className }: DeckGridCardProps) {
+  const [copied, setCopied] = useState(false);
+
   const hasStats =
     deck.games_played !== undefined &&
     deck.games_played !== null &&
@@ -120,6 +146,14 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
   const winRateValue = winRate ? parseFloat(winRate) : 0;
   const winRateTier =
     winRateValue >= 55 ? "high" : winRateValue >= 50 ? "medium" : "low";
+
+  function handleCopyLink() {
+    const link = generateDeckLink([...deck.cards], deckName);
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   return (
     <div
@@ -233,15 +267,32 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
         />
       </div>
 
-      {/* Matchups link */}
-      <div className="px-3 sm:px-5 pb-3 sm:pb-4 mt-auto">
+      {/* Actions */}
+      <div className="px-3 sm:px-5 pb-3 sm:pb-4 mt-auto flex gap-2">
         <Link
           href={matchupsHref}
-          className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 transition-all"
+          className="flex items-center justify-center gap-2 flex-1 py-2 rounded-xl text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 transition-all"
         >
           <Swords className="w-3.5 h-3.5" />
-          View Matchups
+          Matchups
         </Link>
+        <button
+          onClick={handleCopyLink}
+          className={cn(
+            "flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all",
+            copied
+              ? "bg-green-500/10 text-green-500 border-green-500/30"
+              : "bg-muted/30 hover:bg-muted/60 text-muted-foreground border-border/30 hover:border-border/60",
+          )}
+          title="Copy deck link for in-game import"
+        >
+          {copied ? (
+            <Check className="w-3.5 h-3.5" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+          {copied ? "Copied!" : "Copy Link"}
+        </button>
       </div>
     </div>
   );
