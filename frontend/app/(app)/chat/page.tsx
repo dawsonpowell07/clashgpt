@@ -126,7 +126,7 @@ function Chat({ copilotError, onDismissError, onClearChat }: ChatProps) {
   const clearPendingInput = useCallback(() => {}, []);
 
   return (
-    <div className="h-[calc(100vh-4rem)] w-full flex p-3 sm:p-4 lg:p-6">
+    <div className="h-[calc(100dvh-4rem)] w-full flex p-2 sm:p-4 lg:p-6 overflow-hidden">
       {/* Tool-call renderers (registers useRenderToolCall hooks) */}
       <ChatToolRenderers />
 
@@ -164,7 +164,7 @@ function Chat({ copilotError, onDismissError, onClearChat }: ChatProps) {
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--copilot-kit-separator-color)] bg-[color:var(--copilot-kit-background-color)]">
-            <span className="font-semibold text-sm text-[color:var(--copilot-kit-contrast-color)]">ClashGPT Chat</span>
+            <span className="font-semibold text-sm text-[color:var(--copilot-kit-secondary-contrast-color)]">ClashGPT Chat</span>
             <Button 
               onClick={onClearChat} 
               variant="destructive"

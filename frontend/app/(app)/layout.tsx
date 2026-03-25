@@ -36,7 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </span>
           </div>
         </header>
-        <div>{children}</div>
+        <div className="overflow-hidden">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );
