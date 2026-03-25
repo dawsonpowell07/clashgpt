@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: "ClashGPT - Your Clash Royale AI Companion",
   description:
     "Ask questions about Clash Royale, discover the meta, and get deck recommendations - all powered by AI.",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({

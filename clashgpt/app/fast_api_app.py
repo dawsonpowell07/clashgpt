@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import hmac
 import logging
 import time
@@ -23,6 +22,7 @@ from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.apps import App, ResumabilityConfig
+from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.cloud import logging as google_cloud_logging
 
 # from slowapi import _rate_limit_exceeded_handler
@@ -116,64 +116,23 @@ app.router.lifespan_context = lifespan
 app.include_router(api_router)
 
 
-# API request/response logging middleware + API key protection
-# PROTECTED_PATHS = {"/agent"}
-
-# Sliding window rate limit for /agent: 20 requests/minute per IP
-# Accounts for the 5-10 burst requests sent on initial agent connection.
-_AGENT_RATE_LIMIT = 20
-_AGENT_RATE_WINDOW = 60  # seconds
-_agent_request_log: dict[str, list[float]] = collections.defaultdict(list)
-
-
-# @app.middleware("http")
-async def log_and_protect_requests(request: Request, call_next):
-    """Log incoming API requests and validate API key for protected routes."""
-    start_time = time.time()
-
-    # Log request
-    app_logger.info(f"API request: {request.method} {request.url.path}")
-
-    # Rate limit /agent per IP
+@app.middleware("http")
+async def agent_api_key_middleware(request: Request, call_next):
+    """Validate x-api-key for /agent requests."""
     if request.url.path.startswith("/agent"):
-        client_ip = request.client.host if request.client else "unknown"
-        now = time.time()
-        cutoff = now - _AGENT_RATE_WINDOW
-        _agent_request_log[client_ip] = [
-            t for t in _agent_request_log[client_ip] if t > cutoff
-        ]
-        if len(_agent_request_log[client_ip]) >= _AGENT_RATE_LIMIT:
-            app_logger.warning(f"Rate limit exceeded for /agent from {client_ip}")
-            from starlette.responses import JSONResponse
-
-            return JSONResponse(
-                status_code=429,
-                content={
-                    "error": f"Rate limit exceeded: {_AGENT_RATE_LIMIT} per 1 minute"
-                },
-            )
-        _agent_request_log[client_ip].append(now)
-
-    # API key validation for protected paths
-    if any(request.url.path.startswith(p) for p in PROTECTED_PATHS):
         api_key = request.headers.get("x-api-key")
         expected_key = settings.backend_api_key
 
-        if not expected_key and not settings.dev_mode:
-            app_logger.error(
-                "BACKEND_API_KEY is not set in production — rejecting request"
-            )
+        if not expected_key:
+            app_logger.error("BACKEND_API_KEY is not set — rejecting request")
             from starlette.responses import JSONResponse
 
             return JSONResponse(
-                status_code=500,
-                content={"detail": "Server misconfiguration"},
+                status_code=500, content={"detail": "Server misconfiguration"}
             )
 
-        if expected_key and not hmac.compare_digest(api_key or "", expected_key):
-            app_logger.warning(
-                f"Rejected request to {request.url.path}: invalid or missing API key"
-            )
+        if not hmac.compare_digest(api_key or "", expected_key):
+            app_logger.warning(f"Rejected /agent request: invalid or missing API key")
             from starlette.responses import JSONResponse
 
             return JSONResponse(
@@ -181,16 +140,13 @@ async def log_and_protect_requests(request: Request, call_next):
                 content={"detail": "Forbidden: invalid or missing API key"},
             )
 
-    # Process request
+    start_time = time.time()
     response = await call_next(request)
-
-    # Log response
     duration = time.time() - start_time
     app_logger.info(
         f"API response: {request.method} {request.url.path} | "
         f"status={response.status_code} | duration={duration:.3f}s"
     )
-
     return response
 
 
@@ -223,6 +179,9 @@ adk_agent = ADKAgent.from_app(
     execution_timeout_seconds=600,  # Max execution time (default: 10 min)
     tool_timeout_seconds=300,  # Tool execution timeout (default: 5 min)
     use_in_memory_services=True,
+    # session_service=DatabaseSessionService(
+    #     db_url="postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/clashroyale_db"
+    # ),
 )
 
 add_adk_fastapi_endpoint(app, adk_agent, path="/agent", extract_headers=["x-user-id"])
