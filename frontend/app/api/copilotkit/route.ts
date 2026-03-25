@@ -12,7 +12,7 @@ import { Redis } from "@upstash/redis";
 
 const ratelimit = new Ratelimit({
   redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(100, "1 h"),
+  limiter: Ratelimit.slidingWindow(200, "1 h"),
 });
 
 // Maximum allowed request body size (bytes) — prevents extremely large payloads

@@ -245,7 +245,8 @@ export function CardSelector({
       )}
 
       {isOpen && (
-        <div className="grid grid-cols-4 xs:grid-cols-5 sm:grid-cols-10 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-2 sm:gap-1 overflow-y-auto max-h-[360px] sm:max-h-[220px] p-1 custom-scrollbar">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(60px,1fr))] sm:grid-cols-10 md:grid-cols-[repeat(14,minmax(0,1fr))] lg:grid-cols-[repeat(16,minmax(0,1fr))] gap-2 sm:gap-1 overflow-y-auto max-h-[360px] sm:max-h-[220px] p-1 custom-scrollbar">
+          {" "}
           {filteredItems.map((item) => {
             const isSelected = selectedIndices.has(item.id);
 
@@ -307,7 +308,6 @@ export function CardSelector({
               </TooltipProvider>
             );
           })}
-
           {filteredItems.length === 0 && (
             <div className="col-span-full py-8 text-center text-muted-foreground text-sm">
               No cards found matching &quot;{searchQuery}&quot;
