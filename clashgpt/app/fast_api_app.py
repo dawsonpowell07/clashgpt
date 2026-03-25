@@ -22,6 +22,7 @@ from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.apps import App, ResumabilityConfig
+from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.cloud import logging as google_cloud_logging
 
 # from slowapi import _rate_limit_exceeded_handler
@@ -178,6 +179,9 @@ adk_agent = ADKAgent.from_app(
     execution_timeout_seconds=600,  # Max execution time (default: 10 min)
     tool_timeout_seconds=300,  # Tool execution timeout (default: 5 min)
     use_in_memory_services=True,
+    # session_service=DatabaseSessionService(
+    #     db_url="postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/clashroyale_db"
+    # ),
 )
 
 add_adk_fastapi_endpoint(app, adk_agent, path="/agent", extract_headers=["x-user-id"])

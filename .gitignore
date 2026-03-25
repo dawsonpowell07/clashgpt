@@ -223,3 +223,4 @@ clashgpt/.claude
 supabase
 *.sql
 memory
+clashgpt_backup.dump
