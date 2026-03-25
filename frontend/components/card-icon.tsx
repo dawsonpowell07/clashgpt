@@ -27,7 +27,7 @@ export function CardIcon({
   return (
     <div
       className={cn(
-        "relative aspect-[3/4] w-full rounded-lg overflow-hidden border-2 bg-muted group",
+        "relative w-full rounded-lg overflow-hidden border-2 bg-muted group",
         "transition-all duration-300 shadow-md",
         "[@media(hover:hover)]:hover:scale-[1.15] [@media(hover:hover)]:hover:z-20 [@media(hover:hover)]:hover:rotate-2 [@media(hover:hover)]:hover:shadow-lg",
         className,
@@ -41,6 +41,8 @@ export function CardIcon({
       }}
       title={cardName}
     >
+      {/* Padding spacer forces 3:4 aspect ratio on all mobile browsers */}
+      <div className="w-full pb-[133.33%]" />
       <Image
         src={`/cards/${fileName}/${fileName}${imageSuffix}.png`}
         alt={cardName}
