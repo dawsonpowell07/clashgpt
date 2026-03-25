@@ -150,7 +150,7 @@ export function ChatToolRenderers() {
       if (status !== "complete") {
         let loadingMessage = "Finding decks for you";
         if (args.sort_by === "WIN_RATE")
-          loadingMessage = "Finding highest win rate decks";
+          loadingMessage = "Finding decks that match your preferences";
         else if (args.sort_by === "GAMES_PLAYED")
           loadingMessage = "Finding most popular decks";
         else if (args.sort_by === "WINS")
