@@ -66,15 +66,21 @@ function generateDeckLink(cards: DeckCard[], deckName: string): string {
   const normalCards = cards.filter((c) => c.variant !== "evolution" && c.variant !== "heroic");
 
   const sorted: DeckCard[] = [];
-  sorted.push(...evoCards.slice(0, 2));
-  const evosNeeded = 2 - Math.min(evoCards.length, 2);
-  if (evosNeeded > 0) sorted.push(...normalCards.splice(0, evosNeeded));
-  sorted.push(...heroCards.slice(0, 2));
-  const heroesNeeded = 2 - Math.min(heroCards.length, 2);
-  if (heroesNeeded > 0) sorted.push(...normalCards.splice(0, heroesNeeded));
+
+  // Slot 0: 1 fixed evolution slot
+  if (evoCards.length >= 1) sorted.push(evoCards[0]);
+  else sorted.push(...normalCards.splice(0, 1));
+
+  // Slot 1: 1 fixed hero slot
+  if (heroCards.length >= 1) sorted.push(heroCards[0]);
+  else sorted.push(...normalCards.splice(0, 1));
+
+  // Slot 2: wildcard — whatever the deck data shows (extra evo or extra hero)
+  const wildcard = [...evoCards.slice(1), ...heroCards.slice(1)];
+  if (wildcard.length >= 1) sorted.push(wildcard[0]);
+
+  // Remaining normals
   sorted.push(...normalCards);
-  if (evoCards.length > 2) sorted.push(...evoCards.slice(2));
-  if (heroCards.length > 2) sorted.push(...heroCards.slice(2));
 
   const deckParam = sorted.slice(0, 8).map((c) => c.card_id).join(";");
   const label = encodeURIComponent(deckName);

@@ -78,7 +78,25 @@ function sortDeckCards(cards: MatchupCard[]): MatchupCard[] {
   const evo = cards.filter((c) => c.variant === "evolution");
   const hero = cards.filter((c) => c.variant === "heroic");
   const normal = cards.filter((c) => c.variant === "normal");
-  return [...evo, ...hero, ...normal].slice(0, 8);
+
+  const sorted: MatchupCard[] = [];
+
+  // Slot 0: 1 fixed evolution slot
+  if (evo.length >= 1) sorted.push(evo[0]);
+  else sorted.push(...normal.splice(0, 1));
+
+  // Slot 1: 1 fixed hero slot
+  if (hero.length >= 1) sorted.push(hero[0]);
+  else sorted.push(...normal.splice(0, 1));
+
+  // Slot 2: wildcard — extra evo or extra hero, whatever the data shows
+  const wildcard = [...evo.slice(1), ...hero.slice(1)];
+  if (wildcard.length >= 1) sorted.push(wildcard[0]);
+
+  // Remaining normals
+  sorted.push(...normal);
+
+  return sorted.slice(0, 8);
 }
 
 // ─── Card tile ────────────────────────────────────────────────────────────────
