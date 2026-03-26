@@ -1,8 +1,5 @@
-"use client";
-
 import Link from "next/link";
-import { useState } from "react";
-import { Trophy, Swords, Target, Clock, Layers, Copy, Check } from "lucide-react";
+import { Trophy, Swords, Target, Clock, Layers, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Orbitron } from "next/font/google";
 import { DeckGrid } from "./deck-grid";
@@ -127,8 +124,6 @@ function getKeyCards(cards: DeckCard[], avgElixir: number): string {
 }
 
 export function DeckGridCard({ deck, className }: DeckGridCardProps) {
-  const [copied, setCopied] = useState(false);
-
   const hasStats =
     deck.games_played !== undefined &&
     deck.games_played !== null &&
@@ -147,13 +142,7 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
   const winRateTier =
     winRateValue >= 55 ? "high" : winRateValue >= 50 ? "medium" : "low";
 
-  function handleCopyLink() {
-    const link = generateDeckLink([...deck.cards], deckName);
-    navigator.clipboard.writeText(link).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
+  const deckLink = generateDeckLink([...deck.cards], deckName);
 
   return (
     <div
@@ -276,23 +265,16 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
           <Swords className="w-3.5 h-3.5" />
           Matchups
         </Link>
-        <button
-          onClick={handleCopyLink}
-          className={cn(
-            "flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all",
-            copied
-              ? "bg-green-500/10 text-green-500 border-green-500/30"
-              : "bg-muted/30 hover:bg-muted/60 text-muted-foreground border-border/30 hover:border-border/60",
-          )}
-          title="Copy deck link for in-game import"
+        <a
+          href={deckLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border bg-muted/30 hover:bg-muted/60 text-muted-foreground border-border/30 hover:border-border/60 transition-all"
+          title="Open deck in Clash Royale"
         >
-          {copied ? (
-            <Check className="w-3.5 h-3.5" />
-          ) : (
-            <Copy className="w-3.5 h-3.5" />
-          )}
-          {copied ? "Copied!" : "Copy Link"}
-        </button>
+          <ExternalLink className="w-3.5 h-3.5" />
+          Open
+        </a>
       </div>
     </div>
   );
