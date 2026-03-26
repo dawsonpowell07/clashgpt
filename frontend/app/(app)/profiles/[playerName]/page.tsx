@@ -157,26 +157,60 @@ export default function PlayerProfilePage() {
     router.push("/profiles/" + encodeURIComponent(trimmed));
   }, [query, router]);
 
-  // Initial load: if tag is present load directly, otherwise auto-search by name
+  // Initial load: search by name to get real stats, match by tag if provided
   useEffect(() => {
     if (initialLoadDone.current) return;
     initialLoadDone.current = true;
 
-    if (tagParam) {
-      const syntheticPlayer: PlayerSearchResult = {
-        player_tag: tagParam,
-        name: playerNameParam,
-        last_seen: null,
-        total_games: 0,
-        wins: 0,
-        win_rate: null,
-        avg_crowns: null,
-        avg_elixir_leaked: null,
-      };
-      selectPlayer(syntheticPlayer);
-    } else if (playerNameParam) {
-      handleSearch(playerNameParam);
-    }
+    if (!playerNameParam) return;
+
+    const load = async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/players?name=${encodeURIComponent(playerNameParam)}`,
+        );
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        const data = await res.json();
+        const players: PlayerSearchResult[] = data.players ?? [];
+
+        if (tagParam) {
+          // Direct link with tag — find the exact player or fall back to synthetic
+          const match = players.find((p) => p.player_tag === tagParam);
+          if (match) {
+            await selectPlayer(match);
+          } else {
+            // Tag not in search results (e.g. shared link for a player not in ladder db yet)
+            await selectPlayer({
+              player_tag: tagParam,
+              name: playerNameParam,
+              last_seen: null,
+              total_games: 0,
+              wins: 0,
+              win_rate: null,
+              avg_crowns: null,
+              avg_elixir_leaked: null,
+            });
+          }
+        } else if (players.length === 1) {
+          router.replace(
+            "/profiles/" +
+              encodeURIComponent(players[0].name) +
+              "?tag=" +
+              encodeURIComponent(players[0].player_tag),
+          );
+          await selectPlayer(players[0]);
+        } else {
+          setSearchResults(players);
+        }
+      } catch {
+        setSearchError("Failed to search players. Please try again.");
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
