@@ -8,7 +8,7 @@ import { TrackerDashboard } from "@/components/tracker/TrackerDashboard";
 import { AuthGateDialog } from "@/components/auth-gate-dialog";
 import type { TrackedPlayer } from "@/components/tracker/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = "/api/backend";
 
 export default function TrackerPage() {
   const { getToken } = useAuth();

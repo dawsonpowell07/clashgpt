@@ -19,7 +19,7 @@ const ratelimit = new Ratelimit({
 // const MAX_BODY_BYTES = 32_768; // 32 KB
 
 const BACKEND_API_KEY = process.env.BACKEND_API_KEY || "";
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BACKEND_URL = process.env.API_URL || "http://localhost:8000";
 
 const serviceAdapter = new EmptyAdapter();
 

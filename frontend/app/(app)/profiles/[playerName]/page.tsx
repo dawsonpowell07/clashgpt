@@ -30,7 +30,7 @@ import { DeckAccordion } from "@/components/profiles/DeckAccordion";
 import { RecentBattles } from "@/components/profiles/RecentBattles";
 import { SectionHeading } from "@/components/profiles/SectionHeading";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = "/api/backend";
 
 export default function PlayerProfilePage() {
   const params = useParams();

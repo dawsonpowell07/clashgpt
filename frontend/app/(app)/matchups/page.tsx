@@ -24,7 +24,7 @@ import { CardIcon } from "@/components/card-icon";
 
 const orbitron = Orbitron({ subsets: ["latin"], weight: ["700", "900"] });
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = "/api/backend";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

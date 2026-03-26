@@ -14,7 +14,7 @@ import { Card } from "@/lib/types";
 
 const orbitron = Orbitron({ subsets: ["latin"], weight: ["700", "900"] });
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = "/api/backend";
 
 // Maps CardVariantType enum → backend variant string
 const VARIANT_STRING: Record<CardVariantType, string> = {

@@ -15,7 +15,7 @@ const inter = Inter({
   weight: ["400", "500", "600", "700", "800"],
 });
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = "/api/backend";
 
 export default function DecksPage() {
   // --- State ---

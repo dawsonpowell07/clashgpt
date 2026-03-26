@@ -61,28 +61,7 @@ function formatLastSeen(timestamp: string): string {
 }
 
 function generateDeckLink(cards: DeckCard[], deckName: string): string {
-  const evoCards = cards.filter((c) => c.variant === "evolution");
-  const heroCards = cards.filter((c) => c.variant === "heroic");
-  const normalCards = cards.filter((c) => c.variant !== "evolution" && c.variant !== "heroic");
-
-  const sorted: DeckCard[] = [];
-
-  // Slot 0: 1 fixed evolution slot
-  if (evoCards.length >= 1) sorted.push(evoCards[0]);
-  else sorted.push(...normalCards.splice(0, 1));
-
-  // Slot 1: 1 fixed hero slot
-  if (heroCards.length >= 1) sorted.push(heroCards[0]);
-  else sorted.push(...normalCards.splice(0, 1));
-
-  // Slot 2: wildcard — whatever the deck data shows (extra evo or extra hero)
-  const wildcard = [...evoCards.slice(1), ...heroCards.slice(1)];
-  if (wildcard.length >= 1) sorted.push(wildcard[0]);
-
-  // Remaining normals
-  sorted.push(...normalCards);
-
-  const deckParam = sorted.slice(0, 8).map((c) => c.card_id).join(";");
+  const deckParam = cards.map((c) => c.card_id).join(";");
   const label = encodeURIComponent(deckName);
   return `https://link.clashroyale.com/en/?clashroyale://copyDeck?deck=${deckParam}&l=${label}&tt=159000000`;
 }

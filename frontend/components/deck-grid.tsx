@@ -21,20 +21,20 @@ function sortCards(
 
   const sorted: typeof cards = [];
 
-  // Slot 0: 1 fixed evolution slot
+  // Slot 0: evolution, or base card if player has none
   if (evoCards.length >= 1) sorted.push(evoCards[0]);
   else sorted.push(...normalCards.splice(0, 1));
 
-  // Slot 1: 1 fixed hero slot
+  // Slot 1: hero/champion, or base card if player has none
   if (heroCards.length >= 1) sorted.push(heroCards[0]);
   else sorted.push(...normalCards.splice(0, 1));
 
-  // Slot 2: wildcard — whatever the deck data shows (extra evo or extra hero)
-  const wildcard = [...evoCards.slice(1), ...heroCards.slice(1)];
-  if (wildcard.length >= 1) sorted.push(wildcard[0]);
+  // Slot 2: wildcard (extra evo or extra hero), or base card if none
+  const remainingSpecial = [...evoCards.slice(1), ...heroCards.slice(1)];
+  if (remainingSpecial.length >= 1) sorted.push(remainingSpecial.shift()!);
 
-  // Slots 3-7: Remaining normals
-  sorted.push(...normalCards);
+  // Remaining slots: any overflow special cards (3+ evos/heroes) then normals
+  sorted.push(...remainingSpecial, ...normalCards);
 
   return sorted;
 }
