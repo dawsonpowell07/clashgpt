@@ -44,6 +44,7 @@ function formatGameMode(gameMode: string | null): string {
   if (!gameMode) return "Ranked";
   if (gameMode === "TrophyRoad") return "Trophy Road";
   if (gameMode === "ChaosMode") return "Chaos Mode";
+  if (gameMode === "RetroRoyale") return "Retro Royale";
   if (gameMode.startsWith("Ranked")) return "Ranked";
   return gameMode;
 }
@@ -288,7 +289,7 @@ export default function ProfileBattleDetailPage() {
                       : "—"}
                   </p>
                 </div>
-                <div className="flex flex-col gap-2 bg-muted/30 border border-border/40 rounded-xl p-4 sm:p-5">
+                <div className="flex flex-col gap-2 bg-muted/30 border border-border/40 rounded-xl p-4 sm:p-5 min-w-0">
                   <Swords className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground/60" />
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
                     Game Mode

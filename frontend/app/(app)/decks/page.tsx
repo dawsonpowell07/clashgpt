@@ -39,7 +39,7 @@ export default function DecksPage() {
   const [decksData, setDecksData] = useState<DecksResponse | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [page, setPage] = useState(1);
-  const [minGames, setMinGames] = useState(0);
+  const [minGames, setMinGames] = useState(20);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
 
   // Debounce guard

@@ -45,6 +45,7 @@ function formatGameMode(gameMode: string | null): string {
   if (!gameMode) return "Ranked";
   if (gameMode === "TrophyRoad") return "Trophy Road";
   if (gameMode === "ChaosMode") return "Chaos Mode";
+  if (gameMode === "RetroRoyale") return "Retro Royale";
   if (gameMode.startsWith("Ranked")) return "Ranked";
   return gameMode;
 }

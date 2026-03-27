@@ -1127,6 +1127,72 @@ class ClashRoyaleService:
             )
             raise ClashRoyaleAPIError(f"Failed to get player rankings: {e!s}") from e
 
+    async def get_tournament_leaderboard(
+        self, tournament_id: str
+    ) -> "TournamentLeaderboard":
+        """
+        Fetch the leaderboard for a global tournament.
+
+        Args:
+            tournament_id: The tournament ID (e.g. "270787" for Retro Royale).
+
+        Returns:
+            TournamentLeaderboard with up to 50 entries ordered by rank.
+        """
+        from app.models.models import TournamentLeaderboard, TournamentLeaderboardEntry
+
+        try:
+            response = await self._request(
+                f"/leaderboard/{tournament_id}", params={"limit": 50}
+            )
+
+            if not isinstance(response, dict):
+                raise ClashRoyaleDataError(
+                    f"Expected dict response, got {type(response)}"
+                )
+
+            items = response.get("items", [])
+            if not isinstance(items, list):
+                items = []
+
+            entries: list[TournamentLeaderboardEntry] = []
+            for idx, item in enumerate(items):
+                try:
+                    clan = None
+                    if item.get("clan"):
+                        try:
+                            clan = self._map_clan(item["clan"])
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to map clan for tournament entry {idx}: {e}"
+                            )
+                    entries.append(
+                        TournamentLeaderboardEntry(
+                            rank=item.get("rank", idx + 1),
+                            tag=item["tag"],
+                            name=item["name"],
+                            wins=item.get("score", item.get("wins", 0)),
+                            clan=clan,
+                        )
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to map tournament leaderboard entry {idx}, skipping: {e}"
+                    )
+
+            return TournamentLeaderboard(entries=entries)
+
+        except ClashRoyaleAPIError:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Unexpected error fetching tournament leaderboard {tournament_id}: {e}",
+                exc_info=True,
+            )
+            raise ClashRoyaleAPIError(
+                f"Failed to get tournament leaderboard: {e!s}"
+            ) from e
+
 
 # Convenience function for creating service instance
 async def get_clash_royale_service(api_token: str | None = None) -> ClashRoyaleService:

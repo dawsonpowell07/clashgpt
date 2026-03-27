@@ -322,6 +322,28 @@ class Leaderboard:
 
 
 @dataclass
+class TournamentLeaderboardEntry:
+    rank: int
+    tag: str
+    name: str
+    wins: int
+    clan: Clan | None
+
+    def model_dump_json(self, indent: int | None = None) -> str:
+        data = asdict(self)
+        return json.dumps(data, indent=indent)
+
+
+@dataclass
+class TournamentLeaderboard:
+    entries: list[TournamentLeaderboardEntry]
+
+    def model_dump_json(self, indent: int | None = None) -> str:
+        data = asdict(self)
+        return json.dumps(data, indent=indent)
+
+
+@dataclass
 class BattleLog:
     battles: list[Battle]
 

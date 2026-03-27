@@ -18,6 +18,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/head-to-head": "Head to Head",
   "/tracker": "Tracker",
   "/retro-royale": "Retro Royale",
+  "/retro-royale/leaderboard": "Retro Royale — Leaderboard",
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

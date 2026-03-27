@@ -1223,7 +1223,7 @@ class DatabaseService:
 
                     games = deck["games_played"]
                     wins = deck["wins"]
-                    win_rate = round(wins / games * 100, 1) if games > 0 else None
+                    win_rate = round(wins / games, 4) if games > 0 else None
 
                     result_decks.append(
                         {

@@ -117,7 +117,7 @@ export default function RetroRoyalePage() {
   const [decksData, setDecksData] = useState<DecksResponse | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [page, setPage] = useState(1);
-  const [minGames, setMinGames] = useState(0);
+  const [minGames, setMinGames] = useState(20);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
 
   const lastSearchTime = useRef<number>(0);
@@ -318,14 +318,24 @@ export default function RetroRoyalePage() {
                 </span>
               </h1>
             </div>
-            <div className="flex flex-col gap-2 pb-1">
-              <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+            <div className="flex flex-col gap-2 pb-1 max-w-sm">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 Browse decks from this month&apos;s Retro Royale global
                 tournament. Card pool is restricted to base variants only.
               </p>
               <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
                 <Clock className="w-3.5 h-3.5" />
                 <span>{cards.length} cards in pool</span>
+              </div>
+              <div className="flex items-start gap-2 mt-1 px-3 py-2.5 rounded-lg bg-amber-500/8 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>
+                  Win rates here skew high. Most of this deck data is from the
+                  top players in the tournament, who have mostly 25+ wins with
+                  fewer than 5 losses before eliminating — far above the average
+                  player&apos;s run. Lower battle volume also means stats are
+                  less stable than on the ranked ladder.
+                </span>
               </div>
             </div>
           </div>
@@ -404,7 +414,11 @@ export default function RetroRoyalePage() {
         {/* Results Section */}
         {decksData && (
           <div className="space-y-6">
-            <DecksResultsGrid decksData={decksData} isSearching={isSearching} hideMatchups />
+            <DecksResultsGrid
+              decksData={decksData}
+              isSearching={isSearching}
+              hideMatchups
+            />
             <DecksPagination
               decksData={decksData}
               page={page}

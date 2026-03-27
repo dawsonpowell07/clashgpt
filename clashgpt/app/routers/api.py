@@ -580,6 +580,39 @@ async def search_retro_royale_decks(
     return response
 
 
+RETRO_ROYALE_TOURNAMENT_ID = "270787"
+
+
+@router.get("/retro-royale/leaderboard")
+@limiter.limit("15/minute")
+async def get_retro_royale_leaderboard(request: Request):
+    """
+    Fetch the top 50 players from the Retro Royale global tournament leaderboard.
+
+    Hits the Clash Royale API at /leaderboard/{tournament_id}?limit=50.
+    The limit is always 50 and cannot be changed.
+    """
+    from app.services.clash_royale import (
+        ClashRoyaleAPIError,
+        ClashRoyaleRateLimitError,
+        ClashRoyaleService,
+    )
+    from app.tools.serialization import serialize_dataclass
+
+    try:
+        async with ClashRoyaleService() as service:
+            leaderboard = await service.get_tournament_leaderboard(
+                RETRO_ROYALE_TOURNAMENT_ID
+            )
+            return serialize_dataclass(leaderboard)
+    except ClashRoyaleRateLimitError:
+        raise HTTPException(
+            status_code=429, detail="Clash Royale API rate limit exceeded"
+        ) from None
+    except ClashRoyaleAPIError as e:
+        raise HTTPException(status_code=502, detail=f"Clash Royale API error: {e!s}") from e
+
+
 def _parse_card_filter_param(
     cards_str: str | None,
     param_name: str,

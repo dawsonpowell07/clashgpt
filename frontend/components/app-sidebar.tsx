@@ -14,6 +14,7 @@ import {
   Lock,
   Shield,
   Trophy,
+  Medal,
 } from "lucide-react";
 import {
   SignInButton,
@@ -88,6 +89,12 @@ const NAV_SECTIONS = [
         title: "Retro Royale",
         url: "/retro-royale",
         icon: Trophy,
+        requiresAuth: false,
+      },
+      {
+        title: "Leaderboard",
+        url: "/retro-royale/leaderboard",
+        icon: Medal,
         requiresAuth: false,
       },
     ],
