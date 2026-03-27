@@ -341,6 +341,16 @@ async def search_decks(
     include_cards: Annotated[
         bool, Query(description="Include card details and variants")
     ] = False,
+    game_mode: Annotated[
+        str | None,
+        Query(
+            description=(
+                "Filter by game mode (e.g. 'retroRoyale'). "
+                "When omitted, only ladder battles are included. "
+                "When set, only battles with this game_mode are included."
+            )
+        ),
+    ] = None,
 ):
     """
     Search for decks with stats and filters (paginated).
@@ -365,7 +375,7 @@ async def search_decks(
     """
     # --- Check cache first ---
     cache_key = make_deck_cache_key(
-        include, exclude, sort_by.value, min_games, page, page_size, include_cards
+        include, exclude, sort_by.value, min_games, page, page_size, include_cards, game_mode
     )
     cached = get_cached_decks(cache_key)
     if cached is not None:
@@ -408,6 +418,7 @@ async def search_decks(
                 limit=page_size,
                 offset=offset,
                 include_cards=include_cards,
+                game_mode=game_mode,
             ),
             timeout=DECK_SEARCH_TIMEOUT,
         )
@@ -459,6 +470,112 @@ async def search_decks(
 
     response = JSONResponse(content=result)
     response.headers["X-Cache"] = "MISS"
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return response
+
+
+# ===== RETRO ROYALE ENDPOINTS =====
+
+
+@router.get("/retro-royale/decks")
+@limiter.limit("2/second;20/minute;200/day")
+async def search_retro_royale_decks(
+    request: Request,
+    include: Annotated[
+        str | None,
+        Query(description="Comma-separated card IDs that must be in deck (integers only, no variant suffix)"),
+    ] = None,
+    exclude: Annotated[
+        str | None,
+        Query(description="Comma-separated card IDs that must not be in deck"),
+    ] = None,
+    min_games: Annotated[int, Query(ge=0, description="Minimum games played")] = 0,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=200)] = 24,
+):
+    """
+    Search decks from the Retro Royale global tournament.
+
+    Queries fact_battle_participants directly for battles with
+    game_mode='RetroRoyale', parsing the pipe-separated deck_id string
+    stored by the ETL (e.g. "26000000.3|26000021.3|...|tower_159000000").
+
+    All cards are base variant only — no evolution or heroic variants.
+
+    Examples:
+        - /retro-royale/decks
+        - /retro-royale/decks?include=26000000,26000021&min_games=5
+        - /retro-royale/decks?exclude=26000055&page=2
+    """
+    db = get_database_service()
+
+    def _parse_int_ids(s: str | None, name: str) -> list[int] | HTTPException:
+        if not s:
+            return []
+        ids = []
+        for part in s.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                ids.append(int(part))
+            except ValueError:
+                return HTTPException(
+                    status_code=400,
+                    detail=f"Invalid card ID in '{name}': '{part}'. Must be an integer.",
+                )
+        return ids
+
+    include_ids = _parse_int_ids(include, "include")
+    if isinstance(include_ids, HTTPException):
+        raise include_ids
+
+    exclude_ids = _parse_int_ids(exclude, "exclude")
+    if isinstance(exclude_ids, HTTPException):
+        raise exclude_ids
+
+    if len(include_ids) > MAX_INCLUDE_CARDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot include more than {MAX_INCLUDE_CARDS} cards.",
+        )
+    if len(exclude_ids) > MAX_EXCLUDE_CARDS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot exclude more than {MAX_EXCLUDE_CARDS} cards.",
+        )
+
+    offset = (page - 1) * page_size
+
+    try:
+        decks, total = await asyncio.wait_for(
+            db.search_retro_royale_decks(
+                include_card_ids=include_ids or None,
+                exclude_card_ids=exclude_ids or None,
+                min_games=min_games,
+                limit=page_size,
+                offset=offset,
+            ),
+            timeout=DECK_SEARCH_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504, detail="Search took too long. Try narrowing your filters."
+        ) from None
+
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+
+    result = {
+        "decks": decks,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
+    }
+
+    response = JSONResponse(content=result)
     response.headers["Cache-Control"] = "public, max-age=300"
     return response
 

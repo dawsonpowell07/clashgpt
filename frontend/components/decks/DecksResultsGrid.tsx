@@ -5,11 +5,13 @@ import { DecksResponse } from "@/lib/types";
 interface DecksResultsGridProps {
   decksData: DecksResponse;
   isSearching: boolean;
+  hideMatchups?: boolean;
 }
 
 export function DecksResultsGrid({
   decksData,
   isSearching,
+  hideMatchups = false,
 }: DecksResultsGridProps) {
   return (
     <div className="space-y-6">
@@ -49,7 +51,7 @@ export function DecksResultsGrid({
       ) : decksData.decks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {decksData.decks.map((deck) => (
-            <DeckGridCard key={deck.deck_id} deck={deck} />
+            <DeckGridCard key={deck.deck_id} deck={deck} hideMatchups={hideMatchups} />
           ))}
         </div>
       ) : (

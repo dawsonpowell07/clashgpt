@@ -21,12 +21,14 @@ def make_deck_cache_key(
     page: int,
     page_size: int,
     include_cards: bool,
+    game_mode: str | None = None,
 ) -> str:
     """Generate a normalized cache key from deck search parameters."""
     # Sort comma-separated card IDs for consistent keys
     inc = ",".join(sorted(include.split(","))) if include else ""
     exc = ",".join(sorted(exclude.split(","))) if exclude else ""
-    return f"decks:{inc}|{exc}|{sort_by}|{min_games}|{page}|{page_size}|{include_cards}"
+    gm = game_mode or ""
+    return f"decks:{inc}|{exc}|{sort_by}|{min_games}|{page}|{page_size}|{include_cards}|{gm}"
 
 
 def get_cached_decks(key: str) -> Any | None:

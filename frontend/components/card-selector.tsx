@@ -37,6 +37,7 @@ interface CardSelectorProps {
   onToggleCard: (id: string) => void;
   filterMode: "INCLUDE" | "EXCLUDE";
   className?: string;
+  hideVariantFilter?: boolean;
 }
 
 export function CardSelector({
@@ -45,11 +46,12 @@ export function CardSelector({
   onToggleCard,
   filterMode,
   className,
+  hideVariantFilter = false,
 }: CardSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(true);
   const [variantFilter, setVariantFilter] = useState<CardVariantType | "All">(
-    CardVariantType.EVOLUTION,
+    hideVariantFilter ? "All" : CardVariantType.EVOLUTION,
   );
   const [rarityFilter, setRarityFilter] = useState<string>("Common");
 
@@ -163,58 +165,60 @@ export function CardSelector({
       {/* Filters - Natural Layout */}
       {isOpen && (
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 pb-2 border-b border-border/50 mb-1">
-          {/* Variant Filter mb-0 for mobile wrap */}
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Type
-            </span>
-            <div className="flex items-center border rounded-md overflow-hidden bg-muted/20 shadow-sm">
-              <button
-                onClick={() => setVariantFilter("All")}
-                className={cn(
-                  "px-3 text-xs h-8 font-medium transition-colors border-r",
-                  variantFilter === "All"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted/50",
-                )}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setVariantFilter(CardVariantType.HERO)}
-                className={cn(
-                  "px-3 text-xs h-8 font-medium transition-colors border-r",
-                  variantFilter === CardVariantType.HERO
-                    ? "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20"
-                    : "text-muted-foreground hover:bg-muted/50",
-                )}
-              >
-                Heroes
-              </button>
-              <button
-                onClick={() => setVariantFilter(CardVariantType.EVOLUTION)}
-                className={cn(
-                  "px-3 text-xs h-8 font-medium transition-colors border-r",
-                  variantFilter === CardVariantType.EVOLUTION
-                    ? "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20"
-                    : "text-muted-foreground hover:bg-muted/50",
-                )}
-              >
-                Evolutions
-              </button>
-              <button
-                onClick={() => setVariantFilter(CardVariantType.NORMAL)}
-                className={cn(
-                  "px-3 text-xs h-8 font-medium transition-colors",
-                  variantFilter === CardVariantType.NORMAL
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted/50",
-                )}
-              >
-                Base
-              </button>
+          {/* Variant Filter — hidden when all cards are a single variant (e.g. Retro Royale) */}
+          {!hideVariantFilter && (
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Type
+              </span>
+              <div className="flex items-center border rounded-md overflow-hidden bg-muted/20 shadow-sm">
+                <button
+                  onClick={() => setVariantFilter("All")}
+                  className={cn(
+                    "px-3 text-xs h-8 font-medium transition-colors border-r",
+                    variantFilter === "All"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted/50",
+                  )}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setVariantFilter(CardVariantType.HERO)}
+                  className={cn(
+                    "px-3 text-xs h-8 font-medium transition-colors border-r",
+                    variantFilter === CardVariantType.HERO
+                      ? "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20"
+                      : "text-muted-foreground hover:bg-muted/50",
+                  )}
+                >
+                  Heroes
+                </button>
+                <button
+                  onClick={() => setVariantFilter(CardVariantType.EVOLUTION)}
+                  className={cn(
+                    "px-3 text-xs h-8 font-medium transition-colors border-r",
+                    variantFilter === CardVariantType.EVOLUTION
+                      ? "bg-purple-500/10 text-purple-500 hover:bg-purple-500/20"
+                      : "text-muted-foreground hover:bg-muted/50",
+                  )}
+                >
+                  Evolutions
+                </button>
+                <button
+                  onClick={() => setVariantFilter(CardVariantType.NORMAL)}
+                  className={cn(
+                    "px-3 text-xs h-8 font-medium transition-colors",
+                    variantFilter === CardVariantType.NORMAL
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted/50",
+                  )}
+                >
+                  Base
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Rarity Filter */}
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">

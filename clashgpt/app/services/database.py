@@ -860,6 +860,7 @@ class DatabaseService:
         offset: int = 0,
         include_cards: bool = False,
         season_id: int | None = None,
+        game_mode: str | None = None,
     ) -> tuple[list[DeckWithStats], int]:
         """
         Search for decks with stats and filters.
@@ -874,6 +875,8 @@ class DatabaseService:
             offset: Pagination offset
             include_cards: Whether to populate DeckWithStats.cards via a second query
             season_id: Optional season filter via processed_battles
+            game_mode: Optional game mode filter (e.g. "retroRoyale"). When set,
+                filters by pb.game_mode instead of the default pb.source='ladder'.
 
         Returns:
             Tuple of (list of DeckWithStats, total matching count)
@@ -881,7 +884,8 @@ class DatabaseService:
         logger.info(
             f"DB query: search_decks_with_stats | include={include_card_ids}, "
             f"exclude={exclude_card_ids}, sort_by={sort_by.value}, "
-            f"min_games={min_games}, limit={limit}, offset={offset}"
+            f"min_games={min_games}, limit={limit}, offset={offset}, "
+            f"game_mode={game_mode}"
         )
 
         order_clause = _build_order_clause(sort_by)
@@ -894,7 +898,21 @@ class DatabaseService:
                     "limit": limit,
                     "offset": offset,
                 }
-                cte_conditions = ["pb.source = 'ladder'"]
+
+                # When a specific game_mode is requested (e.g. a tournament),
+                # filter by that game_mode only.
+                # Default (no game_mode) restricts to ranked Path of Legends battles:
+                #   - game_mode LIKE 'Ranked%' covers seasonal variants (Ranked1v1_2025_1, etc.)
+                #   - battle_type = 'pathOfLegend' excludes any non-PoL ranked battles
+                # This ensures tournament data never appears on the regular decks page.
+                if game_mode:
+                    cte_conditions = ["pb.game_mode = :game_mode"]
+                    params["game_mode"] = game_mode
+                else:
+                    cte_conditions = [
+                        "pb.game_mode LIKE 'Ranked%'",
+                        "pb.battle_type = 'pathOfLegend'",
+                    ]
 
                 if season_id:
                     cte_conditions.append("pb.season_id = :season_id")
@@ -972,11 +990,17 @@ class DatabaseService:
                     )
                 """
 
+                # When filtering by game_mode we use INNER JOIN so only decks
+                # that actually have battles in that mode are returned.
+                # Without game_mode (ladder), LEFT JOIN preserves the existing
+                # behaviour of showing decks with 0 games.
+                join_type = "INNER" if game_mode else "LEFT"
+
                 count_query = f"""
                     WITH {stats_cte}
                     SELECT COUNT(*)
                     FROM filtered_decks d
-                    LEFT JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
+                    {join_type} JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
                     WHERE COALESCE(dsa.games_played, 0) >= :min_games
                 """
                 count_result = await session.execute(text(count_query), params)
@@ -992,7 +1016,7 @@ class DatabaseService:
                         COALESCE(dsa.losses, 0) AS losses,
                         dsa.last_seen
                     FROM filtered_decks d
-                    LEFT JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
+                    {join_type} JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
                     WHERE COALESCE(dsa.games_played, 0) >= :min_games
                     {order_clause}
                     LIMIT :limit OFFSET :offset
@@ -1021,6 +1045,216 @@ class DatabaseService:
             logger.exception("Unexpected error in search_decks_with_stats")
             raise DatabaseServiceError(
                 f"Unexpected error while searching deck stats: {e!s}"
+            ) from e
+
+    # ===== RETRO ROYALE ENDPOINTS =====
+
+    async def search_retro_royale_decks(
+        self,
+        include_card_ids: list[int] | None = None,
+        exclude_card_ids: list[int] | None = None,
+        min_games: int = 0,
+        limit: int = 24,
+        offset: int = 0,
+    ) -> tuple[list[dict], int]:
+        """
+        Search decks from RetroRoyale global tournament battles.
+
+        RetroRoyale battles store deck_id in fact_battle_participants as a
+        pipe-separated string of "card_id.level" entries, e.g.:
+            "26000000.3|26000021.3|...|tower_159000000"
+
+        This method queries directly against that string format rather than
+        going through dim_decks / deck_card_config, which only contain
+        standard ladder deck data.
+
+        Args:
+            include_card_ids: Card IDs that must appear in the deck.
+            exclude_card_ids: Card IDs that must NOT appear in the deck.
+            min_games: Minimum battle count.
+            limit: Page size.
+            offset: Pagination offset.
+
+        Returns:
+            Tuple of (list of deck dicts, total matching count).
+            Each deck dict has: deck_id, avg_elixir, games_played, wins,
+            losses, win_rate, last_seen, cards.
+        """
+        logger.info(
+            f"DB query: search_retro_royale_decks | include={include_card_ids}, "
+            f"exclude={exclude_card_ids}, min_games={min_games}, "
+            f"limit={limit}, offset={offset}"
+        )
+
+        try:
+            async with self.async_session() as session:
+                params: dict[str, Any] = {
+                    "min_games": min_games,
+                    "limit": limit,
+                    "offset": offset,
+                }
+
+                # Build card include/exclude conditions using position() on the
+                # pipe-separated deck_id string.  Each card_id is followed by
+                # a '.' in the string, making it a safe unique token to search
+                # for (e.g. "26000000." will not false-match "260000001.").
+                card_conditions: list[str] = []
+                if include_card_ids:
+                    for i, card_id in enumerate(include_card_ids):
+                        key = f"inc_{i}"
+                        card_conditions.append(
+                            f"position(:{key}_str in fbp.deck_id) > 0"
+                        )
+                        params[f"{key}_str"] = f"{card_id}."
+
+                if exclude_card_ids:
+                    for i, card_id in enumerate(exclude_card_ids):
+                        key = f"exc_{i}"
+                        card_conditions.append(
+                            f"position(:{key}_str in fbp.deck_id) = 0"
+                        )
+                        params[f"{key}_str"] = f"{card_id}."
+
+                card_filter = (
+                    "AND " + " AND ".join(card_conditions) if card_conditions else ""
+                )
+
+                stats_cte = f"""
+                    retro_stats AS (
+                        SELECT
+                            fbp.deck_id,
+                            COUNT(*)                            AS games_played,
+                            SUM(fbp.is_win)                     AS wins,
+                            COUNT(*) - SUM(fbp.is_win)          AS losses,
+                            MAX(pb.battle_time)                 AS last_seen
+                        FROM fact_battle_participants fbp
+                        JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
+                        WHERE pb.game_mode = 'RetroRoyale'
+                        {card_filter}
+                        GROUP BY fbp.deck_id
+                        HAVING COUNT(*) >= :min_games
+                    )
+                """
+
+                count_result = await session.execute(
+                    text(f"WITH {stats_cte} SELECT COUNT(*) FROM retro_stats"),
+                    params,
+                )
+                total_count = count_result.scalar() or 0
+
+                data_result = await session.execute(
+                    text(
+                        f"""
+                        WITH {stats_cte}
+                        SELECT deck_id, games_played, wins, losses, last_seen
+                        FROM retro_stats
+                        ORDER BY last_seen DESC
+                        LIMIT :limit OFFSET :offset
+                        """
+                    ),
+                    params,
+                )
+                rows = data_result.fetchall()
+
+                if not rows:
+                    return [], total_count
+
+                # Parse card_ids from the pipe-separated deck_id strings and
+                # batch-fetch card metadata from dim_cards.
+                all_card_ids: set[int] = set()
+                parsed_decks: list[dict] = []
+                for row in rows:
+                    deck_id_str: str = row[0]
+                    card_ids = _parse_retro_deck_card_ids(deck_id_str)
+                    all_card_ids.update(card_ids)
+                    parsed_decks.append(
+                        {
+                            "deck_id": deck_id_str,
+                            "card_ids": card_ids,
+                            "games_played": int(row[1]),
+                            "wins": int(row[2]),
+                            "losses": int(row[3]),
+                            "last_seen": (
+                                row[4].isoformat()
+                                if hasattr(row[4], "isoformat")
+                                else (str(row[4]) if row[4] else None)
+                            ),
+                        }
+                    )
+
+                # Batch fetch card info
+                card_info: dict[int, dict] = {}
+                if all_card_ids:
+                    card_rows = await session.execute(
+                        text(
+                            "SELECT card_id, name, elixir_cost "
+                            "FROM dim_cards "
+                            "WHERE card_id = ANY(:ids)"
+                        ),
+                        {"ids": list(all_card_ids)},
+                    )
+                    for cr in card_rows.fetchall():
+                        card_info[cr[0]] = {"name": cr[1], "elixir_cost": cr[2]}
+
+                # Assemble final deck dicts
+                result_decks: list[dict] = []
+                for deck in parsed_decks:
+                    card_ids = deck["card_ids"]
+                    cards_out = [
+                        {
+                            "card_id": cid,
+                            "card_name": card_info.get(cid, {}).get("name", str(cid)),
+                            "slot_index": idx + 1,
+                            "variant": "normal",
+                        }
+                        for idx, cid in enumerate(card_ids)
+                    ]
+
+                    elixir_costs = [
+                        card_info[cid]["elixir_cost"]
+                        for cid in card_ids
+                        if cid in card_info and card_info[cid]["elixir_cost"] is not None
+                    ]
+                    avg_elixir = (
+                        round(sum(elixir_costs) / len(elixir_costs), 2)
+                        if elixir_costs
+                        else None
+                    )
+
+                    games = deck["games_played"]
+                    wins = deck["wins"]
+                    win_rate = round(wins / games * 100, 1) if games > 0 else None
+
+                    result_decks.append(
+                        {
+                            "deck_id": deck["deck_id"],
+                            "avg_elixir": avg_elixir,
+                            "games_played": games,
+                            "wins": wins,
+                            "losses": deck["losses"],
+                            "win_rate": win_rate,
+                            "last_seen": deck["last_seen"],
+                            "cards": cards_out,
+                        }
+                    )
+
+                logger.info(
+                    f"DB result: search_retro_royale_decks returned {len(result_decks)} "
+                    f"decks out of {total_count} total"
+                )
+                return result_decks, total_count
+
+        except DatabaseServiceError:
+            raise
+        except SQLAlchemyError as e:
+            logger.exception("DB query failed: search_retro_royale_decks")
+            raise DatabaseQueryError(
+                f"Database query failed in search_retro_royale_decks: {e!s}"
+            ) from e
+        except Exception as e:
+            logger.exception("Unexpected error in search_retro_royale_decks")
+            raise DatabaseServiceError(
+                f"Unexpected error in search_retro_royale_decks: {e!s}"
             ) from e
 
     # ===== PLAYER ENDPOINTS =====
@@ -2529,6 +2763,24 @@ class DatabaseService:
 
 
 # ===== MODULE-LEVEL HELPERS =====
+
+
+def _parse_retro_deck_card_ids(deck_id: str) -> list[int]:
+    """
+    Extract integer card_ids from a RetroRoyale pipe-separated deck_id string.
+
+    The ETL stores deck_id as: "26000000.3|26000021.3|...|tower_159000000"
+    Tower entries are skipped; the integer before the first '.' is the card_id.
+    """
+    card_ids: list[int] = []
+    for part in deck_id.split("|"):
+        if part.startswith("tower_"):
+            continue
+        try:
+            card_ids.append(int(part.split(".")[0]))
+        except (ValueError, IndexError):
+            continue
+    return card_ids
 
 
 def _build_order_clause(sort_by: DeckSortBy) -> str:

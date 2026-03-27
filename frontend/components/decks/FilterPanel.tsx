@@ -35,6 +35,7 @@ interface FilterPanelProps {
   isSearching: boolean;
   onSearch: () => void;
   onClearFilters: () => void;
+  hideVariantFilter?: boolean;
 }
 
 export function FilterPanel({
@@ -52,6 +53,7 @@ export function FilterPanel({
   isSearching,
   onSearch,
   onClearFilters,
+  hideVariantFilter = false,
 }: FilterPanelProps) {
   return (
     <div className="relative space-y-4 bg-gradient-to-br from-card via-card to-muted/20 border border-border/50 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
@@ -179,6 +181,7 @@ export function FilterPanel({
           }
           onToggleCard={onToggleCard}
           filterMode={filterMode}
+          hideVariantFilter={hideVariantFilter}
         />
       )}
     </div>

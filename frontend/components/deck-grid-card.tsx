@@ -30,6 +30,7 @@ interface Deck {
 interface DeckGridCardProps {
   deck: Deck;
   className?: string;
+  hideMatchups?: boolean;
 }
 
 function formatLastSeen(timestamp: string): string {
@@ -108,7 +109,7 @@ function getKeyCards(cards: DeckCard[], avgElixir: number): string {
   return deckName;
 }
 
-export function DeckGridCard({ deck, className }: DeckGridCardProps) {
+export function DeckGridCard({ deck, className, hideMatchups = false }: DeckGridCardProps) {
   const hasStats =
     deck.games_played !== undefined &&
     deck.games_played !== null &&
@@ -243,13 +244,15 @@ export function DeckGridCard({ deck, className }: DeckGridCardProps) {
 
       {/* Actions */}
       <div className="px-3 sm:px-5 pb-3 sm:pb-4 mt-auto flex gap-2">
-        <Link
-          href={matchupsHref}
-          className="flex items-center justify-center gap-2 flex-1 py-2 rounded-xl text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 transition-all"
-        >
-          <Swords className="w-3.5 h-3.5" />
-          Matchups
-        </Link>
+        {!hideMatchups && (
+          <Link
+            href={matchupsHref}
+            className="flex items-center justify-center gap-2 flex-1 py-2 rounded-xl text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 transition-all"
+          >
+            <Swords className="w-3.5 h-3.5" />
+            Matchups
+          </Link>
+        )}
         <a
           href={deckLink}
           target="_blank"

@@ -13,6 +13,7 @@ import {
   LogIn,
   Lock,
   Shield,
+  Trophy,
 } from "lucide-react";
 import {
   SignInButton,
@@ -76,6 +77,17 @@ const NAV_SECTIONS = [
         title: "Head to Head",
         url: "/head-to-head",
         icon: ArrowLeftRight,
+        requiresAuth: false,
+      },
+    ],
+  },
+  {
+    title: "Global Tournaments",
+    items: [
+      {
+        title: "Retro Royale",
+        url: "/retro-royale",
+        icon: Trophy,
         requiresAuth: false,
       },
     ],
