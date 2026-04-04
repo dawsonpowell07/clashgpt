@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw, Search } from "lucide-react";
 import { Card, DecksResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Inter } from "next/font/google";
@@ -141,13 +141,8 @@ export default function DecksPage() {
     [includedVariants, excludedVariants, minGames],
   );
 
-  const hasFetchedRef = useRef(false);
-  useEffect(() => {
-    if (!hasFetchedRef.current) {
-      hasFetchedRef.current = true;
-      fetchDecks(1);
-    }
-  }, [fetchDecks]);
+  // No auto-fetch on mount — require user to select filters and click Search
+  // to avoid expensive unfiltered queries on page load.
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -316,7 +311,7 @@ export default function DecksPage() {
         )}
 
         {/* Results Section */}
-        {decksData && (
+        {decksData ? (
           <div className="space-y-6">
             <DecksResultsGrid decksData={decksData} isSearching={isSearching} />
             <DecksPagination
@@ -325,6 +320,19 @@ export default function DecksPage() {
               isSearching={isSearching}
               onPageChange={handlePageChange}
             />
+          </div>
+        ) : !isSearching && (
+          <div className="flex flex-col items-center justify-center py-20 px-4">
+            <div className="relative mb-6">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+                <Search className="w-9 h-9 text-primary/60" />
+              </div>
+              <div className="absolute -inset-2 rounded-3xl bg-primary/5 blur-xl -z-10" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Search for Decks</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
+              Select cards above to include or exclude, set a minimum games filter, then hit <span className="font-semibold text-primary">Search Decks</span> to find matching decks.
+            </p>
           </div>
         )}
       </div>

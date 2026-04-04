@@ -993,6 +993,16 @@ class DatabaseService:
                 # behaviour of showing decks with 0 games.
                 join_type = "INNER" if game_mode else "LEFT"
 
+                count_query = f"""
+                    WITH {stats_cte}
+                    SELECT COUNT(*)
+                    FROM filtered_decks d
+                    {join_type} JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
+                    WHERE COALESCE(dsa.games_played, 0) >= :min_games
+                """
+                count_result = await session.execute(text(count_query), params)
+                total_count = count_result.scalar() or 0
+
                 data_query = f"""
                     WITH {stats_cte}
                     SELECT
@@ -1001,8 +1011,7 @@ class DatabaseService:
                         COALESCE(dsa.games_played, 0) AS games_played,
                         COALESCE(dsa.wins, 0) AS wins,
                         COALESCE(dsa.games_played - dsa.wins, 0) AS losses,
-                        dsa.last_seen,
-                        COUNT(*) OVER() AS total_count
+                        dsa.last_seen
                     FROM filtered_decks d
                     {join_type} JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
                     WHERE COALESCE(dsa.games_played, 0) >= :min_games
@@ -1012,10 +1021,7 @@ class DatabaseService:
 
                 result = await session.execute(text(data_query), params)
                 rows = result.fetchall()
-                total_count = rows[0][6] if rows else 0
-                # Strip the total_count column before passing to the row parser
-                trimmed_rows = [r[:6] for r in rows]
-                decks = _rows_to_deck_with_stats(trimmed_rows)
+                decks = _rows_to_deck_with_stats(rows)
 
                 if include_cards and decks:
                     await _attach_cards_to_decks(session, decks)
