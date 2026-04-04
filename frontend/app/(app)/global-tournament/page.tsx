@@ -86,7 +86,7 @@ export default function GlobalTournamentPage() {
   }, []);
 
   useEffect(() => {
-    fetchCards();
+    if (TOURNAMENT_CONFIG.enabled) fetchCards();
   }, [fetchCards]);
 
   // Retro royale cards are base-only — strip the variant suffix and just send the card ID.
@@ -144,7 +144,7 @@ export default function GlobalTournamentPage() {
 
   const hasFetchedRef = useRef(false);
   useEffect(() => {
-    if (!hasFetchedRef.current) {
+    if (TOURNAMENT_CONFIG.enabled && !hasFetchedRef.current) {
       hasFetchedRef.current = true;
       fetchDecks(1);
     }
