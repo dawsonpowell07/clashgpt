@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { AlertTriangle, RefreshCw, Search } from "lucide-react";
 import { Card, DecksResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -17,30 +18,121 @@ const inter = Inter({
 
 const API_BASE_URL = "/api/backend";
 
-export default function DecksPage() {
+// --- helpers to read/write URL search params ---
+function parseSetParam(sp: URLSearchParams, key: string): Set<string> {
+  const raw = sp.get(key);
+  if (!raw) return new Set();
+  return new Set(raw.split(",").filter(Boolean));
+}
+
+function DecksPageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Derive initial values from the current URL
+  const queryString = searchParams.toString();
+
+  const urlState = useMemo(() => {
+    const sp = new URLSearchParams(queryString);
+    return {
+      included: parseSetParam(sp, "include"),
+      excluded: parseSetParam(sp, "exclude"),
+      filterMode: (sp.get("mode") === "EXCLUDE" ? "EXCLUDE" : "INCLUDE") as
+        | "INCLUDE"
+        | "EXCLUDE",
+      page: Math.max(1, parseInt(sp.get("page") || "1", 10) || 1),
+      minGames: parseInt(sp.get("min_games") || "20", 10) || 20,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryString]);
+
   // --- State ---
   const [cards, setCards] = useState<Card[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
   const [cardsError, setCardsError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  // Selection State
+  // Selection State — initialised from URL
   const [includedVariants, setIncludedVariants] = useState<Set<string>>(
-    new Set(),
+    urlState.included,
   );
   const [excludedVariants, setExcludedVariants] = useState<Set<string>>(
-    new Set(),
+    urlState.excluded,
   );
   const [filterMode, setFilterMode] = useState<"INCLUDE" | "EXCLUDE">(
-    "INCLUDE",
+    urlState.filterMode,
   );
 
-  // Search Results State
+  // Search Results State — initialised from URL
   const [decksData, setDecksData] = useState<DecksResponse | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [page, setPage] = useState(1);
-  const [minGames, setMinGames] = useState(20);
+  const [page, setPage] = useState(urlState.page);
+  const [minGames, setMinGames] = useState(urlState.minGames);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+
+  // When the URL changes externally (browser back/forward), re-sync state
+  const prevQueryString = useRef(queryString);
+  useEffect(() => {
+    if (queryString !== prevQueryString.current) {
+      prevQueryString.current = queryString;
+      setIncludedVariants(urlState.included);
+      setExcludedVariants(urlState.excluded);
+      setFilterMode(urlState.filterMode);
+      setPage(urlState.page);
+      setMinGames(urlState.minGames);
+    }
+  }, [queryString, urlState]);
+
+  // Helper: build URL string from given state
+  const buildUrl = useCallback(
+    (opts: {
+      included?: Set<string>;
+      excluded?: Set<string>;
+      mode?: "INCLUDE" | "EXCLUDE";
+      pg?: number;
+      min?: number;
+    }) => {
+      const sp = new URLSearchParams();
+      const inc = opts.included ?? includedVariants;
+      const exc = opts.excluded ?? excludedVariants;
+      const m = opts.mode ?? filterMode;
+      const pg = opts.pg ?? page;
+      const min = opts.min ?? minGames;
+
+      if (inc.size > 0) sp.set("include", Array.from(inc).join(","));
+      if (exc.size > 0) sp.set("exclude", Array.from(exc).join(","));
+      if (m !== "INCLUDE") sp.set("mode", m);
+      if (pg > 1) sp.set("page", pg.toString());
+      if (min !== 20) sp.set("min_games", min.toString());
+
+      const qs = sp.toString();
+      return qs ? `${pathname}?${qs}` : pathname;
+    },
+    [
+      includedVariants,
+      excludedVariants,
+      filterMode,
+      page,
+      minGames,
+      pathname,
+    ],
+  );
+
+  // Push current filter state into the URL (replace so filter tweaks don't
+  // clutter history — back button takes you to the previous page).
+  const syncToUrl = useCallback(
+    (opts: {
+      included?: Set<string>;
+      excluded?: Set<string>;
+      mode?: "INCLUDE" | "EXCLUDE";
+      pg?: number;
+      min?: number;
+    }) => {
+      router.replace(buildUrl(opts), { scroll: false });
+    },
+    [buildUrl, router],
+  );
 
   // Debounce guard
   const lastSearchTime = useRef<number>(0);
@@ -141,16 +233,31 @@ export default function DecksPage() {
     [includedVariants, excludedVariants, minGames],
   );
 
-  // No auto-fetch on mount — require user to select filters and click Search
-  // to avoid expensive unfiltered queries on page load.
+  // Auto-fetch when returning via back button with filters in the URL
+  const hasFetchedRef = useRef(false);
+  useEffect(() => {
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      // Only auto-fetch if filters were present in the URL (i.e. user is returning)
+      const hasFilters =
+        includedVariants.size > 0 || excludedVariants.size > 0;
+      if (hasFilters) {
+        fetchDecks(page);
+      }
+    }
+  }, [fetchDecks, includedVariants, excludedVariants, page]);
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
+    syncToUrl({ pg: newPage });
     fetchDecks(newPage);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleToggleCard = (id: string) => {
+    let newIncluded = includedVariants;
+    let newExcluded = excludedVariants;
+
     if (filterMode === "INCLUDE") {
       const newSet = new Set(includedVariants);
       if (newSet.has(id)) {
@@ -161,9 +268,11 @@ export default function DecksPage() {
           const newExclude = new Set(excludedVariants);
           newExclude.delete(id);
           setExcludedVariants(newExclude);
+          newExcluded = newExclude;
         }
       }
       setIncludedVariants(newSet);
+      newIncluded = newSet;
     } else {
       const newSet = new Set(excludedVariants);
       if (newSet.has(id)) {
@@ -174,17 +283,43 @@ export default function DecksPage() {
           const newInclude = new Set(includedVariants);
           newInclude.delete(id);
           setIncludedVariants(newInclude);
+          newIncluded = newInclude;
         }
       }
       setExcludedVariants(newSet);
+      newExcluded = newSet;
     }
+
+    syncToUrl({ included: newIncluded, excluded: newExcluded });
+  };
+
+  const handleSetFilterMode = (mode: "INCLUDE" | "EXCLUDE") => {
+    setFilterMode(mode);
+    syncToUrl({ mode });
+  };
+
+  const handleSetMinGames = (val: number) => {
+    setMinGames(val);
+    syncToUrl({ min: val });
   };
 
   const clearFilters = () => {
     setIncludedVariants(new Set());
     setExcludedVariants(new Set());
-    setMinGames(0);
+    setMinGames(20);
     setPage(1);
+    syncToUrl({
+      included: new Set(),
+      excluded: new Set(),
+      pg: 1,
+      min: 20,
+    });
+  };
+
+  const handleSearch = () => {
+    setPage(1);
+    syncToUrl({ pg: 1 });
+    fetchDecks(1);
   };
 
   const getCardLabel = (id: string) => {
@@ -250,17 +385,14 @@ export default function DecksPage() {
           cardsError={cardsError}
           onRetryCards={fetchCards}
           filterMode={filterMode}
-          onSetFilterMode={setFilterMode}
+          onSetFilterMode={handleSetFilterMode}
           includedVariants={includedVariants}
           excludedVariants={excludedVariants}
           onToggleCard={handleToggleCard}
           minGames={minGames}
-          onSetMinGames={setMinGames}
+          onSetMinGames={handleSetMinGames}
           isSearching={isSearching}
-          onSearch={() => {
-            setPage(1);
-            fetchDecks(1);
-          }}
+          onSearch={handleSearch}
           onClearFilters={clearFilters}
         />
 
@@ -321,21 +453,36 @@ export default function DecksPage() {
               onPageChange={handlePageChange}
             />
           </div>
-        ) : !isSearching && (
-          <div className="flex flex-col items-center justify-center py-20 px-4">
-            <div className="relative mb-6">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
-                <Search className="w-9 h-9 text-primary/60" />
+        ) : (
+          !isSearching && (
+            <div className="flex flex-col items-center justify-center py-20 px-4">
+              <div className="relative mb-6">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+                  <Search className="w-9 h-9 text-primary/60" />
+                </div>
+                <div className="absolute -inset-2 rounded-3xl bg-primary/5 blur-xl -z-10" />
               </div>
-              <div className="absolute -inset-2 rounded-3xl bg-primary/5 blur-xl -z-10" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                Search for Decks
+              </h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
+                Select cards above to include or exclude, set a minimum games
+                filter, then hit{" "}
+                <span className="font-semibold text-primary">Search Decks</span>{" "}
+                to find matching decks.
+              </p>
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Search for Decks</h3>
-            <p className="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
-              Select cards above to include or exclude, set a minimum games filter, then hit <span className="font-semibold text-primary">Search Decks</span> to find matching decks.
-            </p>
-          </div>
+          )
         )}
       </div>
     </div>
+  );
+}
+
+export default function DecksPage() {
+  return (
+    <Suspense>
+      <DecksPageContent />
+    </Suspense>
   );
 }
