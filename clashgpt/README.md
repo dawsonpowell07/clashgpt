@@ -1,93 +1,78 @@
-# ClashGPT
+# ClashGPT Backend
 
-An AI-powered Clash Royale assistant that helps players analyze cards, decks, matchups, and strategies using Google's Gemini AI and the official Clash Royale API.
+The Python backend for ClashGPT, built with FastAPI, Google Agent Development Kit (ADK), and Supabase. It provides the REST API and serves the AI agent powered by Gemini.
 
-## 🎮 What is ClashGPT?
+## 🛠 Tech Stack
 
-ClashGPT is a comprehensive Clash Royale companion that combines:
-
-- **🤖 AI-Powered Chat**: Ask questions in natural language about cards, decks, and strategies
-- **📊 Real-Time Data**: Live stats from the official Clash Royale API and RoyaleAPI
-- **🎴 Card Analysis**: Detailed statistics, usage rates, and evolution information
-- **🏆 Deck Builder**: Search meta decks, analyze matchups, and build winning strategies
-- **👤 Player Profiles**: Track player stats, battle logs, and progression
-- **🏰 Clan Search**: Find and analyze clans worldwide
-- **⚔️ Matchup Calculator**: Understand deck counters and win conditions
-
-Built with Google's Agent Development Kit (ADK), Gemini AI, Next.js, and deployed on Google Cloud Platform.
-
+- **Framework**: FastAPI (Python)
+- **AI Stack**: Google Agent Development Kit (ADK), Gemini AI
+- **Database**: PostgreSQL (via Supabase)
+- **Package Manager**: uv
 
 ## 📁 Project Structure
 
-This is a monorepo containing both frontend and backend:
-
 ```
 clashgpt/
-├── clashgpt/              # Backend (Python/FastAPI/Google ADK)
-│   ├── app/
-│   │   ├── agent.py       # AI agent with ADK
-│   │   ├── fast_api_app.py # REST API server
-│   │   ├── tools/         # Agent tools (card, deck, player, clan)
-│   │   ├── services/      # External API clients
-│   │   └── models/        # Data models
-│   ├── tests/             # Backend tests
-│   ├── Makefile           # Backend commands
-│   ├── pyproject.toml     # Python dependencies
-│   └── README.md          # Backend documentation
-│
-├── frontend/              # Frontend (Next.js/React/TypeScript)
-│   ├── app/               # Next.js app directory
-│   │   ├── (app)/         # Main app routes
-│   │   │   ├── chat/      # AI chat interface
-│   │   │   ├── decks/     # Deck browser
-│   │   │   ├── profiles/  # Player profiles
-│   │   │   ├── matchups/  # Matchup analyzer
-│   │   │   └── tracker/   # Battle tracker
-│   │   └── api/           # API routes
-│   ├── components/        # React components
-│   ├── lib/               # Utilities
-│   ├── types/             # TypeScript types
-│   ├── package.json       # Node dependencies
-│   └── README.md          # Frontend documentation
-│
-├── Makefile               # Root-level commands
-└── README.md              # This file
+├── app/
+│   ├── agent.py         # AI agent powered by ADK
+│   ├── fast_api_app.py  # REST API server (Uvicorn/FastAPI)
+│   ├── tools/           # Agent tools (card, deck, player, clan)
+│   ├── services/        # External API clients
+│   └── models/          # Data models
+├── tests/               # Backend tests
+├── Makefile             # Backend commands
+├── pyproject.toml       # Python dependencies
+└── README.md            # This documentation
 ```
 
-## 🎯 Features
+## 🚀 Getting Started
 
-### 🤖 AI Chat Assistant
+### Installation
 
-Ask questions in natural language and get intelligent responses:
+Install `uv` and dependencies natively:
+```bash
+make install
+```
 
-- "What are the best counters to Mega Knight?"
-- "Show me popular Hog Rider decks"
-- "Analyze my deck: Hog, Fireball, Log..."
-- "How do I beat Graveyard decks?"
+### Environment Requirements
 
-### 🎴 Deck Tools
+Set up `.env` containing your database connection strings (Supabase), Gemini AI environment keys, and other related configs.
 
-- **Deck Browser**: Browse meta decks with filters
-- **Deck Builder**: Build and save custom decks
-- **Matchup Analysis**: See win rates against popular decks
-- **Card Synergies**: Understand card combinations
+### Running Locally
 
-### 👤 Player Features
+Run the continuous development server (FastAPI):
+```bash
+make local-backend
+```
 
-- **Profile Search**: Look up any player by tag
-- **Battle Log**: View recent battles and outcomes
-- **Progress Tracking**: Track trophy and card progression
-- **Leaderboards**: See top players globally
+Run the ADK agent playground to test tools iteratively:
+```bash
+make playground
+```
+This starts the playground on `localhost:8501`.
 
-### 🏰 Clan Features
+### Formatting, Testing & Quality
 
-- **Clan Search**: Find clans by name, location, or requirements
-- **Member Roster**: View all clan members and roles
-- **Clan Wars**: Track clan war performance
+Format python files and run checks via mypy and ruff:
+```bash
+make lint
+```
 
-### ⚔️ Strategy Tools
+Run unit and integration tests:
+```bash
+make test
+```
 
-- **Card Counters**: Find effective counters for any card
-- **Win Conditions**: Compare win condition effectiveness
-- **Meta Analysis**: Understand current meta trends
-- **Head-to-Head**: Compare two decks directly
+## ☁️ Deployment
+
+The backend is deployed to Google Cloud Run natively via `gcloud`. It leverages CI/CD capabilities via git commit hashes.
+
+Deploy the backend seamlessly:
+```bash
+make deploy
+```
+
+Deploy with `.env` file variables exposed via Google Cloud Secret Manager / Config:
+```bash
+make deploy-env
+```
