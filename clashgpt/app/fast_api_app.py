@@ -32,7 +32,10 @@ from app.agent import root_agent
 from app.app_utils.telemetry import setup_telemetry
 
 # from app.rate_limit import limiter
-from app.routers.api import router as api_router
+from app.routers.deck_analysis import router as deck_analysis_router
+from app.routers.decks import router as decks_router
+from app.routers.global_tournament import router as global_tournament_router
+from app.routers.profiles import router as profiles_router
 from app.services.database import get_database_service
 from app.settings import settings
 
@@ -112,8 +115,11 @@ app.add_middleware(
 # Override lifespan to manage database connections
 app.router.lifespan_context = lifespan
 
-# Include API router
-app.include_router(api_router)
+# Include API routers
+app.include_router(decks_router)
+app.include_router(deck_analysis_router)
+app.include_router(global_tournament_router)
+app.include_router(profiles_router)
 
 
 @app.middleware("http")
