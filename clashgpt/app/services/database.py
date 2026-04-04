@@ -993,16 +993,6 @@ class DatabaseService:
                 # behaviour of showing decks with 0 games.
                 join_type = "INNER" if game_mode else "LEFT"
 
-                count_query = f"""
-                    WITH {stats_cte}
-                    SELECT COUNT(*)
-                    FROM filtered_decks d
-                    {join_type} JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
-                    WHERE COALESCE(dsa.games_played, 0) >= :min_games
-                """
-                count_result = await session.execute(text(count_query), params)
-                total_count = count_result.scalar() or 0
-
                 data_query = f"""
                     WITH {stats_cte}
                     SELECT
@@ -1011,7 +1001,8 @@ class DatabaseService:
                         COALESCE(dsa.games_played, 0) AS games_played,
                         COALESCE(dsa.wins, 0) AS wins,
                         COALESCE(dsa.games_played - dsa.wins, 0) AS losses,
-                        dsa.last_seen
+                        dsa.last_seen,
+                        COUNT(*) OVER() AS total_count
                     FROM filtered_decks d
                     {join_type} JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
                     WHERE COALESCE(dsa.games_played, 0) >= :min_games
@@ -1021,7 +1012,10 @@ class DatabaseService:
 
                 result = await session.execute(text(data_query), params)
                 rows = result.fetchall()
-                decks = _rows_to_deck_with_stats(rows)
+                total_count = rows[0][6] if rows else 0
+                # Strip the total_count column before passing to the row parser
+                trimmed_rows = [r[:6] for r in rows]
+                decks = _rows_to_deck_with_stats(trimmed_rows)
 
                 if include_cards and decks:
                     await _attach_cards_to_decks(session, decks)
@@ -1845,32 +1839,94 @@ class DatabaseService:
                         "card_b_id": card_b_id,
                     }
 
-                # ── 2. Head-to-head aggregate (card_a decks vs card_b decks) ──
-                # Use CTEs to resolve card → deck_id sets once, then join into the summary.
-                stats_query = text("""
+                # ── 2–4. Aggregate stats + top decks for both sides in ONE query ──
+                # Builds the deck-set CTEs once instead of 3× per request.
+                combined_query = text("""
                     WITH decks_with_a AS (
                         SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_a_id
                     ),
                     decks_with_b AS (
                         SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_b_id
+                    ),
+                    base AS (
+                        SELECT mss.*
+                        FROM matchup_stats_summary mss
+                        JOIN decks_with_a da ON mss.deck_id = da.deck_id
+                        JOIN decks_with_b db ON mss.opponent_deck_id = db.deck_id
+                        WHERE mss.battle_type = 'pathOfLegend'
+                          AND mss.game_mode LIKE 'Ranked%'
+                    ),
+                    agg AS (
+                        SELECT
+                            COALESCE(SUM(games_played), 0) AS total_games,
+                            COALESCE(SUM(wins), 0) AS wins_a,
+                            COALESCE(SUM(games_played - wins), 0) AS losses_a
+                        FROM base
+                    ),
+                    top_a AS (
+                        SELECT
+                            deck_id,
+                            SUM(games_played) AS games,
+                            SUM(wins) AS wins,
+                            ROUND(
+                                SUM(wins)::numeric / NULLIF(SUM(games_played), 0),
+                                4
+                            ) AS win_rate
+                        FROM base
+                        GROUP BY deck_id
+                        ORDER BY games DESC
+                        LIMIT :top_decks
+                    ),
+                    top_b AS (
+                        SELECT
+                            opponent_deck_id AS deck_id,
+                            SUM(games_played) AS games,
+                            SUM(games_played - wins) AS wins,
+                            ROUND(
+                                SUM(games_played - wins)::numeric
+                                / NULLIF(SUM(games_played), 0),
+                                4
+                            ) AS win_rate
+                        FROM base
+                        GROUP BY opponent_deck_id
+                        ORDER BY games DESC
+                        LIMIT :top_decks
                     )
-                    SELECT
-                        COALESCE(SUM(mss.games_played), 0) AS total_games,
-                        COALESCE(SUM(mss.wins), 0) AS wins_a,
-                        COALESCE(SUM(mss.games_played - mss.wins), 0) AS losses_a
-                    FROM matchup_stats_summary mss
-                    JOIN decks_with_a da ON mss.deck_id = da.deck_id
-                    JOIN decks_with_b db ON mss.opponent_deck_id = db.deck_id
-                    WHERE mss.battle_type = 'pathOfLegend'
-                      AND mss.game_mode LIKE 'Ranked%'
+                    SELECT 'agg' AS side, NULL AS deck_id,
+                           total_games AS games, wins_a AS wins, losses_a AS win_rate
+                    FROM agg
+                    UNION ALL
+                    SELECT 'A' AS side, deck_id, games, wins, win_rate FROM top_a
+                    UNION ALL
+                    SELECT 'B' AS side, deck_id, games, wins, win_rate FROM top_b
                 """)
-                stats_result = await session.execute(
-                    stats_query, {"card_a_id": card_a_id, "card_b_id": card_b_id}
+                combined_result = await session.execute(
+                    combined_query,
+                    {
+                        "card_a_id": card_a_id,
+                        "card_b_id": card_b_id,
+                        "top_decks": top_decks,
+                    },
                 )
-                stats_row = stats_result.fetchone()
-                total_games = int(stats_row[0]) if stats_row and stats_row[0] else 0
-                wins_a = int(stats_row[1]) if stats_row and stats_row[1] else 0
-                losses_a = int(stats_row[2]) if stats_row and stats_row[2] else 0
+                combined_rows = combined_result.fetchall()
+
+                # Parse the combined result set
+                total_games = 0
+                wins_a = 0
+                losses_a = 0
+                top_a_rows: list = []
+                top_b_rows: list = []
+                for row in combined_rows:
+                    side = row[0]
+                    if side == "agg":
+                        total_games = int(row[2]) if row[2] else 0
+                        wins_a = int(row[3]) if row[3] else 0
+                        losses_a = int(row[4]) if row[4] else 0
+                    elif side == "A":
+                        top_a_rows.append(row[1:])  # deck_id, games, wins, win_rate
+                    elif side == "B":
+                        top_b_rows.append(row[1:])
+
                 win_rate_a = round(wins_a / total_games, 4) if total_games > 0 else None
                 win_rate_b = (
                     round(losses_a / total_games, 4) if total_games > 0 else None
@@ -1888,77 +1944,6 @@ class DatabaseService:
                         "top_decks_a": [],
                         "top_decks_b": [],
                     }
-
-                # ── 3. Top decks for side A ──
-                top_a_query = text("""
-                    WITH decks_with_a AS (
-                        SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_a_id
-                    ),
-                    decks_with_b AS (
-                        SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_b_id
-                    )
-                    SELECT
-                        mss.deck_id,
-                        SUM(mss.games_played) AS games,
-                        SUM(mss.wins) AS wins,
-                        ROUND(
-                            SUM(mss.wins)::numeric / NULLIF(SUM(mss.games_played), 0),
-                            4
-                        ) AS win_rate
-                    FROM matchup_stats_summary mss
-                    JOIN decks_with_a da ON mss.deck_id = da.deck_id
-                    JOIN decks_with_b db ON mss.opponent_deck_id = db.deck_id
-                    WHERE mss.battle_type = 'pathOfLegend'
-                      AND mss.game_mode LIKE 'Ranked%'
-                    GROUP BY mss.deck_id
-                    ORDER BY games DESC
-                    LIMIT :top_decks
-                """)
-                top_a_result = await session.execute(
-                    top_a_query,
-                    {
-                        "card_a_id": card_a_id,
-                        "card_b_id": card_b_id,
-                        "top_decks": top_decks,
-                    },
-                )
-                top_a_rows = top_a_result.fetchall()
-
-                # ── 4. Top decks for side B ──
-                top_b_query = text("""
-                    WITH decks_with_a AS (
-                        SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_a_id
-                    ),
-                    decks_with_b AS (
-                        SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_b_id
-                    )
-                    SELECT
-                        mss.opponent_deck_id AS deck_id,
-                        SUM(mss.games_played) AS games,
-                        SUM(mss.games_played - mss.wins) AS wins,
-                        ROUND(
-                            SUM(mss.games_played - mss.wins)::numeric
-                            / NULLIF(SUM(mss.games_played), 0),
-                            4
-                        ) AS win_rate
-                    FROM matchup_stats_summary mss
-                    JOIN decks_with_a da ON mss.deck_id = da.deck_id
-                    JOIN decks_with_b db ON mss.opponent_deck_id = db.deck_id
-                    WHERE mss.battle_type = 'pathOfLegend'
-                      AND mss.game_mode LIKE 'Ranked%'
-                    GROUP BY mss.opponent_deck_id
-                    ORDER BY games DESC
-                    LIMIT :top_decks
-                """)
-                top_b_result = await session.execute(
-                    top_b_query,
-                    {
-                        "card_a_id": card_a_id,
-                        "card_b_id": card_b_id,
-                        "top_decks": top_decks,
-                    },
-                )
-                top_b_rows = top_b_result.fetchall()
 
                 # ── 5. Batch-fetch cards for all top decks ──
                 all_deck_ids = [r[0] for r in top_a_rows if r[0]] + [
