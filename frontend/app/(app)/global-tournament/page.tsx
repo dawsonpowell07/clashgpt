@@ -4,6 +4,7 @@ import { AlertTriangle, RefreshCw, Trophy, Clock } from "lucide-react";
 import { Card, DecksResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Inter } from "next/font/google";
+import { TOURNAMENT_CONFIG } from "@/lib/tournament-config";
 
 import { FilterPanel } from "@/components/decks/FilterPanel";
 import { ActiveFilterTags } from "@/components/decks/ActiveFilterTags";
@@ -15,89 +16,9 @@ const inter = Inter({
   weight: ["400", "500", "600", "700", "800"],
 });
 
-const API_BASE_URL = "/api/backend";
+const DECKS_URL = "/api/backend/api/global-tournament/decks";
 
-const RETRO_ROYALE_DECKS_URL = `${API_BASE_URL}/api/retro-royale/decks`;
-
-// Cards available in the Retro Royale tournament (base variants only).
-// All evolutions and hero variants are excluded from this format.
-const RETRO_ROYALE_CARD_NAMES = new Set([
-  "Skeletons",
-  "Ice Spirit",
-  "The Log",
-  "Knight",
-  "Ice Wizard",
-  "Goblin Hut",
-  "Poison",
-  "Graveyard",
-  "Mirror",
-  "Fire Spirit",
-  "Goblins",
-  "Spear Goblins",
-  "Bomber",
-  "Bats",
-  "Zap",
-  "Ice Golem",
-  "Rage",
-  "Archers",
-  "Minions",
-  "Arrows",
-  "Tombstone",
-  "Cannon",
-  "Mega Minion",
-  "Skeleton Army",
-  "Guards",
-  "Goblin Barrel",
-  "Goblin Gang",
-  "Skeleton Barrel",
-  "Dart Goblin",
-  "Princess",
-  "Miner",
-  "Royal Ghost",
-  "Bandit",
-  "Tornado",
-  "Clone",
-  "Musketeer",
-  "Mini P.E.K.K.A",
-  "Fireball",
-  "Valkyrie",
-  "Battle Ram",
-  "Bomb Tower",
-  "Mortar",
-  "Hog Rider",
-  "Flying Machine",
-  "Baby Dragon",
-  "Dark Prince",
-  "Freeze",
-  "Tesla",
-  "Zappies",
-  "Hunter",
-  "Inferno Dragon",
-  "Electro Wizard",
-  "Lumberjack",
-  "Night Witch",
-  "Giant",
-  "Barbarians",
-  "Wizard",
-  "Witch",
-  "Balloon",
-  "Prince",
-  "Minion Horde",
-  "Bowler",
-  "Executioner",
-  "Cannon Cart",
-  "Rocket",
-  "Elite Barbarians",
-  "X-Bow",
-  "Sparky",
-  "Elixir Collector",
-  "P.E.K.K.A",
-  "Mega Knight",
-  "Lava Hound",
-  "Golem",
-]);
-
-export default function RetroRoyalePage() {
+export default function GlobalTournamentPage() {
   // --- State ---
   const [cards, setCards] = useState<Card[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
@@ -122,12 +43,12 @@ export default function RetroRoyalePage() {
 
   const lastSearchTime = useRef<number>(0);
 
-  // --- Fetch retro royale cards only (base variants, no evo/hero) ---
+  // --- Fetch tournament cards (base variants only, filtered to card pool) ---
   const fetchCards = useCallback(async () => {
     setIsLoadingCards(true);
     setCardsError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/cards`);
+      const res = await fetch("/api/backend/api/cards");
       if (!res.ok) throw new Error("Failed to fetch cards");
       const data = await res.json();
 
@@ -138,14 +59,14 @@ export default function RetroRoyalePage() {
         "Cannoneer",
       ]);
 
-      // Filter to retro royale card pool and strip evo/hero variants so the
+      // Filter to the tournament card pool and strip evo/hero variants so the
       // selector only shows base cards (tournament rules — no evolutions or heroes).
-      const retroCards = (data.cards || [])
+      const tournamentCards = (data.cards || [])
         .filter(
           (card: Card) =>
             !String(card.card_id).startsWith("159") &&
             !TOWER_TROOP_NAMES.has(card.name) &&
-            RETRO_ROYALE_CARD_NAMES.has(card.name),
+            TOURNAMENT_CONFIG.cardPool.has(card.name),
         )
         .map((card: Card) => ({
           ...card,
@@ -153,7 +74,7 @@ export default function RetroRoyalePage() {
           can_be_heroic: false,
         }));
 
-      setCards(retroCards);
+      setCards(tournamentCards);
     } catch (error) {
       console.error("Error fetching cards:", error);
       setCardsError(
@@ -198,7 +119,7 @@ export default function RetroRoyalePage() {
         if (excludeParam) queryParams.set("exclude", excludeParam);
 
         const res = await fetch(
-          `${RETRO_ROYALE_DECKS_URL}?${queryParams.toString()}`,
+          `${DECKS_URL}?${queryParams.toString()}`,
         );
 
         if (res.status === 429) {
@@ -283,6 +204,34 @@ export default function RetroRoyalePage() {
     }
   };
 
+  if (!TOURNAMENT_CONFIG.enabled) {
+    return (
+      <div
+        className={cn(
+          inter.className,
+          "min-h-screen bg-gradient-to-b from-background via-background to-background/95 text-foreground flex items-center justify-center relative overflow-hidden",
+        )}
+      >
+        <div className="fixed inset-0 hexagon-pattern opacity-[0.03] pointer-events-none" />
+        <div className="text-center space-y-4 relative z-10 px-4">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Trophy className="w-5 h-5 text-amber-500" />
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-500/90">
+              Global Tournament
+            </p>
+          </div>
+          <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight text-foreground">
+            No Active Tournament
+          </h2>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
+            There is no global tournament running right now. Check back at the
+            end of the month when the next one begins.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -310,18 +259,17 @@ export default function RetroRoyalePage() {
               </div>
               <h1 className="font-[family-name:var(--font-heading)] text-5xl sm:text-7xl font-extrabold tracking-tight leading-none">
                 <span className="bg-gradient-to-br from-foreground via-foreground/90 to-foreground/60 bg-clip-text text-transparent">
-                  Retro
+                  {TOURNAMENT_CONFIG.name}
                 </span>
                 <br />
                 <span className="bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 bg-clip-text text-transparent">
-                  Royale
+                  {TOURNAMENT_CONFIG.subtitle}
                 </span>
               </h1>
             </div>
             <div className="flex flex-col gap-2 pb-1 max-w-sm">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Browse decks from this month&apos;s Retro Royale global
-                tournament. Card pool is restricted to base variants only.
+                {TOURNAMENT_CONFIG.description}
               </p>
               <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
                 <Clock className="w-3.5 h-3.5" />

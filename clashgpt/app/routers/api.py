@@ -375,7 +375,14 @@ async def search_decks(
     """
     # --- Check cache first ---
     cache_key = make_deck_cache_key(
-        include, exclude, sort_by.value, min_games, page, page_size, include_cards, game_mode
+        include,
+        exclude,
+        sort_by.value,
+        min_games,
+        page,
+        page_size,
+        include_cards,
+        game_mode,
     )
     cached = get_cached_decks(cache_key)
     if cached is not None:
@@ -474,16 +481,32 @@ async def search_decks(
     return response
 
 
-# ===== RETRO ROYALE ENDPOINTS =====
+# ===== GLOBAL TOURNAMENT CONFIG =====
+# Update these two values each month for the new tournament.
+# game_mode must match the game_mode string stored in processed_battles by the ETL.
+# tournament_id is the Clash Royale API tournament ID used for the leaderboard.
+
+CURRENT_GLOBAL_TOURNAMENT = {
+    # Set enabled=False between tournaments to return 503 from the decks endpoint.
+    # The leaderboard endpoint is unaffected — it always proxies the CR API.
+    "enabled": False,
+    "game_mode": "RetroRoyale",
+    "tournament_id": "270787",
+}
 
 
-@router.get("/retro-royale/decks")
+# ===== GLOBAL TOURNAMENT ENDPOINTS =====
+
+
+@router.get("/global-tournament/decks")
 @limiter.limit("2/second;20/minute;200/day")
-async def search_retro_royale_decks(
+async def search_global_tournament_decks(
     request: Request,
     include: Annotated[
         str | None,
-        Query(description="Comma-separated card IDs that must be in deck (integers only, no variant suffix)"),
+        Query(
+            description="Comma-separated card IDs that must be in deck (integers only, no variant suffix)"
+        ),
     ] = None,
     exclude: Annotated[
         str | None,
@@ -494,19 +517,24 @@ async def search_retro_royale_decks(
     page_size: Annotated[int, Query(ge=1, le=200)] = 24,
 ):
     """
-    Search decks from the Retro Royale global tournament.
+    Search decks from the current global tournament.
 
-    Queries fact_battle_participants directly for battles with
-    game_mode='RetroRoyale', parsing the pipe-separated deck_id string
-    stored by the ETL (e.g. "26000000.3|26000021.3|...|tower_159000000").
+    Queries fact_battle_participants for battles matching the configured
+    game_mode, parsing the pipe-separated deck_id string stored by the ETL
+    (e.g. "26000000.3|26000021.3|...|tower_159000000").
 
-    All cards are base variant only — no evolution or heroic variants.
+    Update CURRENT_GLOBAL_TOURNAMENT at the top of this section each month.
 
     Examples:
-        - /retro-royale/decks
-        - /retro-royale/decks?include=26000000,26000021&min_games=5
-        - /retro-royale/decks?exclude=26000055&page=2
+        - /global-tournament/decks
+        - /global-tournament/decks?include=26000000,26000021&min_games=5
+        - /global-tournament/decks?exclude=26000055&page=2
     """
+    if not CURRENT_GLOBAL_TOURNAMENT["enabled"]:
+        raise HTTPException(
+            status_code=503, detail="No global tournament is currently active."
+        )
+
     db = get_database_service()
 
     def _parse_int_ids(s: str | None, name: str) -> list[int] | HTTPException:
@@ -549,7 +577,8 @@ async def search_retro_royale_decks(
 
     try:
         decks, total = await asyncio.wait_for(
-            db.search_retro_royale_decks(
+            db.search_global_tournament_decks(
+                game_mode=CURRENT_GLOBAL_TOURNAMENT["game_mode"],
                 include_card_ids=include_ids or None,
                 exclude_card_ids=exclude_ids or None,
                 min_games=min_games,
@@ -580,17 +609,14 @@ async def search_retro_royale_decks(
     return response
 
 
-RETRO_ROYALE_TOURNAMENT_ID = "270787"
-
-
-@router.get("/retro-royale/leaderboard")
+@router.get("/global-tournament/leaderboard")
 @limiter.limit("15/minute")
-async def get_retro_royale_leaderboard(request: Request):
+async def get_global_tournament_leaderboard(request: Request):
     """
-    Fetch the top 50 players from the Retro Royale global tournament leaderboard.
+    Fetch the top 50 players from the current global tournament leaderboard.
 
     Hits the Clash Royale API at /leaderboard/{tournament_id}?limit=50.
-    The limit is always 50 and cannot be changed.
+    Update CURRENT_GLOBAL_TOURNAMENT at the top of this section each month.
     """
     from app.services.clash_royale import (
         ClashRoyaleAPIError,
@@ -602,7 +628,7 @@ async def get_retro_royale_leaderboard(request: Request):
     try:
         async with ClashRoyaleService() as service:
             leaderboard = await service.get_tournament_leaderboard(
-                RETRO_ROYALE_TOURNAMENT_ID
+                CURRENT_GLOBAL_TOURNAMENT["tournament_id"]
             )
             return serialize_dataclass(leaderboard)
     except ClashRoyaleRateLimitError:
@@ -610,7 +636,9 @@ async def get_retro_royale_leaderboard(request: Request):
             status_code=429, detail="Clash Royale API rate limit exceeded"
         ) from None
     except ClashRoyaleAPIError as e:
-        raise HTTPException(status_code=502, detail=f"Clash Royale API error: {e!s}") from e
+        raise HTTPException(
+            status_code=502, detail=f"Clash Royale API error: {e!s}"
+        ) from e
 
 
 def _parse_card_filter_param(
@@ -791,11 +819,15 @@ async def get_deck_matchups(
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
     include_opponent: Annotated[
         str | None,
-        Query(description="Comma-separated card_id:variant specs that opponent decks must contain."),
+        Query(
+            description="Comma-separated card_id:variant specs that opponent decks must contain."
+        ),
     ] = None,
     exclude_opponent: Annotated[
         str | None,
-        Query(description="Comma-separated card_id:variant specs that opponent decks must not contain."),
+        Query(
+            description="Comma-separated card_id:variant specs that opponent decks must not contain."
+        ),
     ] = None,
 ):
     """

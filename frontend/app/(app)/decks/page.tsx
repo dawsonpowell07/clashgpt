@@ -110,7 +110,7 @@ export default function DecksPage() {
           page: pageNum.toString(),
           page_size: "24",
           include_cards: "true",
-          sort_by: "RECENT",
+          sort_by: "GAMES_PLAYED",
           min_games: minGames.toString(),
         });
 

@@ -86,14 +86,14 @@ const NAV_SECTIONS = [
     title: "Global Tournaments",
     items: [
       {
-        title: "Retro Royale",
-        url: "/retro-royale",
+        title: "Tourney Decks",
+        url: "/global-tournament",
         icon: Trophy,
         requiresAuth: false,
       },
       {
         title: "Leaderboard",
-        url: "/retro-royale/leaderboard",
+        url: "/global-tournament/leaderboard",
         icon: Medal,
         requiresAuth: false,
       },

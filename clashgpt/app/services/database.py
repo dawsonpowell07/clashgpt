@@ -1047,10 +1047,11 @@ class DatabaseService:
                 f"Unexpected error while searching deck stats: {e!s}"
             ) from e
 
-    # ===== RETRO ROYALE ENDPOINTS =====
+    # ===== GLOBAL TOURNAMENT ENDPOINTS =====
 
-    async def search_retro_royale_decks(
+    async def search_global_tournament_decks(
         self,
+        game_mode: str,
         include_card_ids: list[int] | None = None,
         exclude_card_ids: list[int] | None = None,
         min_games: int = 0,
@@ -1058,9 +1059,9 @@ class DatabaseService:
         offset: int = 0,
     ) -> tuple[list[dict], int]:
         """
-        Search decks from RetroRoyale global tournament battles.
+        Search decks from a global tournament filtered by game_mode.
 
-        RetroRoyale battles store deck_id in fact_battle_participants as a
+        Global tournament battles store deck_id in fact_battle_participants as a
         pipe-separated string of "card_id.level" entries, e.g.:
             "26000000.3|26000021.3|...|tower_159000000"
 
@@ -1069,6 +1070,7 @@ class DatabaseService:
         standard ladder deck data.
 
         Args:
+            game_mode: The game_mode string in processed_battles (e.g. "RetroRoyale").
             include_card_ids: Card IDs that must appear in the deck.
             exclude_card_ids: Card IDs that must NOT appear in the deck.
             min_games: Minimum battle count.
@@ -1081,14 +1083,15 @@ class DatabaseService:
             losses, win_rate, last_seen, cards.
         """
         logger.info(
-            f"DB query: search_retro_royale_decks | include={include_card_ids}, "
-            f"exclude={exclude_card_ids}, min_games={min_games}, "
-            f"limit={limit}, offset={offset}"
+            f"DB query: search_global_tournament_decks | game_mode={game_mode}, "
+            f"include={include_card_ids}, exclude={exclude_card_ids}, "
+            f"min_games={min_games}, limit={limit}, offset={offset}"
         )
 
         try:
             async with self.async_session() as session:
                 params: dict[str, Any] = {
+                    "game_mode": game_mode,
                     "min_games": min_games,
                     "limit": limit,
                     "offset": offset,
@@ -1120,7 +1123,7 @@ class DatabaseService:
                 )
 
                 stats_cte = f"""
-                    retro_stats AS (
+                    tournament_stats AS (
                         SELECT
                             fbp.deck_id,
                             COUNT(*)                            AS games_played,
@@ -1129,7 +1132,7 @@ class DatabaseService:
                             MAX(pb.battle_time)                 AS last_seen
                         FROM fact_battle_participants fbp
                         JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
-                        WHERE pb.game_mode = 'RetroRoyale'
+                        WHERE pb.game_mode = :game_mode
                         {card_filter}
                         GROUP BY fbp.deck_id
                         HAVING COUNT(*) >= :min_games
@@ -1137,7 +1140,7 @@ class DatabaseService:
                 """
 
                 count_result = await session.execute(
-                    text(f"WITH {stats_cte} SELECT COUNT(*) FROM retro_stats"),
+                    text(f"WITH {stats_cte} SELECT COUNT(*) FROM tournament_stats"),
                     params,
                 )
                 total_count = count_result.scalar() or 0
@@ -1147,7 +1150,7 @@ class DatabaseService:
                         f"""
                         WITH {stats_cte}
                         SELECT deck_id, games_played, wins, losses, last_seen
-                        FROM retro_stats
+                        FROM tournament_stats
                         ORDER BY last_seen DESC
                         LIMIT :limit OFFSET :offset
                         """
@@ -1239,7 +1242,7 @@ class DatabaseService:
                     )
 
                 logger.info(
-                    f"DB result: search_retro_royale_decks returned {len(result_decks)} "
+                    f"DB result: search_global_tournament_decks returned {len(result_decks)} "
                     f"decks out of {total_count} total"
                 )
                 return result_decks, total_count
@@ -1247,14 +1250,14 @@ class DatabaseService:
         except DatabaseServiceError:
             raise
         except SQLAlchemyError as e:
-            logger.exception("DB query failed: search_retro_royale_decks")
+            logger.exception("DB query failed: search_global_tournament_decks")
             raise DatabaseQueryError(
-                f"Database query failed in search_retro_royale_decks: {e!s}"
+                f"Database query failed in search_global_tournament_decks: {e!s}"
             ) from e
         except Exception as e:
-            logger.exception("Unexpected error in search_retro_royale_decks")
+            logger.exception("Unexpected error in search_global_tournament_decks")
             raise DatabaseServiceError(
-                f"Unexpected error in search_retro_royale_decks: {e!s}"
+                f"Unexpected error in search_global_tournament_decks: {e!s}"
             ) from e
 
     # ===== PLAYER ENDPOINTS =====

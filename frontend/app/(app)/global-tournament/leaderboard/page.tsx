@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Inter } from "next/font/google";
 import { Orbitron } from "next/font/google";
+import { TOURNAMENT_CONFIG } from "@/lib/tournament-config";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,7 +21,7 @@ const inter = Inter({
 
 const orbitron = Orbitron({ subsets: ["latin"], weight: ["700", "900"] });
 
-const API_URL = "/api/backend/api/retro-royale/leaderboard";
+const API_URL = "/api/backend/api/global-tournament/leaderboard";
 
 interface Clan {
   tag: string;
@@ -40,7 +41,7 @@ interface TournamentLeaderboard {
   entries: TournamentEntry[];
 }
 
-export default function RetroRoyaleLeaderboardPage() {
+export default function GlobalTournamentLeaderboardPage() {
   const [data, setData] = useState<TournamentLeaderboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,10 +91,10 @@ export default function RetroRoyaleLeaderboardPage() {
           </div>
           <h1 className="font-[family-name:var(--font-heading)] text-5xl sm:text-7xl font-extrabold tracking-tight leading-none mb-4">
             <span className="bg-gradient-to-br from-foreground via-foreground/90 to-foreground/60 bg-clip-text text-transparent">
-              Retro
+              {TOURNAMENT_CONFIG.name}
             </span>{" "}
             <span className="bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 bg-clip-text text-transparent">
-              Royale
+              {TOURNAMENT_CONFIG.subtitle}
             </span>
             <br />
             <span className="text-4xl sm:text-5xl bg-gradient-to-r from-foreground/80 to-foreground/40 bg-clip-text text-transparent">
@@ -101,8 +102,9 @@ export default function RetroRoyaleLeaderboardPage() {
             </span>
           </h1>
           <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
-            Top 50 players in the current Retro Royale global tournament,
-            ranked by wins. Data is live from the Clash Royale API.
+            Top 50 players in the current {TOURNAMENT_CONFIG.name}{" "}
+            {TOURNAMENT_CONFIG.subtitle} global tournament, ranked by wins.
+            Data is live from the Clash Royale API.
           </p>
           <div className="mt-6 h-px bg-gradient-to-r from-amber-500/40 via-border/50 to-transparent" />
         </div>
