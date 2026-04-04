@@ -726,34 +726,33 @@ class DatabaseService:
         )
         try:
             async with self.async_session() as session:
-                where_conditions = ["fbp.deck_id = :deck_id", "pb.source = 'ladder'"]
+                conditions = [
+                    "dss.deck_id = :deck_id",
+                    "dss.battle_type = 'pathOfLegend'",
+                    "dss.game_mode LIKE 'Ranked%'",
+                ]
                 params: dict[str, Any] = {"deck_id": deck_id}
-                join_clause = (
-                    "JOIN processed_battles pb ON fbp.battle_id = pb.battle_id"
-                )
 
                 if season_id:
-                    where_conditions.append("pb.season_id = :season_id")
+                    conditions.append("dss.season_id = :season_id")
                     params["season_id"] = season_id
 
-                where_clause = "WHERE " + " AND ".join(where_conditions)
+                where_clause = "WHERE " + " AND ".join(conditions)
 
                 query = f"""
                     SELECT
-                        fbp.deck_id,
-                        COUNT(*) AS games_played,
-                        SUM(fbp.is_win) AS wins,
-                        (COUNT(*) - COALESCE(SUM(fbp.is_win), 0)) AS losses
-                    FROM fact_battle_participants fbp
-                    {join_clause}
+                        :deck_id AS deck_id,
+                        SUM(dss.games_played) AS games_played,
+                        SUM(dss.wins) AS wins,
+                        SUM(dss.games_played - dss.wins) AS losses
+                    FROM deck_stats_summary dss
                     {where_clause}
-                    GROUP BY fbp.deck_id
                 """
 
                 result = await session.execute(text(query), params)
                 row = result.fetchone()
 
-                if row:
+                if row and row[1]:
                     games = int(row[1])
                     wins = int(row[2])
                     win_rate = (wins / games) if games > 0 else None
@@ -802,22 +801,21 @@ class DatabaseService:
                 query = f"""
                     WITH deck_stats_agg AS (
                         SELECT
-                            fbp.deck_id,
-                            COUNT(*) AS games_played,
-                            SUM(fbp.is_win) AS wins,
-                            (COUNT(*) - COALESCE(SUM(fbp.is_win), 0)) AS losses,
-                            MAX(pb.battle_time) AS last_seen
-                        FROM fact_battle_participants fbp
-                        JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
-                        WHERE pb.source = 'ladder'
-                        GROUP BY fbp.deck_id
+                            dss.deck_id,
+                            SUM(dss.games_played) AS games_played,
+                            SUM(dss.wins) AS wins,
+                            MAX(dss.last_seen) AS last_seen
+                        FROM deck_stats_summary dss
+                        WHERE dss.battle_type = 'pathOfLegend'
+                          AND dss.game_mode LIKE 'Ranked%'
+                        GROUP BY dss.deck_id
                     )
                     SELECT
                         d.deck_id,
                         d.avg_elixir,
                         COALESCE(dsa.games_played, 0) AS games_played,
                         COALESCE(dsa.wins, 0) AS wins,
-                        COALESCE(dsa.losses, 0) AS losses,
+                        COALESCE(dsa.games_played - dsa.wins, 0) AS losses,
                         dsa.last_seen
                     FROM dim_decks d
                     LEFT JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
@@ -899,6 +897,7 @@ class DatabaseService:
                     "offset": offset,
                 }
 
+                # Build stats filter conditions against deck_stats_summary.
                 # When a specific game_mode is requested (e.g. a tournament),
                 # filter by that game_mode only.
                 # Default (no game_mode) restricts to ranked Path of Legends battles:
@@ -906,19 +905,19 @@ class DatabaseService:
                 #   - battle_type = 'pathOfLegend' excludes any non-PoL ranked battles
                 # This ensures tournament data never appears on the regular decks page.
                 if game_mode:
-                    cte_conditions = ["pb.game_mode = :game_mode"]
+                    stats_conditions = ["dss.game_mode = :game_mode"]
                     params["game_mode"] = game_mode
                 else:
-                    cte_conditions = [
-                        "pb.game_mode LIKE 'Ranked%'",
-                        "pb.battle_type = 'pathOfLegend'",
+                    stats_conditions = [
+                        "dss.game_mode LIKE 'Ranked%'",
+                        "dss.battle_type = 'pathOfLegend'",
                     ]
 
                 if season_id:
-                    cte_conditions.append("pb.season_id = :season_id")
+                    stats_conditions.append("dss.season_id = :season_id")
                     params["season_id"] = season_id
 
-                season_where = "WHERE " + " AND ".join(cte_conditions)
+                stats_where = "WHERE " + " AND ".join(stats_conditions)
 
                 # Build card include/exclude conditions on dim_decks
                 card_conditions = []
@@ -977,16 +976,14 @@ class DatabaseService:
                     ),
                     deck_stats_agg AS (
                         SELECT
-                            fbp.deck_id,
-                            COUNT(*) AS games_played,
-                            SUM(fbp.is_win) AS wins,
-                            (COUNT(*) - COALESCE(SUM(fbp.is_win), 0)) AS losses,
-                            MAX(pb.battle_time) AS last_seen
-                        FROM fact_battle_participants fbp
-                        JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
-                        JOIN filtered_decks fd ON fbp.deck_id = fd.deck_id
-                        {season_where}
-                        GROUP BY fbp.deck_id
+                            dss.deck_id,
+                            SUM(dss.games_played) AS games_played,
+                            SUM(dss.wins) AS wins,
+                            MAX(dss.last_seen) AS last_seen
+                        FROM deck_stats_summary dss
+                        JOIN filtered_decks fd ON dss.deck_id = fd.deck_id
+                        {stats_where}
+                        GROUP BY dss.deck_id
                     )
                 """
 
@@ -1013,7 +1010,7 @@ class DatabaseService:
                         d.avg_elixir,
                         COALESCE(dsa.games_played, 0) AS games_played,
                         COALESCE(dsa.wins, 0) AS wins,
-                        COALESCE(dsa.losses, 0) AS losses,
+                        COALESCE(dsa.games_played - dsa.wins, 0) AS losses,
                         dsa.last_seen
                     FROM filtered_decks d
                     {join_type} JOIN deck_stats_agg dsa ON d.deck_id = dsa.deck_id
@@ -1624,13 +1621,13 @@ class DatabaseService:
                 # ── 3. Aggregate stats ──
                 stats_query = text("""
                     SELECT
-                        COUNT(*) AS games_played,
-                        COALESCE(SUM(fbp.is_win), 0) AS wins,
-                        COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0) AS losses
-                    FROM fact_battle_participants fbp
-                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
-                    WHERE fbp.deck_id = :deck_id
-                      AND pb.source = 'ladder'
+                        COALESCE(SUM(dss.games_played), 0) AS games_played,
+                        COALESCE(SUM(dss.wins), 0) AS wins,
+                        COALESCE(SUM(dss.games_played - dss.wins), 0) AS losses
+                    FROM deck_stats_summary dss
+                    WHERE dss.deck_id = :deck_id
+                      AND dss.battle_type = 'pathOfLegend'
+                      AND dss.game_mode LIKE 'Ranked%'
                 """)
                 stats_result = await session.execute(stats_query, {"deck_id": deck_id})
                 stats_row = stats_result.fetchone()
@@ -1652,7 +1649,7 @@ class DatabaseService:
                     for i, (cid, cvar) in enumerate(include_opponent_specs):
                         opp_filter_sql += (
                             f"\n    AND EXISTS (SELECT 1 FROM deck_card_config"
-                            f" WHERE deck_id = fbp.opponent_deck_id"
+                            f" WHERE deck_id = mss.opponent_deck_id"
                             f" AND card_id = :opp_inc_cid_{i}"
                             f" AND variant::text = :opp_inc_cvar_{i})"
                         )
@@ -1666,7 +1663,7 @@ class DatabaseService:
                     )
                     opp_filter_sql += (
                         f"\n    AND NOT EXISTS (SELECT 1 FROM deck_card_config"
-                        f" WHERE deck_id = fbp.opponent_deck_id AND ({exc_conditions}))"
+                        f" WHERE deck_id = mss.opponent_deck_id AND ({exc_conditions}))"
                     )
                     for i, (cid, cvar) in enumerate(exclude_opponent_specs):
                         opp_filter_params[f"opp_exc_cid_{i}"] = cid
@@ -1674,12 +1671,11 @@ class DatabaseService:
 
                 # ── 5. Count total distinct opponent decks for pagination ──
                 count_query = text(f"""
-                    SELECT COUNT(DISTINCT fbp.opponent_deck_id)
-                    FROM fact_battle_participants fbp
-                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
-                    WHERE fbp.deck_id = :deck_id
-                      AND fbp.opponent_deck_id IS NOT NULL
-                      AND pb.source = 'ladder'
+                    SELECT COUNT(DISTINCT mss.opponent_deck_id)
+                    FROM matchup_stats_summary mss
+                    WHERE mss.deck_id = :deck_id
+                      AND mss.battle_type = 'pathOfLegend'
+                      AND mss.game_mode LIKE 'Ranked%'
                     {opp_filter_sql}
                 """)
                 count_result = await session.execute(
@@ -1690,17 +1686,16 @@ class DatabaseService:
                 # ── 6. Aggregate matchups by opponent deck ──
                 matchups_query = text(f"""
                     SELECT
-                        fbp.opponent_deck_id,
-                        COUNT(*) AS games_played,
-                        COALESCE(SUM(fbp.is_win), 0) AS wins,
-                        COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0) AS losses
-                    FROM fact_battle_participants fbp
-                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
-                    WHERE fbp.deck_id = :deck_id
-                      AND fbp.opponent_deck_id IS NOT NULL
-                      AND pb.source = 'ladder'
+                        mss.opponent_deck_id,
+                        SUM(mss.games_played) AS games_played,
+                        SUM(mss.wins) AS wins,
+                        SUM(mss.games_played - mss.wins) AS losses
+                    FROM matchup_stats_summary mss
+                    WHERE mss.deck_id = :deck_id
+                      AND mss.battle_type = 'pathOfLegend'
+                      AND mss.game_mode LIKE 'Ranked%'
                     {opp_filter_sql}
-                    GROUP BY fbp.opponent_deck_id
+                    GROUP BY mss.opponent_deck_id
                     ORDER BY games_played DESC
                     LIMIT :limit OFFSET :offset
                 """)
@@ -1851,23 +1846,23 @@ class DatabaseService:
                     }
 
                 # ── 2. Head-to-head aggregate (card_a decks vs card_b decks) ──
+                # Use CTEs to resolve card → deck_id sets once, then join into the summary.
                 stats_query = text("""
+                    WITH decks_with_a AS (
+                        SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_a_id
+                    ),
+                    decks_with_b AS (
+                        SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_b_id
+                    )
                     SELECT
-                        COUNT(*) AS total_games,
-                        COALESCE(SUM(fbp.is_win), 0) AS wins_a,
-                        COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0) AS losses_a
-                    FROM fact_battle_participants fbp
-                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
-                    WHERE fbp.opponent_deck_id IS NOT NULL
-                      AND pb.source = 'ladder'
-                      AND EXISTS (
-                          SELECT 1 FROM deck_card_config dcc
-                          WHERE dcc.deck_id = fbp.deck_id AND dcc.card_id = :card_a_id
-                      )
-                      AND EXISTS (
-                          SELECT 1 FROM deck_card_config dcc
-                          WHERE dcc.deck_id = fbp.opponent_deck_id AND dcc.card_id = :card_b_id
-                      )
+                        COALESCE(SUM(mss.games_played), 0) AS total_games,
+                        COALESCE(SUM(mss.wins), 0) AS wins_a,
+                        COALESCE(SUM(mss.games_played - mss.wins), 0) AS losses_a
+                    FROM matchup_stats_summary mss
+                    JOIN decks_with_a da ON mss.deck_id = da.deck_id
+                    JOIN decks_with_b db ON mss.opponent_deck_id = db.deck_id
+                    WHERE mss.battle_type = 'pathOfLegend'
+                      AND mss.game_mode LIKE 'Ranked%'
                 """)
                 stats_result = await session.execute(
                     stats_query, {"card_a_id": card_a_id, "card_b_id": card_b_id}
@@ -1896,27 +1891,26 @@ class DatabaseService:
 
                 # ── 3. Top decks for side A ──
                 top_a_query = text("""
+                    WITH decks_with_a AS (
+                        SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_a_id
+                    ),
+                    decks_with_b AS (
+                        SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_b_id
+                    )
                     SELECT
-                        fbp.deck_id,
-                        COUNT(*) AS games,
-                        COALESCE(SUM(fbp.is_win), 0) AS wins,
+                        mss.deck_id,
+                        SUM(mss.games_played) AS games,
+                        SUM(mss.wins) AS wins,
                         ROUND(
-                            COALESCE(SUM(fbp.is_win), 0)::numeric / NULLIF(COUNT(*), 0),
+                            SUM(mss.wins)::numeric / NULLIF(SUM(mss.games_played), 0),
                             4
                         ) AS win_rate
-                    FROM fact_battle_participants fbp
-                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
-                    WHERE fbp.opponent_deck_id IS NOT NULL
-                      AND pb.source = 'ladder'
-                      AND EXISTS (
-                          SELECT 1 FROM deck_card_config dcc
-                          WHERE dcc.deck_id = fbp.deck_id AND dcc.card_id = :card_a_id
-                      )
-                      AND EXISTS (
-                          SELECT 1 FROM deck_card_config dcc
-                          WHERE dcc.deck_id = fbp.opponent_deck_id AND dcc.card_id = :card_b_id
-                      )
-                    GROUP BY fbp.deck_id
+                    FROM matchup_stats_summary mss
+                    JOIN decks_with_a da ON mss.deck_id = da.deck_id
+                    JOIN decks_with_b db ON mss.opponent_deck_id = db.deck_id
+                    WHERE mss.battle_type = 'pathOfLegend'
+                      AND mss.game_mode LIKE 'Ranked%'
+                    GROUP BY mss.deck_id
                     ORDER BY games DESC
                     LIMIT :top_decks
                 """)
@@ -1932,28 +1926,27 @@ class DatabaseService:
 
                 # ── 4. Top decks for side B ──
                 top_b_query = text("""
+                    WITH decks_with_a AS (
+                        SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_a_id
+                    ),
+                    decks_with_b AS (
+                        SELECT DISTINCT deck_id FROM deck_card_config WHERE card_id = :card_b_id
+                    )
                     SELECT
-                        fbp.opponent_deck_id AS deck_id,
-                        COUNT(*) AS games,
-                        COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0) AS wins,
+                        mss.opponent_deck_id AS deck_id,
+                        SUM(mss.games_played) AS games,
+                        SUM(mss.games_played - mss.wins) AS wins,
                         ROUND(
-                            COALESCE((COUNT(*) - COALESCE(SUM(fbp.is_win), 0)), 0)::numeric
-                            / NULLIF(COUNT(*), 0),
+                            SUM(mss.games_played - mss.wins)::numeric
+                            / NULLIF(SUM(mss.games_played), 0),
                             4
                         ) AS win_rate
-                    FROM fact_battle_participants fbp
-                    JOIN processed_battles pb ON fbp.battle_id = pb.battle_id
-                    WHERE fbp.opponent_deck_id IS NOT NULL
-                      AND pb.source = 'ladder'
-                      AND EXISTS (
-                          SELECT 1 FROM deck_card_config dcc
-                          WHERE dcc.deck_id = fbp.deck_id AND dcc.card_id = :card_a_id
-                      )
-                      AND EXISTS (
-                          SELECT 1 FROM deck_card_config dcc
-                          WHERE dcc.deck_id = fbp.opponent_deck_id AND dcc.card_id = :card_b_id
-                      )
-                    GROUP BY fbp.opponent_deck_id
+                    FROM matchup_stats_summary mss
+                    JOIN decks_with_a da ON mss.deck_id = da.deck_id
+                    JOIN decks_with_b db ON mss.opponent_deck_id = db.deck_id
+                    WHERE mss.battle_type = 'pathOfLegend'
+                      AND mss.game_mode LIKE 'Ranked%'
+                    GROUP BY mss.opponent_deck_id
                     ORDER BY games DESC
                     LIMIT :top_decks
                 """)
