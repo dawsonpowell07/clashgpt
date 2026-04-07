@@ -42,7 +42,7 @@ function DecksPageContent() {
         | "INCLUDE"
         | "EXCLUDE",
       page: Math.max(1, parseInt(sp.get("page") || "1", 10) || 1),
-      minGames: parseInt(sp.get("min_games") || "20", 10) || 20,
+      minGames: sp.has("min_games") ? parseInt(sp.get("min_games")!, 10) : 20,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryString]);
