@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { AlertTriangle, RefreshCw, Trophy, Clock } from "lucide-react";
 import { Card, DecksResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,34 @@ const inter = Inter({
 
 const DECKS_URL = "/api/backend/api/global-tournament/decks";
 
-export default function GlobalTournamentPage() {
+// --- helpers to read/write URL search params ---
+function parseSetParam(sp: URLSearchParams, key: string): Set<string> {
+  const raw = sp.get(key);
+  if (!raw) return new Set();
+  return new Set(raw.split(",").filter(Boolean));
+}
+
+function GlobalTournamentContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const queryString = searchParams.toString();
+
+  const urlState = useMemo(() => {
+    const sp = new URLSearchParams(queryString);
+    return {
+      included: parseSetParam(sp, "include"),
+      excluded: parseSetParam(sp, "exclude"),
+      filterMode: (sp.get("mode") === "EXCLUDE" ? "EXCLUDE" : "INCLUDE") as
+        | "INCLUDE"
+        | "EXCLUDE",
+      page: Math.max(1, parseInt(sp.get("page") || "1", 10) || 1),
+      minGames: sp.has("min_games") ? parseInt(sp.get("min_games")!, 10) : 20,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryString]);
+
   // --- State ---
   const [cards, setCards] = useState<Card[]>([]);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
@@ -26,24 +54,77 @@ export default function GlobalTournamentPage() {
   const [searchError, setSearchError] = useState<string | null>(null);
 
   const [includedVariants, setIncludedVariants] = useState<Set<string>>(
-    new Set(),
+    urlState.included,
   );
   const [excludedVariants, setExcludedVariants] = useState<Set<string>>(
-    new Set(),
+    urlState.excluded,
   );
   const [filterMode, setFilterMode] = useState<"INCLUDE" | "EXCLUDE">(
-    "INCLUDE",
+    urlState.filterMode,
   );
 
   const [decksData, setDecksData] = useState<DecksResponse | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [page, setPage] = useState(1);
-  const [minGames, setMinGames] = useState(20);
+  const [page, setPage] = useState(urlState.page);
+  const [minGames, setMinGames] = useState(urlState.minGames);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+
+  // Sync state when URL changes (back/forward)
+  const prevQueryString = useRef(queryString);
+  useEffect(() => {
+    if (queryString !== prevQueryString.current) {
+      prevQueryString.current = queryString;
+      setIncludedVariants(urlState.included);
+      setExcludedVariants(urlState.excluded);
+      setFilterMode(urlState.filterMode);
+      setPage(urlState.page);
+      setMinGames(urlState.minGames);
+    }
+  }, [queryString, urlState]);
+
+  const buildUrl = useCallback(
+    (opts: {
+      included?: Set<string>;
+      excluded?: Set<string>;
+      mode?: "INCLUDE" | "EXCLUDE";
+      pg?: number;
+      min?: number;
+    }) => {
+      const sp = new URLSearchParams();
+      const inc = opts.included ?? includedVariants;
+      const exc = opts.excluded ?? excludedVariants;
+      const m = opts.mode ?? filterMode;
+      const pg = opts.pg ?? page;
+      const min = opts.min ?? minGames;
+
+      if (inc.size > 0) sp.set("include", Array.from(inc).join(","));
+      if (exc.size > 0) sp.set("exclude", Array.from(exc).join(","));
+      if (m !== "INCLUDE") sp.set("mode", m);
+      if (pg > 1) sp.set("page", pg.toString());
+      if (min !== 20) sp.set("min_games", min.toString());
+
+      const qs = sp.toString();
+      return qs ? `${pathname}?${qs}` : pathname;
+    },
+    [includedVariants, excludedVariants, filterMode, page, minGames, pathname],
+  );
+
+  const syncToUrl = useCallback(
+    (opts: {
+      included?: Set<string>;
+      excluded?: Set<string>;
+      mode?: "INCLUDE" | "EXCLUDE";
+      pg?: number;
+      min?: number;
+    }) => {
+      router.replace(buildUrl(opts), { scroll: false });
+    },
+    [buildUrl, router],
+  );
 
   const lastSearchTime = useRef<number>(0);
 
-  // --- Fetch tournament cards (base variants only, filtered to card pool) ---
+  // --- Fetch cards ---
   const fetchCards = useCallback(async () => {
     setIsLoadingCards(true);
     setCardsError(null);
@@ -51,30 +132,20 @@ export default function GlobalTournamentPage() {
       const res = await fetch("/api/backend/api/cards");
       if (!res.ok) throw new Error("Failed to fetch cards");
       const data = await res.json();
-
       const TOWER_TROOP_NAMES = new Set([
         "Tower Princess",
         "Royal Chef",
         "Dagger Duchess",
         "Cannoneer",
       ]);
-
-      // Filter to the tournament card pool and strip evo/hero variants so the
-      // selector only shows base cards (tournament rules — no evolutions or heroes).
-      const tournamentCards = (data.cards || [])
-        .filter(
+      setCards(
+        (data.cards || []).filter(
           (card: Card) =>
             !String(card.card_id).startsWith("159") &&
             !TOWER_TROOP_NAMES.has(card.name) &&
             TOURNAMENT_CONFIG.cardPool.has(card.name),
-        )
-        .map((card: Card) => ({
-          ...card,
-          can_evolve: false,
-          can_be_heroic: false,
-        }));
-
-      setCards(tournamentCards);
+        ),
+      );
     } catch (error) {
       console.error("Error fetching cards:", error);
       setCardsError(
@@ -89,8 +160,13 @@ export default function GlobalTournamentPage() {
     if (TOURNAMENT_CONFIG.enabled) fetchCards();
   }, [fetchCards]);
 
-  // Retro royale cards are base-only — strip the variant suffix and just send the card ID.
-  const variantIdToCardId = (id: string): string => id.split("_")[0];
+  const variantIdToApiParam = (id: string): string => {
+    const [cardIdStr, variantStr] = id.split("_");
+    const variant = parseInt(variantStr);
+    if (variant === 1) return `${cardIdStr}:evolution`;
+    if (variant === 2) return `${cardIdStr}:heroic`;
+    return `${cardIdStr}:normal`;
+  };
 
   const fetchDecks = useCallback(
     async (pageNum: number) => {
@@ -103,24 +179,23 @@ export default function GlobalTournamentPage() {
       setSearchError(null);
       try {
         const includeParam = Array.from(includedVariants)
-          .map(variantIdToCardId)
+          .map(variantIdToApiParam)
           .join(",");
         const excludeParam = Array.from(excludedVariants)
-          .map(variantIdToCardId)
+          .map(variantIdToApiParam)
           .join(",");
 
         const queryParams = new URLSearchParams({
           page: pageNum.toString(),
           page_size: "24",
+          sort_by: "GAMES_PLAYED",
           min_games: minGames.toString(),
         });
 
         if (includeParam) queryParams.set("include", includeParam);
         if (excludeParam) queryParams.set("exclude", excludeParam);
 
-        const res = await fetch(
-          `${DECKS_URL}?${queryParams.toString()}`,
-        );
+        const res = await fetch(`${DECKS_URL}?${queryParams.toString()}`);
 
         if (res.status === 429) {
           setRateLimitError(
@@ -142,6 +217,7 @@ export default function GlobalTournamentPage() {
     [includedVariants, excludedVariants, minGames],
   );
 
+  // Auto-fetch on load
   const hasFetchedRef = useRef(false);
   useEffect(() => {
     if (TOURNAMENT_CONFIG.enabled && !hasFetchedRef.current) {
@@ -152,11 +228,15 @@ export default function GlobalTournamentPage() {
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
+    syncToUrl({ pg: newPage });
     fetchDecks(newPage);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleToggleCard = (id: string) => {
+    let newIncluded = includedVariants;
+    let newExcluded = excludedVariants;
+
     if (filterMode === "INCLUDE") {
       const newSet = new Set(includedVariants);
       if (newSet.has(id)) {
@@ -167,9 +247,11 @@ export default function GlobalTournamentPage() {
           const newExclude = new Set(excludedVariants);
           newExclude.delete(id);
           setExcludedVariants(newExclude);
+          newExcluded = newExclude;
         }
       }
       setIncludedVariants(newSet);
+      newIncluded = newSet;
     } else {
       const newSet = new Set(excludedVariants);
       if (newSet.has(id)) {
@@ -180,25 +262,45 @@ export default function GlobalTournamentPage() {
           const newInclude = new Set(includedVariants);
           newInclude.delete(id);
           setIncludedVariants(newInclude);
+          newIncluded = newInclude;
         }
       }
       setExcludedVariants(newSet);
+      newExcluded = newSet;
     }
+
+    syncToUrl({ included: newIncluded, excluded: newExcluded });
+  };
+
+  const handleSetFilterMode = (mode: "INCLUDE" | "EXCLUDE") => {
+    setFilterMode(mode);
+    syncToUrl({ mode });
+  };
+
+  const handleSetMinGames = (val: number) => {
+    setMinGames(val);
+    syncToUrl({ min: val });
   };
 
   const clearFilters = () => {
     setIncludedVariants(new Set());
     setExcludedVariants(new Set());
-    setMinGames(0);
+    setMinGames(20);
     setPage(1);
+    syncToUrl({ included: new Set(), excluded: new Set(), pg: 1, min: 20 });
   };
 
   const getCardLabel = (id: string) => {
     try {
-      const [cardIdStr] = id.split("_");
+      const [cardIdStr, variantStr] = id.split("_");
       const cardId = parseInt(cardIdStr);
+      const variant = parseInt(variantStr);
       const card = cards.find((c) => c.card_id === cardId);
-      return card ? card.name : id;
+      if (!card) return id;
+      let suffix = "";
+      if (variant === 1) suffix = " (Evo)";
+      else if (variant === 2) suffix = " (Hero)";
+      return `${card.name}${suffix}`;
     } catch {
       return id;
     }
@@ -239,7 +341,6 @@ export default function GlobalTournamentPage() {
         "min-h-screen bg-gradient-to-b from-background via-background to-background/95 text-foreground pb-20 relative overflow-hidden",
       )}
     >
-      {/* Background — amber/gold tones to evoke the retro theme */}
       <div className="fixed inset-0 hexagon-pattern opacity-[0.03] pointer-events-none" />
       <div className="fixed top-0 left-1/4 w-96 h-96 bg-amber-500/8 rounded-full blur-3xl pointer-events-none" />
       <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-yellow-500/6 rounded-full blur-3xl pointer-events-none" />
@@ -298,19 +399,19 @@ export default function GlobalTournamentPage() {
           cardsError={cardsError}
           onRetryCards={fetchCards}
           filterMode={filterMode}
-          onSetFilterMode={setFilterMode}
+          onSetFilterMode={handleSetFilterMode}
           includedVariants={includedVariants}
           excludedVariants={excludedVariants}
           onToggleCard={handleToggleCard}
           minGames={minGames}
-          onSetMinGames={setMinGames}
+          onSetMinGames={handleSetMinGames}
           isSearching={isSearching}
           onSearch={() => {
             setPage(1);
+            syncToUrl({ pg: 1 });
             fetchDecks(1);
           }}
           onClearFilters={clearFilters}
-          hideVariantFilter
         />
 
         {/* Active Filter Tags */}
@@ -359,7 +460,7 @@ export default function GlobalTournamentPage() {
           </div>
         )}
 
-        {/* Results Section */}
+        {/* Results */}
         {decksData && (
           <div className="space-y-6">
             <DecksResultsGrid
@@ -377,5 +478,13 @@ export default function GlobalTournamentPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function GlobalTournamentPage() {
+  return (
+    <Suspense>
+      <GlobalTournamentContent />
+    </Suspense>
   );
 }

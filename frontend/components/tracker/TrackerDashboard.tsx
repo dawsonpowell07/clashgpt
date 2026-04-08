@@ -544,7 +544,6 @@ const ACTIVITY_OPTIONS = [
   { label: "7d", days: 7 },
   { label: "14d", days: 14 },
   { label: "30d", days: 30 },
-  { label: "60d", days: 60 },
 ];
 
 function GamesPerDayChart({

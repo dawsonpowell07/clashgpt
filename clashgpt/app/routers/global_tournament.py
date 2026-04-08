@@ -10,7 +10,9 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
+from app.models.models import DeckSortBy
 from app.rate_limit import limiter
+from app.routers.decks import parse_card_filter_param
 from app.services.database import get_database_service
 
 router = APIRouter(prefix="/api", tags=["global-tournament"])
@@ -27,9 +29,9 @@ DECK_SEARCH_TIMEOUT = 10.0
 CURRENT_GLOBAL_TOURNAMENT = {
     # Set enabled=False between tournaments to return 503 from the decks endpoint.
     # The leaderboard endpoint is unaffected — it always proxies the CR API.
-    "enabled": False,
-    "game_mode": "RetroRoyale",
-    "tournament_id": "270787",
+    "enabled": True,
+    "game_mode": "RoyalTournament",
+    "tournament_id": "447996",
 }
 
 
@@ -42,14 +44,15 @@ async def search_global_tournament_decks(
     request: Request,
     include: Annotated[
         str | None,
-        Query(
-            description="Comma-separated card IDs that must be in deck (integers only, no variant suffix)"
-        ),
+        Query(description="Comma-separated card IDs (supports card_id:variant format)"),
     ] = None,
     exclude: Annotated[
         str | None,
         Query(description="Comma-separated card IDs that must not be in deck"),
     ] = None,
+    sort_by: Annotated[
+        DeckSortBy, Query(description="Sort by metric")
+    ] = DeckSortBy.GAMES_PLAYED,
     min_games: Annotated[int, Query(ge=0, description="Minimum games played")] = 0,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=200)] = 24,
@@ -57,71 +60,54 @@ async def search_global_tournament_decks(
     """
     Search decks from the current global tournament.
 
-    Queries fact_battle_participants for battles matching the configured
-    game_mode, parsing the pipe-separated deck_id string stored by the ETL
-    (e.g. "26000000.3|26000021.3|...|tower_159000000").
+    Uses the same star-schema query as /api/decks filtered to the configured
+    game_mode. Supports card_id:variant filtering (e.g. "26000012:evolution").
 
     Update CURRENT_GLOBAL_TOURNAMENT at the top of this file each month.
 
     Examples:
         - /global-tournament/decks
-        - /global-tournament/decks?include=26000000,26000021&min_games=5
-        - /global-tournament/decks?exclude=26000055&page=2
+        - /global-tournament/decks?include=26000000,26000021:evolution&min_games=5
+        - /global-tournament/decks?exclude=26000055&sort_by=WIN_RATE
     """
     if not CURRENT_GLOBAL_TOURNAMENT["enabled"]:
         raise HTTPException(
             status_code=503, detail="No global tournament is currently active."
         )
 
-    db = get_database_service()
+    include_card_ids = parse_card_filter_param(include, "include")
+    if isinstance(include_card_ids, HTTPException):
+        raise include_card_ids
 
-    def _parse_int_ids(s: str | None, name: str) -> list[int] | HTTPException:
-        if not s:
-            return []
-        ids = []
-        for part in s.split(","):
-            part = part.strip()
-            if not part:
-                continue
-            try:
-                ids.append(int(part))
-            except ValueError:
-                return HTTPException(
-                    status_code=400,
-                    detail=f"Invalid card ID in '{name}': '{part}'. Must be an integer.",
-                )
-        return ids
+    exclude_card_ids = parse_card_filter_param(exclude, "exclude")
+    if isinstance(exclude_card_ids, HTTPException):
+        raise exclude_card_ids
 
-    include_ids = _parse_int_ids(include, "include")
-    if isinstance(include_ids, HTTPException):
-        raise include_ids
-
-    exclude_ids = _parse_int_ids(exclude, "exclude")
-    if isinstance(exclude_ids, HTTPException):
-        raise exclude_ids
-
-    if len(include_ids) > MAX_INCLUDE_CARDS:
+    if include_card_ids and len(include_card_ids) > MAX_INCLUDE_CARDS:
         raise HTTPException(
             status_code=400,
             detail=f"Cannot include more than {MAX_INCLUDE_CARDS} cards.",
         )
-    if len(exclude_ids) > MAX_EXCLUDE_CARDS:
+    if exclude_card_ids and len(exclude_card_ids) > MAX_EXCLUDE_CARDS:
         raise HTTPException(
             status_code=400,
             detail=f"Cannot exclude more than {MAX_EXCLUDE_CARDS} cards.",
         )
 
+    db = get_database_service()
     offset = (page - 1) * page_size
 
     try:
         decks, total = await asyncio.wait_for(
-            db.search_global_tournament_decks(
-                game_mode=CURRENT_GLOBAL_TOURNAMENT["game_mode"],
-                include_card_ids=include_ids or None,
-                exclude_card_ids=exclude_ids or None,
+            db.search_decks_with_stats(
+                include_card_ids=include_card_ids,
+                exclude_card_ids=exclude_card_ids,
+                sort_by=sort_by,
                 min_games=min_games,
                 limit=page_size,
                 offset=offset,
+                include_cards=True,
+                game_mode=CURRENT_GLOBAL_TOURNAMENT["game_mode"],
             ),
             timeout=DECK_SEARCH_TIMEOUT,
         )
@@ -130,10 +116,32 @@ async def search_global_tournament_decks(
             status_code=504, detail="Search took too long. Try narrowing your filters."
         ) from None
 
+    deck_payloads = [
+        {
+            "deck_id": deck.deck_id,
+            "avg_elixir": deck.avg_elixir,
+            "games_played": deck.games_played,
+            "wins": deck.wins,
+            "losses": deck.losses,
+            "win_rate": deck.win_rate,
+            "last_seen": deck.last_seen,
+            "cards": [
+                {
+                    "card_id": c.card_id,
+                    "card_name": c.card_name,
+                    "slot_index": c.slot_index,
+                    "variant": c.variant,
+                }
+                for c in (deck.cards or [])
+            ],
+        }
+        for deck in decks
+    ]
+
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
 
     result = {
-        "decks": decks,
+        "decks": deck_payloads,
         "total": total,
         "page": page,
         "page_size": page_size,
