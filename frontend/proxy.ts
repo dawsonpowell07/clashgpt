@@ -2,7 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Chat is hard-protected (redirect to sign-in).
 // Profiles / matchups / tracker show an in-page auth dialog instead.
-const isHardProtected = createRouteMatcher(["/chat(.*)"]);
+const isHardProtected = createRouteMatcher(["/tracker(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isHardProtected(req)) {

@@ -10,13 +10,12 @@ import { auth } from "@clerk/nextjs/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-const ratelimit = new Ratelimit({
+// Authenticated users: 200 requests/hour by userId
+const authRatelimit = new Ratelimit({
   redis: Redis.fromEnv(),
   limiter: Ratelimit.slidingWindow(200, "1 h"),
+  prefix: "rl:auth",
 });
-
-// Maximum allowed request body size (bytes) — prevents extremely large payloads
-// const MAX_BODY_BYTES = 32_768; // 32 KB
 
 const BACKEND_API_KEY = process.env.BACKEND_API_KEY || "";
 const BACKEND_URL = process.env.API_URL || "http://localhost:8000";
@@ -38,32 +37,22 @@ const runtime = new CopilotRuntime({
 export const POST = async (req: NextRequest) => {
   const { userId } = await auth();
 
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { success, reset } = await ratelimit.limit(userId);
-
-  if (!success) {
-    return NextResponse.json(
-      { error: "Rate limit exceeded. Please try again later." },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": Math.ceil((reset - Date.now()) / 1000).toString(),
+  // Guest message limits are enforced client-side (send button counter + localStorage).
+  // Only rate-limit authenticated users server-side to prevent API abuse.
+  if (userId) {
+    const { success, reset } = await authRatelimit.limit(userId);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": Math.ceil((reset - Date.now()) / 1000).toString(),
+          },
         },
-      },
-    );
+      );
+    }
   }
-
-  // // Reject oversized payloads before they reach the runtime
-  // const contentLength = req.headers.get("content-length");
-  // if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
-  //   return NextResponse.json(
-  //     { error: "Request body too large." },
-  //     { status: 413 },
-  //   );
-  // }
 
   try {
     const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({

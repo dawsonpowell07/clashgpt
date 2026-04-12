@@ -494,34 +494,18 @@ export default function Home() {
                 </span>
               </Link>
 
-              <SignedIn>
-                <Link
-                  href="/chat"
-                  className="group flex flex-col items-center gap-2 px-4 py-4 flex-1 bg-primary/10 border border-primary/30 rounded-xl hover:bg-primary/15 hover:border-primary/50 transition-all duration-200"
-                >
-                  <MessageSquare className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-semibold text-foreground">
-                    AI Chat
-                  </span>
-                  <span className="text-[10px] text-muted-foreground text-center leading-tight">
-                    Ask our agent to find you decks!
-                  </span>
-                  <span className="text-[10px] text-muted-foreground text-center leading-tight"></span>
-                </Link>
-              </SignedIn>
-              <SignedOut>
-                <SignInButton mode="modal" forceRedirectUrl="/chat">
-                  <button className="group flex flex-col items-center gap-2 px-4 py-4 flex-1 w-full bg-primary/10 border border-primary/30 rounded-xl hover:bg-primary/15 hover:border-primary/50 transition-all duration-200 cursor-pointer">
-                    <MessageSquare className="w-5 h-5 text-primary" />
-                    <span className="text-sm font-semibold text-foreground">
-                      AI Chat
-                    </span>
-                    <span className="text-[10px] text-muted-foreground text-center leading-tight">
-                      Create an account or Log In to chat with out AI!
-                    </span>
-                  </button>
-                </SignInButton>
-              </SignedOut>
+              <Link
+                href="/chat"
+                className="group flex flex-col items-center gap-2 px-4 py-4 flex-1 bg-primary/10 border border-primary/30 rounded-xl hover:bg-primary/15 hover:border-primary/50 transition-all duration-200"
+              >
+                <MessageSquare className="w-5 h-5 text-primary" />
+                <span className="text-sm font-semibold text-foreground">
+                  AI Chat
+                </span>
+                <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                  Ask our agent to find you decks!
+                </span>
+              </Link>
             </div>
           </div>
         </div>

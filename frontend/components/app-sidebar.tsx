@@ -49,7 +49,7 @@ const NAV_SECTIONS = [
   {
     title: "Agent",
     items: [
-      { title: "Chat", url: "/chat", icon: MessageSquare, requiresAuth: true },
+      { title: "Chat", url: "/chat", icon: MessageSquare, requiresAuth: false },
     ],
   },
   {

@@ -10,7 +10,7 @@ const MAX_INPUT_LENGTH = 1500;
 export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const { pendingInput, clearPendingInput } = useInputContext();
+  const { pendingInput, clearPendingInput, guestLimitReached, onMessageSent } = useInputContext();
 
   // When the sidebar populates pending input, set the value and focus
   useEffect(() => {
@@ -26,11 +26,14 @@ export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
   const isOverLimit = value.length > MAX_INPUT_LENGTH;
 
   const handleSubmit = (inputValue: string) => {
-    if (inputValue.trim() && !isOverLimit) {
+    if (inputValue.trim() && !isOverLimit && !guestLimitReached) {
       onSend(inputValue);
+      onMessageSent();
       setValue("");
     }
   };
+
+  const isDisabled = inProgress || guestLimitReached;
 
   return (
     <div
@@ -40,15 +43,15 @@ export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
       <div className="relative flex-1">
         <input
           ref={inputRef}
-          disabled={inProgress}
+          disabled={isDisabled}
           type="text"
-          placeholder="Ask about decks, players, strategies..."
+          placeholder={guestLimitReached ? "Sign in to keep chatting..." : "Ask about decks, players, strategies..."}
           className="w-full px-4 py-2.5 rounded-xl border text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:cursor-not-allowed transition-all duration-200"
           style={{
             background: "oklch(0.26 0.02 250)",
             borderColor: isOverLimit
               ? "oklch(0.65 0.2 25)"
-              : inProgress
+              : isDisabled
                 ? "oklch(0.33 0.02 250)"
                 : "oklch(0.36 0.025 250)",
             boxShadow: "none",
@@ -85,19 +88,19 @@ export function CustomInput({ inProgress, onSend, isVisible }: InputProps) {
         )}
       </div>
       <button
-        disabled={inProgress || !value.trim() || isOverLimit}
+        disabled={isDisabled || !value.trim() || isOverLimit}
         className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold tracking-wide transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
         style={{
           background:
-            inProgress || !value.trim() || isOverLimit
+            isDisabled || !value.trim() || isOverLimit
               ? "oklch(0.30 0.02 250)"
               : "linear-gradient(135deg, oklch(0.72 0.16 45) 0%, oklch(0.64 0.18 38) 100%)",
           color:
-            inProgress || !value.trim() || isOverLimit
+            isDisabled || !value.trim() || isOverLimit
               ? "oklch(0.55 0.01 80)"
               : "oklch(0.14 0.018 250)",
           boxShadow:
-            !inProgress && value.trim() && !isOverLimit
+            !isDisabled && value.trim() && !isOverLimit
               ? "0 2px 12px oklch(0.68 0.16 45 / 0.3)"
               : "none",
           fontFamily: "var(--font-heading)",
