@@ -15,7 +15,7 @@ export const TOURNAMENT_CONFIG = {
    * Set to false between tournaments — the decks page will show an inactive
    * screen instead of results. The leaderboard is unaffected (always live).
    */
-  enabled: true,
+  enabled: false,
   /** First line of the large heading (white/foreground) */
   name: "Royal",
   /** Second line of the large heading (amber gradient) */

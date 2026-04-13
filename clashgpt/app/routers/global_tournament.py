@@ -29,7 +29,7 @@ DECK_SEARCH_TIMEOUT = 10.0
 CURRENT_GLOBAL_TOURNAMENT = {
     # Set enabled=False between tournaments to return 503 from the decks endpoint.
     # The leaderboard endpoint is unaffected — it always proxies the CR API.
-    "enabled": True,
+    "enabled": False,
     "game_mode": "RoyalTournament",
     "tournament_id": "447996",
 }
