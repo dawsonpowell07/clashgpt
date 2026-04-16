@@ -10,7 +10,14 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
-from app.cache import get_cached_decks, make_deck_cache_key, set_cached_decks
+from app.cache import (
+    TTL_LONG,
+    cache,
+    make_card_cache_key,
+    make_card_stats_cache_key,
+    make_cards_list_cache_key,
+    make_deck_cache_key,
+)
 from app.models.models import (
     Card,
     CardList,
@@ -275,12 +282,15 @@ async def get_cards(
     """
     Get all cards, optionally filtered by rarity.
     """
-    db = get_database_service()
+    key = make_cards_list_cache_key(rarity.value if rarity else None)
+    cached = await cache.get(key)
+    if cached is not None:
+        return cached
 
-    if rarity:
-        return await db.get_cards_by_rarity(rarity)
-    else:
-        return await db.get_all_cards()
+    db = get_database_service()
+    result = await db.get_cards_by_rarity(rarity) if rarity else await db.get_all_cards()
+    await cache.set(key, result, ttl=TTL_LONG)
+    return result
 
 
 @router.get("/cards/{card_id}", response_model=Card)
@@ -289,8 +299,13 @@ async def get_card_by_id(request: Request, card_id: str):
     """
     Get a specific card by its ID.
     """
-    db = get_database_service()
     card_id_int = int(card_id)
+    key = make_card_cache_key(card_id_int)
+    cached = await cache.get(key)
+    if cached is not None:
+        return cached
+
+    db = get_database_service()
     card = await db.get_card_by_id(card_id_int)
 
     if card is None:
@@ -298,6 +313,7 @@ async def get_card_by_id(request: Request, card_id: str):
             status_code=404, detail=f"Card with id '{card_id}' not found"
         )
 
+    await cache.set(key, card, ttl=TTL_LONG)
     return card
 
 
@@ -315,8 +331,13 @@ async def get_card_stats(
 
     Returns win rate, usage rate, and deck appearance rate from fact_battle_participants.
     """
-    db = get_database_service()
     card_id_int = int(card_id)
+    key = make_card_stats_cache_key(card_id_int, season_id)
+    cached = await cache.get(key)
+    if cached is not None:
+        return cached
+
+    db = get_database_service()
     stats = await db.get_card_stats_by_id(
         card_id=card_id_int,
         season_id=season_id,
@@ -327,6 +348,7 @@ async def get_card_stats(
             status_code=404, detail=f"Card with id '{card_id}' not found"
         )
 
+    await cache.set(key, stats, ttl=TTL_LONG)
     return stats
 
 
@@ -395,11 +417,11 @@ async def search_decks(
         include_cards,
         game_mode,
     )
-    cached = get_cached_decks(cache_key)
+    cached = await cache.get(cache_key)
     if cached is not None:
         response = JSONResponse(content=cached)
         response.headers["X-Cache"] = "HIT"
-        response.headers["Cache-Control"] = "public, max-age=300"
+        response.headers["Cache-Control"] = f"public, max-age=300, stale-while-revalidate={TTL_LONG}"
         return response
 
     db = get_database_service()
@@ -483,11 +505,11 @@ async def search_decks(
         "has_previous": has_previous,
     }
 
-    set_cached_decks(cache_key, result)
+    await cache.set(cache_key, result, ttl=TTL_LONG)
 
     response = JSONResponse(content=result)
     response.headers["X-Cache"] = "MISS"
-    response.headers["Cache-Control"] = "public, max-age=300"
+    response.headers["Cache-Control"] = f"public, max-age=300, stale-while-revalidate={TTL_LONG}"
     return response
 
 

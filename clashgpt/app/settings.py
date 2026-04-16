@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # Google AI
     google_api_key: str = ""
 
+    # Upstash Redis (distributed cache)
+    upstash_redis_url: str = ""
+    upstash_redis_token: str = ""
+
     # Telemetry
     logs_bucket_name: str = ""
 

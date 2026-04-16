@@ -10,6 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
+from app.cache import TTL_MEDIUM, TTL_SHORT, cache, make_tourney_deck_cache_key
 from app.models.models import DeckSortBy
 from app.rate_limit import limiter
 from app.routers.decks import parse_card_filter_param
@@ -94,6 +95,16 @@ async def search_global_tournament_decks(
             detail=f"Cannot exclude more than {MAX_EXCLUDE_CARDS} cards.",
         )
 
+    cache_key = make_tourney_deck_cache_key(
+        include, exclude, sort_by.value, min_games, page, page_size
+    )
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        response = JSONResponse(content=cached)
+        response.headers["X-Cache"] = "HIT"
+        response.headers["Cache-Control"] = f"public, max-age={TTL_MEDIUM}"
+        return response
+
     db = get_database_service()
     offset = (page - 1) * page_size
 
@@ -150,8 +161,11 @@ async def search_global_tournament_decks(
         "has_previous": page > 1,
     }
 
+    await cache.set(cache_key, result, ttl=TTL_MEDIUM)
+
     response = JSONResponse(content=result)
-    response.headers["Cache-Control"] = "public, max-age=300"
+    response.headers["X-Cache"] = "MISS"
+    response.headers["Cache-Control"] = f"public, max-age={TTL_MEDIUM}"
     return response
 
 
@@ -171,12 +185,19 @@ async def get_global_tournament_leaderboard(request: Request):
     )
     from app.tools.serialization import serialize_dataclass
 
+    leaderboard_key = f"tourney:leaderboard:{CURRENT_GLOBAL_TOURNAMENT['tournament_id']}"
+    cached = await cache.get(leaderboard_key)
+    if cached is not None:
+        return cached
+
     try:
         async with ClashRoyaleService() as service:
             leaderboard = await service.get_tournament_leaderboard(
                 CURRENT_GLOBAL_TOURNAMENT["tournament_id"]
             )
-            return serialize_dataclass(leaderboard)
+            result = serialize_dataclass(leaderboard)
+            await cache.set(leaderboard_key, result, ttl=TTL_SHORT)
+            return result
     except ClashRoyaleRateLimitError:
         raise HTTPException(
             status_code=429, detail="Clash Royale API rate limit exceeded"
