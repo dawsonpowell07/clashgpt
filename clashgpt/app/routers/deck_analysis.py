@@ -9,8 +9,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from app.cache import (
+    TTL_LONG,
+    cache,
+    make_matchup_cache_key,
+    make_win_condition_cache_key,
+)
 from app.rate_limit import limiter
-from app.routers.decks import VALID_VARIANTS, parse_card_filter_param
+from app.routers.decks import VALID_VARIANTS
 from app.services.database import get_database_service
 
 router = APIRouter(prefix="/api", tags=["deck-analysis"])
@@ -129,6 +135,11 @@ async def get_deck_matchups(
     include_opponent_specs = _parse_opponent_specs(include_opponent)
     exclude_opponent_specs = _parse_opponent_specs(exclude_opponent)
 
+    cache_key = make_matchup_cache_key(deck, page, page_size, include_opponent, exclude_opponent)
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     db = get_database_service()
     offset = (page - 1) * page_size
 
@@ -151,7 +162,7 @@ async def get_deck_matchups(
     total = result["total_matchups"]
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
 
-    return {
+    payload = {
         "deck_id": result["deck_id"],
         "deck_cards": result["deck_cards"],
         "stats": result["stats"],
@@ -163,6 +174,8 @@ async def get_deck_matchups(
         "has_next": page < total_pages,
         "has_previous": page > 1,
     }
+    await cache.set(cache_key, payload, ttl=TTL_LONG)
+    return payload
 
 
 # ===== WIN CONDITION MATCHUP ENDPOINT =====
@@ -212,6 +225,11 @@ async def get_win_condition_matchup(
             detail="Both card IDs are the same. Provide two different win conditions.",
         )
 
+    cache_key = make_win_condition_cache_key(card_a, card_b)
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     db = get_database_service()
 
     try:
@@ -225,4 +243,5 @@ async def get_win_condition_matchup(
             detail="Matchup query timed out. Try again shortly.",
         ) from None
 
+    await cache.set(cache_key, result, ttl=TTL_LONG)
     return result
