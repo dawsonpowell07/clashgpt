@@ -22,7 +22,6 @@ from ag_ui_adk import ADKAgent, add_adk_fastapi_endpoint
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.apps import App, ResumabilityConfig
-from google.adk.sessions.database_session_service import DatabaseSessionService
 from google.cloud import logging as google_cloud_logging
 
 # from slowapi import _rate_limit_exceeded_handler
@@ -30,6 +29,7 @@ from google.cloud import logging as google_cloud_logging
 # from slowapi.middleware import SlowAPIMiddleware
 from app.agent import root_agent
 from app.app_utils.telemetry import setup_telemetry
+from app.cache import cache
 
 # from app.rate_limit import limiter
 from app.routers.deck_analysis import router as deck_analysis_router
@@ -58,12 +58,19 @@ async def lifespan(app: FastAPI):
 
     Initializes database connections on startup and closes them on shutdown.
     """
+    # Startup: Initialize Redis cache
+    cache.init(
+        url=settings.upstash_redis_url,
+        token=settings.upstash_redis_token,
+    )
+
     # Startup: Initialize database connections
     db_service = get_database_service()
     logger.log_struct(
         {
             "event": "database_services_initialized",
             "postgres": True,
+            "redis_cache": cache.enabled,
         },
         severity="INFO",
     )
@@ -138,7 +145,7 @@ async def agent_api_key_middleware(request: Request, call_next):
             )
 
         if not hmac.compare_digest(api_key or "", expected_key):
-            app_logger.warning(f"Rejected /agent request: invalid or missing API key")
+            app_logger.warning("Rejected /agent request: invalid or missing API key")
             from starlette.responses import JSONResponse
 
             return JSONResponse(

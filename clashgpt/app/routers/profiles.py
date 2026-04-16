@@ -8,6 +8,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from app.cache import (
+    TTL_MEDIUM,
+    cache,
+    make_player_battles_cache_key,
+    make_player_decks_cache_key,
+)
 from app.rate_limit import limiter
 from app.services.database import get_database_service
 
@@ -89,9 +95,16 @@ async def get_player_top_decks(
     """
     Get the top 5 most-used decks for a player, with card details.
     """
+    key = make_player_decks_cache_key(player_tag)
+    cached = await cache.get(key)
+    if cached is not None:
+        return cached
+
     db = get_database_service()
     decks = await db.get_player_top_decks(player_tag=player_tag, limit=5)
-    return {"decks": decks}
+    result = {"decks": decks}
+    await cache.set(key, result, ttl=TTL_MEDIUM)
+    return result
 
 
 @router.get("/players/{player_tag}/battles")
@@ -103,9 +116,16 @@ async def get_player_recent_battles(
     """
     Get the 20 most recent battles for a player.
     """
+    key = make_player_battles_cache_key(player_tag)
+    cached = await cache.get(key)
+    if cached is not None:
+        return cached
+
     db = get_database_service()
     battles = await db.get_player_recent_battles(player_tag=player_tag, limit=20)
-    return {"battles": battles}
+    result = {"battles": battles}
+    await cache.set(key, result, ttl=TTL_MEDIUM)
+    return result
 
 
 @router.get("/players/{player_tag}/battles/{battle_id}")
