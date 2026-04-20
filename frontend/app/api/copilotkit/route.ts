@@ -22,23 +22,9 @@ const BACKEND_URL = process.env.API_URL || "http://localhost:8000";
 
 const serviceAdapter = new EmptyAdapter();
 
-const runtime = new CopilotRuntime({
-  agents: {
-    clash_gpt: new HttpAgent({
-      url: `${BACKEND_URL}/agent`,
-      headers: {
-        "x-api-key": BACKEND_API_KEY,
-      },
-    }),
-  },
-  runner: new InMemoryAgentRunner(),
-});
-
 export const POST = async (req: NextRequest) => {
   const { userId } = await auth();
 
-  // Guest message limits are enforced client-side (send button counter + localStorage).
-  // Only rate-limit authenticated users server-side to prevent API abuse.
   if (userId) {
     const { success, reset } = await authRatelimit.limit(userId);
     if (!success) {
@@ -53,6 +39,24 @@ export const POST = async (req: NextRequest) => {
       );
     }
   }
+
+  // Forward the real client IP and user ID so the backend can enforce guest rate limits.
+  const clientIp =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+
+  const runtime = new CopilotRuntime({
+    agents: {
+      clash_gpt: new HttpAgent({
+        url: `${BACKEND_URL}/agent`,
+        headers: {
+          "x-api-key": BACKEND_API_KEY,
+          "x-client-ip": clientIp,
+          "x-user-id": userId ?? "",
+        },
+      }),
+    },
+    runner: new InMemoryAgentRunner(),
+  });
 
   try {
     const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({

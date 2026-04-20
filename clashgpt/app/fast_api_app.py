@@ -50,6 +50,28 @@ logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 app_logger = logging.getLogger(__name__)
 
+_GUEST_LIMIT = 15
+_GUEST_WINDOW = 7200  # 2 hours
+
+
+async def _guest_rate_limit_check(ip: str) -> bool:
+    """Fixed-window counter per IP. Returns True if allowed, False if over limit.
+
+    Fails open when Redis is unavailable so the service stays up.
+    """
+    if not cache.enabled:
+        return True
+    try:
+        window = int(time.time()) // _GUEST_WINDOW
+        key = f"rl:guest:{ip}:{window}"
+        count = await cache._client.incr(key)  # type: ignore[union-attr]
+        if count == 1:
+            await cache._client.expire(key, _GUEST_WINDOW * 2)  # type: ignore[union-attr]
+        return int(count) <= _GUEST_LIMIT
+    except Exception as exc:
+        app_logger.warning("Guest rate limit check failed (fail open): %s", exc)
+        return True
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -131,27 +153,42 @@ app.include_router(profiles_router)
 
 @app.middleware("http")
 async def agent_api_key_middleware(request: Request, call_next):
-    """Validate x-api-key for /agent requests."""
+    """Validate x-api-key for /agent requests and enforce guest IP rate limits."""
     if request.url.path.startswith("/agent"):
+        from starlette.responses import JSONResponse
+
         api_key = request.headers.get("x-api-key")
         expected_key = settings.backend_api_key
 
         if not expected_key:
             app_logger.error("BACKEND_API_KEY is not set — rejecting request")
-            from starlette.responses import JSONResponse
-
             return JSONResponse(
                 status_code=500, content={"detail": "Server misconfiguration"}
             )
 
         if not hmac.compare_digest(api_key or "", expected_key):
             app_logger.warning("Rejected /agent request: invalid or missing API key")
-            from starlette.responses import JSONResponse
-
             return JSONResponse(
                 status_code=403,
                 content={"detail": "Forbidden: invalid or missing API key"},
             )
+
+        # Rate-limit unauthenticated (guest) requests by real client IP.
+        # The Next.js proxy forwards the browser's IP in x-client-ip.
+        user_id = request.headers.get("x-user-id", "").strip()
+        if not user_id:
+            ip = (
+                request.headers.get("x-client-ip")
+                or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+                or "unknown"
+            )
+            allowed = await _guest_rate_limit_check(ip)
+            if not allowed:
+                app_logger.warning("Guest rate limit exceeded for IP: %s", ip)
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Rate limit exceeded. Please try again later."},
+                )
 
     start_time = time.time()
     response = await call_next(request)

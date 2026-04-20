@@ -21,18 +21,56 @@ import {
 
 const GUEST_LIMIT = 15;
 const GUEST_COUNT_KEY = "clashgpt-guest-msg-count";
+const GUEST_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+interface GuestCounter {
+  count: number;
+  windowStart: number;
+}
 
 function getStoredGuestCount(): number {
   if (typeof window === "undefined") return 0;
+  try {
+    const raw = localStorage.getItem(GUEST_COUNT_KEY);
+    if (!raw) return 0;
+    const parsed: GuestCounter = JSON.parse(raw);
+    if (Date.now() - parsed.windowStart >= GUEST_WINDOW_MS) {
+      localStorage.removeItem(GUEST_COUNT_KEY);
+      return 0;
+    }
+    return parsed.count;
+  } catch {
+    localStorage.removeItem(GUEST_COUNT_KEY);
+    return 0;
+  }
+}
+
+function incrementGuestCount(current: number): number {
   const raw = localStorage.getItem(GUEST_COUNT_KEY);
-  return raw ? parseInt(raw, 10) : 0;
+  let windowStart = Date.now();
+  try {
+    if (raw) {
+      const parsed: GuestCounter = JSON.parse(raw);
+      if (Date.now() - parsed.windowStart < GUEST_WINDOW_MS) {
+        windowStart = parsed.windowStart;
+      }
+    }
+  } catch {
+    // use fresh windowStart
+  }
+  const next = current + 1;
+  localStorage.setItem(
+    GUEST_COUNT_KEY,
+    JSON.stringify({ count: next, windowStart }),
+  );
+  return next;
 }
 
 export default function ChatPage() {
   const { isSignedIn, isLoaded } = useAuth();
   const { openSignIn } = useClerk();
 
-  // Guest message counter — persists across refreshes via localStorage
+  // Guest message counter — resets hourly via localStorage timestamp
   const [guestCount, setGuestCount] = useState<number>(() => getStoredGuestCount());
   const guestLimitReached = !isSignedIn && guestCount >= GUEST_LIMIT;
 
@@ -41,9 +79,8 @@ export default function ChatPage() {
 
   const handleMessageSent = useCallback(() => {
     if (isSignedIn) return;
-    const next = guestCount + 1;
+    const next = incrementGuestCount(guestCount);
     setGuestCount(next);
-    localStorage.setItem(GUEST_COUNT_KEY, String(next));
     if (next >= GUEST_LIMIT) {
       setShowLimitModal(true);
     }
