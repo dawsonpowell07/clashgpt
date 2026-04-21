@@ -50,7 +50,7 @@ logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 app_logger = logging.getLogger(__name__)
 
-_GUEST_LIMIT = 15
+_GUEST_LIMIT = 5
 _GUEST_WINDOW = 7200  # 2 hours
 
 

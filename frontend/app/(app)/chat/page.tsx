@@ -19,7 +19,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-const GUEST_LIMIT = 15;
+const GUEST_LIMIT = 5;
 const GUEST_COUNT_KEY = "clashgpt-guest-msg-count";
 const GUEST_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
 
