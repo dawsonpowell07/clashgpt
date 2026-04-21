@@ -1,9 +1,18 @@
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+function toUtcDate(iso: string): Date {
+  // Stored timestamps are UTC but may lack the Z suffix — force UTC parsing.
+  const normalized =
+    iso.includes("Z") || iso.includes("+")
+      ? iso
+      : iso.replace(" ", "T") + "Z";
+  return new Date(normalized);
+}
+
 export function formatBattleTime(iso: string | null): string {
   if (!iso) return "—";
   try {
-    const d = new Date(iso);
+    const d = toUtcDate(iso);
     return d.toLocaleString("en-US", {
       month: "short",
       day: "numeric",
@@ -19,7 +28,7 @@ export function formatBattleTime(iso: string | null): string {
 export function formatLastSeen(iso: string | null): string {
   if (!iso) return "Unknown";
   try {
-    const d = new Date(iso);
+    const d = toUtcDate(iso);
     return d.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",

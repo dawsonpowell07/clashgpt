@@ -50,9 +50,17 @@ function formatGameMode(gameMode: string | null): string {
   return gameMode;
 }
 
+function toUtcDate(iso: string): Date {
+  const normalized =
+    iso.includes("Z") || iso.includes("+")
+      ? iso
+      : iso.replace(" ", "T") + "Z";
+  return new Date(normalized);
+}
+
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(undefined, {
+  return toUtcDate(iso).toLocaleDateString(undefined, {
     weekday: "short",
     month: "short",
     day: "numeric",
