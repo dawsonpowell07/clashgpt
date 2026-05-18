@@ -15,6 +15,7 @@ import {
   Shield,
   Trophy,
   Medal,
+  Zap,
 } from "lucide-react";
 import {
   SignInButton,
@@ -73,11 +74,27 @@ const NAV_SECTIONS = [
   {
     title: "Deck Analysis",
     items: [
-      { title: "Matchups", url: "/matchups", icon: Swords, requiresAuth: false },
+      {
+        title: "Matchups",
+        url: "/matchups",
+        icon: Swords,
+        requiresAuth: false,
+      },
       {
         title: "Head to Head",
         url: "/head-to-head",
         icon: ArrowLeftRight,
+        requiresAuth: false,
+      },
+    ],
+  },
+  {
+    title: "Seasonal Ladder",
+    items: [
+      {
+        title: "Decks",
+        url: "/seasonal-ladder",
+        icon: Zap,
         requiresAuth: false,
       },
     ],

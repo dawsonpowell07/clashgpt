@@ -36,6 +36,7 @@ from app.routers.deck_analysis import router as deck_analysis_router
 from app.routers.decks import router as decks_router
 from app.routers.global_tournament import router as global_tournament_router
 from app.routers.profiles import router as profiles_router
+from app.routers.seasonal_ladder import router as seasonal_ladder_router
 from app.services.database import get_database_service
 from app.settings import settings
 
@@ -148,6 +149,7 @@ app.router.lifespan_context = lifespan
 app.include_router(decks_router)
 app.include_router(deck_analysis_router)
 app.include_router(global_tournament_router)
+app.include_router(seasonal_ladder_router)
 app.include_router(profiles_router)
 
 

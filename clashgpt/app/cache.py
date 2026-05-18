@@ -145,6 +145,19 @@ def make_tourney_deck_cache_key(
     return f"tourney:decks:{inc}|{exc}|{sort_by}|{min_games}|{page}|{page_size}"
 
 
+def make_seasonal_ladder_cache_key(
+    include: str | None,
+    exclude: str | None,
+    sort_by: str,
+    min_games: int,
+    page: int,
+    page_size: int,
+) -> str:
+    inc = ",".join(sorted(include.split(","))) if include else ""
+    exc = ",".join(sorted(exclude.split(","))) if exclude else ""
+    return f"seasonal:decks:{inc}|{exc}|{sort_by}|{min_games}|{page}|{page_size}"
+
+
 def make_player_decks_cache_key(player_tag: str) -> str:
     return f"players:{player_tag}:decks"
 
