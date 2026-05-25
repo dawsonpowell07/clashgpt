@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import Image from "next/image";
 import { Orbitron } from "next/font/google";
 import { AlertTriangle, RefreshCw, Swords, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ALL_CARDS } from "@/lib/cards-data";
 import { WinConditionMatchup } from "@/components/win-condition-matchup";
 import { CardIcon, cardFileName } from "@/components/card-icon";
 
@@ -302,10 +303,10 @@ function CardGrid({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HeadToHeadPage() {
-  const [allCards, setAllCards] = useState<Card[]>([]);
-  const [winConditionCards, setWinConditionCards] = useState<Card[]>([]);
-  const [isLoadingCards, setIsLoadingCards] = useState(true);
-  const [cardsError, setCardsError] = useState<string | null>(null);
+  const [allCards] = useState<Card[]>(ALL_CARDS);
+  const [winConditionCards] = useState<Card[]>(
+    ALL_CARDS.filter((c) => WIN_CONDITION_IDS.has(c.card_id)),
+  );
 
   const [selectedA, setSelectedA] = useState<number | null>(null);
   const [selectedB, setSelectedB] = useState<number | null>(null);
@@ -315,30 +316,6 @@ export default function HeadToHeadPage() {
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  const fetchCards = useCallback(async () => {
-    setIsLoadingCards(true);
-    setCardsError(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/cards`);
-      if (!res.ok) throw new Error("Failed to fetch cards");
-      const data = await res.json();
-      const cards: Card[] = data.cards || [];
-      setAllCards(cards);
-      setWinConditionCards(
-        cards.filter((c) => WIN_CONDITION_IDS.has(c.card_id)),
-      );
-    } catch {
-      setCardsError(
-        "Failed to load win conditions. Please check your connection.",
-      );
-    } finally {
-      setIsLoadingCards(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCards();
-  }, [fetchCards]);
 
   const cardMapById = new Map(allCards.map((c) => [c.card_id, c]));
 
@@ -544,30 +521,7 @@ export default function HeadToHeadPage() {
           </div>
 
           {/* Card pickers */}
-          {isLoadingCards ? (
-            <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
-              <RefreshCw className="w-5 h-5 animate-spin text-primary" />
-              <span className="text-sm font-medium">
-                Loading win conditions…
-              </span>
-            </div>
-          ) : cardsError ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
-                <AlertTriangle className="w-7 h-7 text-destructive/70" />
-              </div>
-              <p className="text-sm text-destructive font-medium">
-                {cardsError}
-              </p>
-              <button
-                onClick={fetchCards}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-lg transition-colors"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Retry
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border/30 px-0 divide-y sm:divide-y-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border/30 px-0 divide-y sm:divide-y-0">
               {/* Side A */}
               <div className="px-4 sm:px-6 py-5 space-y-3">
                 <div className="flex items-center gap-2 min-w-0">
@@ -602,22 +556,19 @@ export default function HeadToHeadPage() {
                 />
               </div>
             </div>
-          )}
 
           {/* Bottom status row */}
-          {!isLoadingCards && !cardsError && (
-            <div className="flex items-center px-4 sm:px-6 py-4 border-t border-border/20 bg-muted/5">
-              <p
-                className={cn(
-                  "text-xs tabular-nums font-semibold",
-                  orbitron.className,
-                  "text-muted-foreground",
-                )}
-              >
-                {statusText}
-              </p>
-            </div>
-          )}
+          <div className="flex items-center px-4 sm:px-6 py-4 border-t border-border/20 bg-muted/5">
+            <p
+              className={cn(
+                "text-xs tabular-nums font-semibold",
+                orbitron.className,
+                "text-muted-foreground",
+              )}
+            >
+              {statusText}
+            </p>
+          </div>
         </div>
 
         {/* ── Search error ─────────────────────────────────────────────── */}

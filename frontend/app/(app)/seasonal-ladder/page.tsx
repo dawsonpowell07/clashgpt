@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "rea
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { AlertTriangle, RefreshCw, Zap } from "lucide-react";
 import { Card, DecksResponse } from "@/lib/types";
+import { PLAYABLE_CARDS } from "@/lib/cards-data";
 import { cn } from "@/lib/utils";
 import { Inter } from "next/font/google";
 import { SEASONAL_LADDER_CONFIG } from "@/lib/seasonal-ladder-config";
@@ -46,9 +47,7 @@ function SeasonalLadderContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryString]);
 
-  const [cards, setCards] = useState<Card[]>([]);
-  const [isLoadingCards, setIsLoadingCards] = useState(true);
-  const [cardsError, setCardsError] = useState<string | null>(null);
+  const [cards] = useState<Card[]>(PLAYABLE_CARDS);
   const [searchError, setSearchError] = useState<string | null>(null);
 
   const [includedVariants, setIncludedVariants] = useState<Set<string>>(
@@ -121,39 +120,6 @@ function SeasonalLadderContent() {
 
   const lastSearchTime = useRef<number>(0);
 
-  const fetchCards = useCallback(async () => {
-    setIsLoadingCards(true);
-    setCardsError(null);
-    try {
-      const res = await fetch("/api/backend/api/cards");
-      if (!res.ok) throw new Error("Failed to fetch cards");
-      const data = await res.json();
-      const TOWER_TROOP_NAMES = new Set([
-        "Tower Princess",
-        "Royal Chef",
-        "Dagger Duchess",
-        "Cannoneer",
-      ]);
-      setCards(
-        (data.cards || []).filter(
-          (card: Card) =>
-            !String(card.card_id).startsWith("159") &&
-            !TOWER_TROOP_NAMES.has(card.name),
-        ),
-      );
-    } catch (error) {
-      console.error("Error fetching cards:", error);
-      setCardsError(
-        "Failed to load cards. Please check your connection and try again.",
-      );
-    } finally {
-      setIsLoadingCards(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (SEASONAL_LADDER_CONFIG.enabled) fetchCards();
-  }, [fetchCards]);
 
   const variantIdToApiParam = (id: string): string => {
     const [cardIdStr, variantStr] = id.split("_");
@@ -375,9 +341,9 @@ function SeasonalLadderContent() {
         {/* Filter Section */}
         <FilterPanel
           cards={cards}
-          isLoadingCards={isLoadingCards}
-          cardsError={cardsError}
-          onRetryCards={fetchCards}
+          isLoadingCards={false}
+          cardsError={null}
+          onRetryCards={() => {}}
           filterMode={filterMode}
           onSetFilterMode={handleSetFilterMode}
           includedVariants={includedVariants}

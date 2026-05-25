@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Orbitron } from "next/font/google";
 import { Card } from "@/lib/types";
+import { PLAYABLE_CARDS } from "@/lib/cards-data";
 import { CardSelector } from "@/components/card-selector";
 import { CardIcon } from "@/components/card-icon";
 
@@ -545,9 +546,7 @@ function MatchRecord({
 function MatchupsPageInner() {
   const searchParams = useSearchParams();
 
-  const [cards, setCards] = useState<Card[]>([]);
-  const [isLoadingCards, setIsLoadingCards] = useState(true);
-  const [cardsError, setCardsError] = useState<string | null>(null);
+  const [cards] = useState<Card[]>(PLAYABLE_CARDS);
 
   const [selectedVariants, setSelectedVariants] = useState<Set<string>>(
     new Set(),
@@ -573,36 +572,6 @@ function MatchupsPageInner() {
   const lastSearchRef = useRef<number>(0);
   const shouldAutoSearch = useRef(false);
 
-  const fetchCards = useCallback(async () => {
-    setIsLoadingCards(true);
-    setCardsError(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/cards`);
-      if (!res.ok) throw new Error("Failed to fetch cards");
-      const data = await res.json();
-      const TOWER_TROOP_NAMES = new Set([
-        "Tower Princess",
-        "Royal Chef",
-        "Dagger Duchess",
-        "Cannoneer",
-      ]);
-      setCards(
-        (data.cards || []).filter(
-          (card: Card) =>
-            !String(card.card_id).startsWith("159") &&
-            !TOWER_TROOP_NAMES.has(card.name),
-        ),
-      );
-    } catch {
-      setCardsError("Failed to load cards. Please check your connection.");
-    } finally {
-      setIsLoadingCards(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCards();
-  }, [fetchCards]);
 
   // Pre-fill deck from URL param (e.g. coming from Decks page)
   useEffect(() => {
@@ -884,36 +853,12 @@ function MatchupsPageInner() {
 
           {/* Card selector */}
           <div className="px-4 sm:px-6 py-4">
-            {isLoadingCards ? (
-              <div className="flex items-center justify-center py-20 gap-3 text-muted-foreground">
-                <RefreshCw className="w-5 h-5 animate-spin text-primary" />
-                <span className="text-sm font-medium">
-                  Loading card catalogue…
-                </span>
-              </div>
-            ) : cardsError ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-4">
-                <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
-                  <AlertTriangle className="w-7 h-7 text-destructive/70" />
-                </div>
-                <p className="text-sm text-destructive font-medium">
-                  {cardsError}
-                </p>
-                <button
-                  onClick={fetchCards}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-lg transition-colors"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Retry
-                </button>
-              </div>
-            ) : (
-              <CardSelector
-                cards={cards}
-                selectedIndices={selectedVariants}
-                onToggleCard={handleToggleCard}
-                filterMode="INCLUDE"
-              />
-            )}
+            <CardSelector
+              cards={cards}
+              selectedIndices={selectedVariants}
+              onToggleCard={handleToggleCard}
+              filterMode="INCLUDE"
+            />
           </div>
         </div>
 
@@ -1080,23 +1025,16 @@ function MatchupsPageInner() {
                         </div>
                       </div>
 
-                      {isLoadingCards ? (
-                        <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
-                          <RefreshCw className="w-4 h-4 animate-spin text-primary" />
-                          <span className="text-xs">Loading cards…</span>
-                        </div>
-                      ) : (
-                        <CardSelector
-                          cards={cards}
-                          selectedIndices={
-                            opponentFilterMode === "INCLUDE"
-                              ? opponentIncluded
-                              : opponentExcluded
-                          }
-                          onToggleCard={handleToggleOpponentCard}
-                          filterMode={opponentFilterMode}
-                        />
-                      )}
+                      <CardSelector
+                        cards={cards}
+                        selectedIndices={
+                          opponentFilterMode === "INCLUDE"
+                            ? opponentIncluded
+                            : opponentExcluded
+                        }
+                        onToggleCard={handleToggleOpponentCard}
+                        filterMode={opponentFilterMode}
+                      />
                     </div>
                   )}
 

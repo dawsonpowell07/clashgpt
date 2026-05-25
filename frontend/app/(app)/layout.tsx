@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 const PAGE_TITLES: Record<string, string> = {
   "/chat": "Chat",
@@ -24,6 +25,10 @@ const PAGE_TITLES: Record<string, string> = {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const pageTitle = PAGE_TITLES[pathname] ?? "ClashGPT";
+
+  useEffect(() => {
+    fetch("/api/backend/health").catch(() => {});
+  }, []);
 
   return (
     <SidebarProvider>

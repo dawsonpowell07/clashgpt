@@ -1591,8 +1591,8 @@ class DatabaseService:
                         "deck_id": None,
                         "deck_cards": [],
                         "stats": None,
-                        "total_battles": 0,
-                        "battles": [],
+                        "matchups": [],
+                        "total_matchups": 0,
                     }
 
                 deck_id = deck_row[0]

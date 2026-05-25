@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect } from "react";
 import {
   MessageSquare,
   Trophy,
@@ -362,6 +363,10 @@ function HeadToHeadPreviewCard() {
 }
 
 export default function Home() {
+  useEffect(() => {
+    fetch("/api/backend/health").catch(() => {});
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Grid Background */}
