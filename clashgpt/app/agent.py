@@ -58,7 +58,7 @@ os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "False"
 root_agent = Agent(
     name="clash_gpt",
     model=Gemini(
-        model="gemini-3.1-flash-lite-preview",
+        model="gemini-3.1-flash-lite",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=PROMPT,
